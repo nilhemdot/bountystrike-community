@@ -1,15 +1,17 @@
 """Pure normalizers — convert raw platform JSON into the canonical scope dict.
 
-Each function returns a `CanonicalScope` mapping suitable for upserting into
-the `scopes` table:
+Each function returns a :class:`CanonicalScope` mapping suitable for upserting
+into the ``scopes`` table:
+
+.. code-block:: python
 
     {
-        "program_handle": str,
-        "asset_type":     str,
-        "identifier":     str,
-        "in_scope":       bool,
+        "program_handle":   str,
+        "asset_type":       str,
+        "identifier":       str,
+        "in_scope":         bool,
         "exclusion_reason": str | None,
-        "tags":           list[str],
+        "tags":             list[str],
     }
 
 These helpers are platform-agnostic and side-effect-free. They never raise on
@@ -19,17 +21,9 @@ records without aborting an ingest run.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any
 
-
-class CanonicalScope(TypedDict):
-    program_handle: str
-    asset_type: str
-    identifier: str
-    in_scope: bool
-    exclusion_reason: str | None
-    tags: list[str]
-
+from ..value_objects.canonical_scope import CanonicalScope
 
 # ---------------------------------------------------------------------------
 # HackerOne (April 2026 org_assets API)
@@ -62,9 +56,9 @@ def normalize_h1_org_asset(
 ) -> CanonicalScope | None:
     """Normalize a HackerOne April-2026 org-asset record.
 
-    `program_handle` may be supplied by the caller (when the asset belongs to
-    multiple programs and we want to fan it out one-by-one). Otherwise we use
-    the first entry of `program_handles[]`.
+    ``program_handle`` may be supplied by the caller (when the asset belongs
+    to multiple programs and we want to fan it out one-by-one). Otherwise we
+    use the first entry of ``program_handles[]``.
     """
     identifier = asset.get("identifier") or asset.get("asset_identifier")
     raw_type = asset.get("asset_type") or asset.get("type")
@@ -114,7 +108,7 @@ def normalize_bugcrowd_target(
     program_handle: str,
     in_scope: bool = True,
 ) -> CanonicalScope | None:
-    """Bugcrowd `target_groups[].targets[]` records."""
+    """Bugcrowd ``target_groups[].targets[]`` records."""
     identifier = target.get("target") or target.get("name") or target.get("uri")
     if not identifier:
         return None
@@ -212,7 +206,7 @@ def normalize_yeswehack_program(
     *,
     program_handle: str,
 ) -> CanonicalScope | None:
-    """YesWeHack scope record. `asset_value` is preserved as a tag for EV."""
+    """YesWeHack scope record. ``asset_value`` is preserved as a tag for EV."""
     identifier = scope.get("scope") or scope.get("target") or scope.get("identifier")
     if not identifier:
         return None
@@ -248,7 +242,7 @@ def normalize_immunefi_impact(
     *,
     program_handle: str,
 ) -> CanonicalScope | None:
-    """Immunefi exposes assets as `impacts[]` plus an `assets[]` array.
+    """Immunefi exposes assets as ``impacts[]`` plus an ``assets[]`` array.
 
     We treat every impact record as a smart-contract asset (with the impact
     description tagged) so it routes through the EV smart_contract weight

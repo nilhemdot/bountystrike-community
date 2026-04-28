@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import math
 
-from .weights import LAMBDA_SCOPE, MU_KEV
+from ..value_objects.weights import LAMBDA_SCOPE, MU_KEV
 
 
 def compute_scope_freshness(delta_hours: float) -> float:
@@ -28,6 +28,11 @@ def compute_kev_freshness(delta_hours: float) -> float:
     if delta_hours < 0:
         return 1.0
     return math.exp(-MU_KEV * delta_hours)
+
+
+def compute_freshness(delta_hours: float) -> float:
+    """Default freshness = scope freshness (research/02 §Freshness decay)."""
+    return compute_scope_freshness(delta_hours)
 
 
 def cve_opportunity_score(

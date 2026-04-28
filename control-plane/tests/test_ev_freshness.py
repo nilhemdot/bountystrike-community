@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from control_plane.ev import (
+from control_plane.domains.program_ranking import (
     LAMBDA_SCOPE,
     MU_KEV,
     compute_freshness,

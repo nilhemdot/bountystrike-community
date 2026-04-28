@@ -14,7 +14,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
-from control_plane.integrations.h1_client import (
+from control_plane.domains.scope_management.integrations.hackerone import (
     DEFAULT_BASE_URL,
     H1AuthError,
     H1RateLimitError,

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 import pytest_asyncio
-from control_plane.ev import ScoreBreakdown
-from control_plane.ev.writer import (
+from control_plane.domains.program_ranking import (
+    ScoreBreakdown,
     ev_score_history,
     get_latest_ev,
     metadata,

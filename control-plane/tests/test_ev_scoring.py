@@ -7,15 +7,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from control_plane.ev import (
+from control_plane.domains.program_ranking import (
     ASSET_TYPE_WEIGHTS,
     WEIGHTS_V2,
     OperatorProfile,
     ProgramFeatures,
+    compute_f_fit,
+    compute_f_payout,
+    compute_f_saturation,
     rank_programs,
     score_program,
 )
-from control_plane.ev.scoring import compute_f_fit, compute_f_payout, compute_f_saturation
 
 FIXTURES = Path(__file__).parent / "fixtures" / "programs.json"
 

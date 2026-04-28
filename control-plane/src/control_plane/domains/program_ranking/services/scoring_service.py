@@ -1,4 +1,4 @@
-"""EV scoring engine — pure functions over Pydantic-typed inputs.
+"""EV scoring service — pure functions over Pydantic-typed value objects.
 
 Aggregate normalized score:
     S        = w1*f_payout + w2*f_sat + w3*f_ops + w4*f_fit
@@ -12,48 +12,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
-
-from .freshness import compute_scope_freshness
-from .weights import ASSET_TYPE_WEIGHTS, WEIGHTS_V2, WEIGHTS_VERSION
-
-# Reference payout cap for normalizing f_payout. $50k = full score.
-PAYOUT_NORM_CAP_USD: float = 50_000.0
-
-
-class OperatorProfile(BaseModel):
-    """Operator skill + budget profile feeding f_fit."""
-
-    skill_vector: dict[str, float] = Field(default_factory=dict)
-    time_budget_hours: float = 40.0
-    cost_budget_usd: float = 50.0
-    asset_type_pref: dict[str, float] = Field(default_factory=dict)
-
-
-class ProgramFeatures(BaseModel):
-    """Materialized program signals consumed by score_program()."""
-
-    handle: str
-    platform: str
-    payout_min: float = 0.0
-    payout_max: float = 0.0
-    bounty_paid_ratio: float = 0.0
-    triage_acceptance_rate: float = 0.0
-    dup_rate: float = 0.0
-    last_modified_at: datetime | None = None
-    asset_distribution: dict[str, int] = Field(default_factory=dict)
-
-
-class ScoreBreakdown(BaseModel):
-    """Per-program scoring decomposition (also persisted to ev_score_history)."""
-
-    ev_score: float
-    f_payout: float
-    f_saturation: float
-    f_ops: float
-    f_fit: float
-    f_cve: float
-    weights_version: str = WEIGHTS_VERSION
+from ..domain.freshness import compute_scope_freshness
+from ..value_objects.operator import OperatorProfile
+from ..value_objects.program_features import ProgramFeatures
+from ..value_objects.score import ScoreBreakdown
+from ..value_objects.weights import (
+    ASSET_TYPE_WEIGHTS,
+    PAYOUT_NORM_CAP_USD,
+    WEIGHTS_V2,
+    WEIGHTS_VERSION,
+)
 
 
 def _clamp01(x: float) -> float:

@@ -22,8 +22,13 @@ import pytest
 import pytest_asyncio
 import respx
 from control_plane.db import Base, Program, Scope, ScopeChange, make_session_factory
-from control_plane.integrations.h1_client import DEFAULT_BASE_URL, HackerOneClient
-from control_plane.workers.scope_ingest import ingest_h1_org_assets
+from control_plane.domains.scope_management.integrations.hackerone import (
+    DEFAULT_BASE_URL,
+    HackerOneClient,
+)
+from control_plane.domains.scope_management.services.ingest_service import (
+    ingest_h1_org_assets,
+)
 from sqlalchemy import JSON, BigInteger, Integer, event, select
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import JSONB

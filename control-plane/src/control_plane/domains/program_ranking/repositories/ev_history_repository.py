@@ -24,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .scoring import ScoreBreakdown
+from ..value_objects.score import ScoreBreakdown
 
 metadata = MetaData()
 

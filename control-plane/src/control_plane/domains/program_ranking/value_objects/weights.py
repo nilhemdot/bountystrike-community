@@ -1,9 +1,13 @@
 """EV scoring weights and constants (research/02 §EV Formula + Weights).
 
-WEIGHTS_V2     -- relative importance of payout/saturation/ops/fit/cve_bonus
-ASSET_TYPE_WEIGHTS -- per-asset multipliers (smart_contract through vdp)
-LAMBDA_SCOPE   -- scope freshness decay rate (per hour)
-MU_KEV         -- KEV freshness decay rate (per hour)
+WEIGHTS_V2          -- relative importance of payout/saturation/ops/fit/cve_bonus
+WEIGHTS_VERSION     -- semver string persisted with each ev_score_history row
+ASSET_TYPE_WEIGHTS  -- per-asset multipliers (smart_contract through vdp)
+LAMBDA_SCOPE        -- scope freshness decay rate (per hour)
+MU_KEV              -- KEV freshness decay rate (per hour)
+PAYOUT_NORM_CAP_USD -- reference payout cap for normalizing f_payout ($50k)
+
+Module-level immutable constants (Final). No runtime mutation.
 """
 
 from __future__ import annotations
@@ -38,3 +42,6 @@ ASSET_TYPE_WEIGHTS: Final[dict[str, float]] = {
 # Freshness decay constants
 LAMBDA_SCOPE: Final[float] = 0.00065  # exp(-0.00065*Δt) → ~0.97 @ 48h, 0.63 @ 720h
 MU_KEV: Final[float] = 0.00963  # exp(-0.00963*Δt) → halves in ~72h
+
+# Reference payout cap for normalizing f_payout. $50k = full score.
+PAYOUT_NORM_CAP_USD: Final[float] = 50_000.0

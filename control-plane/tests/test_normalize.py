@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from control_plane.integrations.normalize import (
+from control_plane.domains.scope_management.integrations.normalize import (
     normalize_bugcrowd_target,
     normalize_h1_org_asset,
     normalize_immunefi_impact,

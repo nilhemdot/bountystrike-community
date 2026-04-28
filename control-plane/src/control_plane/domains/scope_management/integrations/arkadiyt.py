@@ -1,25 +1,26 @@
-"""Federation L0 client — `arkadiyt/bounty-targets-data`.
+"""Federation L0 client — ``arkadiyt/bounty-targets-data``.
 
-Pulls JSON snapshots for HackerOne, Bugcrowd, Intigriti, YesWeHack and Immunefi
-from `raw.githubusercontent.com`. The repo is updated every 30 min and is the
-unauthenticated baseline before higher tiers (rix4uni / bbscope / Trickest).
+Pulls JSON snapshots for HackerOne, Bugcrowd, Intigriti, YesWeHack and
+Immunefi from ``raw.githubusercontent.com``. The repo is updated every 30 min
+and is the unauthenticated baseline before higher tiers (rix4uni / bbscope /
+Trickest).
 
-Reference: `docs/research/02-routing-ev.md` §Federation layers.
+Reference: ``docs/research/02-routing-ev.md`` §Federation layers.
 """
 
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..value_objects.platform import Platform
+
 DEFAULT_BASE_URL = (
     "https://raw.githubusercontent.com/arkadiyt/bounty-targets-data/main/data"
 )
-
-Platform = Literal["hackerone", "bugcrowd", "intigriti", "yeswehack", "immunefi"]
 
 # Maps platform -> filename in the upstream repo.
 FEED_FILES: dict[Platform, str] = {
@@ -37,7 +38,7 @@ class FederationProgram(BaseModel):
     """Lightweight per-program record extracted from a feed file.
 
     The upstream JSON shape varies per platform; we normalize the keys we care
-    about and stash the raw record in `raw` so callers can recover platform-
+    about and stash the raw record in ``raw`` so callers can recover platform-
     specific detail downstream.
     """
 
@@ -54,7 +55,7 @@ class FederationProgram(BaseModel):
 
 
 class ArkadiytClient:
-    """Async federation client for the `arkadiyt/bounty-targets-data` repo."""
+    """Async federation client for the ``arkadiyt/bounty-targets-data`` repo."""
 
     def __init__(
         self,
@@ -203,6 +204,7 @@ def _parse_immunefi(record: dict[str, Any]) -> FederationProgram:
 
 __all__ = [
     "ArkadiytClient",
+    "DEFAULT_BASE_URL",
     "FEED_FILES",
     "FederationProgram",
     "Platform",

@@ -1,29 +1,32 @@
 """HackerOne April-2026 org-assets API async client.
 
-Reference: `docs/research/02-routing-ev.md` §HackerOne (April 16 2026 deprecation).
+Reference: ``docs/research/02-routing-ev.md`` §HackerOne (April 16 2026
+deprecation).
 
 Endpoint
 --------
-`GET /v1/organizations/{org_id}/assets`
+``GET /v1/organizations/{org_id}/assets``
 
 Pagination
 ----------
-`page[size]` (max 100) + `page[number]`. We loop until the JSON:API `links.next`
-becomes null.
+``page[size]`` (max 100) + ``page[number]``. We loop until the JSON:API
+``links.next`` becomes null.
 
 Change-event mode
 -----------------
-`filter[updated_at__gt]={iso8601}` — pulls only assets touched since `since`.
+``filter[updated_at__gt]={iso8601}`` — pulls only assets touched since
+``since``.
 
 Auth
 ----
-HTTP Basic with `H1_USERNAME` + `H1_API_TOKEN` env vars.
+HTTP Basic with ``H1_USERNAME`` + ``H1_API_TOKEN`` env vars.
 
-Field migration vs the deprecated `structured_scopes` endpoint:
-* `asset_identifier` -> `identifier`
-* `updated_at` -> `last_modified_at`
-* New `program_handles[]` (one asset, many programs)
-* New `tags`, `notes`
+Field migration vs the deprecated ``structured_scopes`` endpoint:
+
+* ``asset_identifier`` -> ``identifier``
+* ``updated_at`` -> ``last_modified_at``
+* New ``program_handles[]`` (one asset, many programs)
+* New ``tags``, ``notes``
 """
 
 from __future__ import annotations
@@ -61,8 +64,8 @@ class H1Asset(BaseModel):
 
         H1 returns ``{"id": "...", "type": "asset", "attributes": {...},
         "relationships": {...}}``. Attributes carry the canonical field names
-        (`identifier` / `last_modified_at`); we keep aliases for the deprecated
-        names so legacy fixtures still parse.
+        (``identifier`` / ``last_modified_at``); we keep aliases for the
+        deprecated names so legacy fixtures still parse.
         """
         attributes = dict(item.get("attributes") or {})
         relationships = item.get("relationships") or {}
@@ -75,7 +78,7 @@ class H1Asset(BaseModel):
             program_handles = [p for p in program_handles if p]
 
         # Pydantic resolves alias vs. canonical automatically thanks to
-        # `populate_by_name=True`.
+        # ``populate_by_name=True``.
         payload: dict[str, Any] = dict(attributes)
         payload["program_handles"] = program_handles
         payload.setdefault("tags", attributes.get("tags") or [])
@@ -86,8 +89,9 @@ class H1Asset(BaseModel):
 class HackerOneClient:
     """Async HackerOne org-assets client.
 
-    Re-uses a single `httpx.AsyncClient` across requests. Caller is responsible
-    for `await client.aclose()` (or use as an async context manager).
+    Re-uses a single ``httpx.AsyncClient`` across requests. Caller is
+    responsible for ``await client.aclose()`` (or use as an async context
+    manager).
     """
 
     def __init__(
@@ -152,7 +156,7 @@ class HackerOneClient:
         since: datetime | None = None,
         page_size: int = DEFAULT_PAGE_SIZE,
     ) -> AsyncIterator[H1Asset]:
-        """Yield assets for `org_id` page by page."""
+        """Yield assets for ``org_id`` page by page."""
         page_number = 1
         path = f"/v1/organizations/{org_id}/assets"
         while True:
@@ -203,7 +207,7 @@ class HackerOneClient:
 
 
 class H1ClientError(RuntimeError):
-    """Base error raised by `HackerOneClient`."""
+    """Base error raised by :class:`HackerOneClient`."""
 
 
 class H1AuthError(H1ClientError):
@@ -224,7 +228,7 @@ class H1ServerError(H1ClientError):
 
 
 def _to_iso8601(value: datetime) -> str:
-    """Render a `datetime` as a strict RFC3339/ISO-8601 string with `Z` suffix."""
+    """Render a :class:`datetime` as a strict RFC3339/ISO-8601 string with ``Z``."""
     if value.tzinfo is None:
         return value.isoformat() + "Z"
     return value.isoformat().replace("+00:00", "Z")

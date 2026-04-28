@@ -1,8 +1,14 @@
-"""Scope ingestion worker.
+"""Scope ingestion application service.
 
-Coordinates the federation feeds (`arkadiyt/bounty-targets-data`) and the
-HackerOne April-2026 org-assets API, normalizes the records, upserts them into
-`programs` + `scopes`, and emits `scope_changes` events for every diff.
+Coordinates the federation feeds (``arkadiyt/bounty-targets-data``) and the
+HackerOne April-2026 org-assets API, normalizes the records, upserts them
+into ``programs`` + ``scopes``, and records :class:`ScopeChangedEvent`
+domain events as ``scope_changes`` rows.
+
+The DB column ``scope_changes.event_type`` keeps its existing string values
+(``scope_added`` / ``scope_removed`` / ``payout_changed`` / ``program_paused``)
+— the mapping from event class to string lives in
+:mod:`..events.scope_events`.
 
 Usage
 -----
@@ -27,27 +33,33 @@ from sqlalchemy.engine import Dialect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from control_plane.db import Program, Scope, ScopeChange
-from control_plane.integrations.arkadiyt_client import (
+
+from ..events.scope_events import (
+    PayoutChangedEvent,
+    ProgramPausedEvent,
+    ScopeAddedEvent,
+    ScopeChangedEvent,
+    ScopeRemovedEvent,
+)
+from ..integrations.arkadiyt import (
     ArkadiytClient,
     FederationProgram,
-    Platform,
 )
-from control_plane.integrations.h1_client import H1Asset, HackerOneClient
-from control_plane.integrations.normalize import (
-    CanonicalScope,
+from ..integrations.hackerone import H1Asset, HackerOneClient
+from ..integrations.normalize import (
     normalize_bugcrowd_target,
     normalize_h1_org_asset,
     normalize_immunefi_impact,
     normalize_intigriti_scope,
     normalize_yeswehack_program,
 )
+from ..value_objects.canonical_scope import CanonicalScope
+from ..value_objects.platform import Platform
 
-logger = structlog.get_logger("control_plane.workers.scope_ingest")
+logger = structlog.get_logger("control_plane.domains.scope_management.ingest")
 
 ScopeKey = tuple[str, str, str]  # (program_handle, asset_type, identifier)
 ScopeState = dict[ScopeKey, dict[str, Any]]
-
-VALID_EVENT_TYPES = {"scope_added", "scope_removed", "payout_changed", "program_paused"}
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +74,7 @@ async def ingest_h1_org_assets(
     since: datetime | None = None,
     h1: HackerOneClient | None = None,
 ) -> dict[str, int]:
-    """Pull every asset for `org_id`, upsert programs+scopes, log changes.
+    """Pull every asset for ``org_id``, upsert programs+scopes, log changes.
 
     Returns counters: ``{"assets": N, "programs": M, "events": K}``.
     """
@@ -172,12 +184,13 @@ async def detect_scope_changes(
     platform: str,
     source: str,
 ) -> int:
-    """Diff `before` vs `after`; INSERT a `scope_changes` row per change.
+    """Diff ``before`` vs ``after``; INSERT a ``scope_changes`` row per change.
 
-    Event types match `research/02 §Change-Event Architecture`:
-    `scope_added`, `scope_removed`, `payout_changed`, `program_paused`.
+    Emits in-memory :class:`ScopeChangedEvent` instances first, then maps
+    each event to a ``ScopeChange`` row. The DB column values are unchanged
+    from the pre-DDD layout so consumers downstream are not affected.
     """
-    events: list[dict[str, Any]] = []
+    events: list[ScopeChangedEvent] = []
     now = datetime.now(UTC)
 
     before_keys = set(before_state.keys())
@@ -185,29 +198,29 @@ async def detect_scope_changes(
 
     for key in after_keys - before_keys:
         events.append(
-            _make_event(
-                event_type="scope_added",
+            ScopeAddedEvent(
+                aggregate_id=program_handle,
                 program_handle=program_handle,
                 platform=platform,
-                identifier=key[2],
-                old=None,
-                new=after_state[key],
+                asset_identifier=key[2],
                 source=source,
-                detected_at=now,
+                old_value=None,
+                new_value=after_state[key],
+                occurred_on=now,
             )
         )
 
     for key in before_keys - after_keys:
         events.append(
-            _make_event(
-                event_type="scope_removed",
+            ScopeRemovedEvent(
+                aggregate_id=program_handle,
                 program_handle=program_handle,
                 platform=platform,
-                identifier=key[2],
-                old=before_state[key],
-                new=None,
+                asset_identifier=key[2],
                 source=source,
-                detected_at=now,
+                old_value=before_state[key],
+                new_value=None,
+                occurred_on=now,
             )
         )
 
@@ -216,37 +229,37 @@ async def detect_scope_changes(
         new = after_state[key]
         if _payout_changed(old, new):
             events.append(
-                _make_event(
-                    event_type="payout_changed",
+                PayoutChangedEvent(
+                    aggregate_id=program_handle,
                     program_handle=program_handle,
                     platform=platform,
-                    identifier=key[2],
-                    old=old,
-                    new=new,
+                    asset_identifier=key[2],
                     source=source,
-                    detected_at=now,
+                    old_value=old,
+                    new_value=new,
+                    occurred_on=now,
                 )
             )
         elif old.get("in_scope", True) and not new.get("in_scope", True):
             # Program-wide pauses surface as in_scope flips on every asset; we
             # still emit a per-asset event so subscribers can react granularly.
             events.append(
-                _make_event(
-                    event_type="program_paused",
+                ProgramPausedEvent(
+                    aggregate_id=program_handle,
                     program_handle=program_handle,
                     platform=platform,
-                    identifier=key[2],
-                    old=old,
-                    new=new,
+                    asset_identifier=key[2],
                     source=source,
-                    detected_at=now,
+                    old_value=old,
+                    new_value=new,
+                    occurred_on=now,
                 )
             )
 
     if not events:
         return 0
 
-    session.add_all([ScopeChange(**e) for e in events])
+    session.add_all([_event_to_row(e) for e in events])
     await session.flush()
     logger.info(
         "scope_changes.recorded",
@@ -331,32 +344,28 @@ def _normalize_federation(
                 out.append(n)
     elif platform == "bugcrowd":
         for t in fp.targets_in_scope:
-            if (n := normalize_bugcrowd_target(t, program_handle=handle, in_scope=True)):
+            if n := normalize_bugcrowd_target(t, program_handle=handle, in_scope=True):
                 out.append(n)
         for t in fp.targets_out_of_scope:
-            if (n := normalize_bugcrowd_target(t, program_handle=handle, in_scope=False)):
+            if n := normalize_bugcrowd_target(t, program_handle=handle, in_scope=False):
                 out.append(n)
     elif platform == "intigriti":
         for t in fp.targets_in_scope:
-            if (n := normalize_intigriti_scope({**t, "in_scope": True}, program_handle=handle)):
+            if n := normalize_intigriti_scope({**t, "in_scope": True}, program_handle=handle):
                 out.append(n)
         for t in fp.targets_out_of_scope:
-            if (n := normalize_intigriti_scope({**t, "in_scope": False}, program_handle=handle)):
+            if n := normalize_intigriti_scope({**t, "in_scope": False}, program_handle=handle):
                 out.append(n)
     elif platform == "yeswehack":
         for t in fp.targets_in_scope:
-            if (
-                n := normalize_yeswehack_program({**t, "in_scope": True}, program_handle=handle)
-            ):
+            if n := normalize_yeswehack_program({**t, "in_scope": True}, program_handle=handle):
                 out.append(n)
         for t in fp.targets_out_of_scope:
-            if (
-                n := normalize_yeswehack_program({**t, "in_scope": False}, program_handle=handle)
-            ):
+            if n := normalize_yeswehack_program({**t, "in_scope": False}, program_handle=handle):
                 out.append(n)
     elif platform == "immunefi":
         for t in fp.targets_in_scope:
-            if (n := normalize_immunefi_impact({**t, "in_scope": True}, program_handle=handle)):
+            if n := normalize_immunefi_impact({**t, "in_scope": True}, program_handle=handle):
                 out.append(n)
     return out
 
@@ -391,7 +400,7 @@ async def _upsert_program(
     payout_min: float | None = None,
     payout_max: float | None = None,
 ) -> None:
-    """Upsert a row into `programs` (PG `ON CONFLICT (handle)`)."""
+    """Upsert a row into ``programs`` (PG ``ON CONFLICT (handle)``)."""
     values = {
         "handle": handle,
         "platform": platform,
@@ -422,7 +431,7 @@ async def _upsert_scopes(
     *,
     raw_lookup: dict[str, H1Asset] | None,
 ) -> None:
-    """Upsert into `scopes` keyed on `(program_handle, asset_type, identifier)`."""
+    """Upsert into ``scopes`` keyed on ``(program_handle, asset_type, identifier)``."""
     if not scopes:
         return
 
@@ -463,8 +472,8 @@ async def _upsert_scopes(
 def _dialect_insert(dialect: Dialect, model: type, values: Any) -> Any:
     """Pick the dialect-appropriate ``INSERT ... ON CONFLICT`` builder.
 
-    Postgres in production, SQLite in tests. Both support `ON CONFLICT DO
-    UPDATE` with the same surface.
+    Postgres in production, SQLite in tests. Both support ``ON CONFLICT DO
+    UPDATE`` with the same surface.
     """
     name = dialect.name
     if name == "postgresql":
@@ -475,7 +484,7 @@ def _dialect_insert(dialect: Dialect, model: type, values: Any) -> Any:
 
 
 async def _load_scope_state(session: AsyncSession, program_handle: str) -> ScopeState:
-    """Read the current `(handle, type, id) -> row` map for a program."""
+    """Read the current ``(handle, type, id) -> row`` map for a program."""
     stmt = select(Scope).where(Scope.program_handle == program_handle)
     result = await session.execute(stmt)
     state: ScopeState = {}
@@ -511,29 +520,18 @@ def _payout_changed(old: dict[str, Any], new: dict[str, Any]) -> bool:
     return old_reward != new_reward and bool(old_reward or new_reward)
 
 
-def _make_event(
-    *,
-    event_type: str,
-    program_handle: str,
-    platform: str,
-    identifier: str,
-    old: dict[str, Any] | None,
-    new: dict[str, Any] | None,
-    source: str,
-    detected_at: datetime,
-) -> dict[str, Any]:
-    if event_type not in VALID_EVENT_TYPES:
-        raise ValueError(f"unknown event_type: {event_type}")
-    return {
-        "event_type": event_type,
-        "program_handle": program_handle,
-        "platform": platform,
-        "asset_identifier": identifier,
-        "old_value": old,
-        "new_value": new,
-        "detected_at": detected_at,
-        "source": source,
-    }
+def _event_to_row(event: ScopeChangedEvent) -> ScopeChange:
+    """Translate a domain event into the ``scope_changes`` ORM row."""
+    return ScopeChange(
+        event_type=event.event_kind,
+        program_handle=event.program_handle,
+        platform=event.platform,
+        asset_identifier=event.asset_identifier,
+        old_value=event.old_value,
+        new_value=event.new_value,
+        detected_at=event.occurred_on,
+        source=event.source,
+    )
 
 
 __all__ = [

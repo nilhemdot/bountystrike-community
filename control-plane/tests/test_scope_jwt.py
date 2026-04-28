@@ -8,7 +8,7 @@ from pathlib import Path
 import jwt
 import pytest
 
-from control_plane.scope_jwt import (
+from control_plane.domains.scope_management import (
     MAX_EXPIRY_SECONDS,
     RateLimits,
     ScopeExclusions,

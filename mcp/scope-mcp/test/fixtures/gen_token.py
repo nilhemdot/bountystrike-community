@@ -14,7 +14,7 @@ import sys
 import time
 from pathlib import Path
 
-from control_plane.scope_jwt import (
+from control_plane.domains.scope_management import (
     RateLimits,
     ScopeExclusions,
     ScopeJWTIssuer,
