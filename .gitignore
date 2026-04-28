@@ -1,0 +1,23 @@
+keys/
+.env
+.env.local
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+.langfuse/
+*.log
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Claude Code runtime state
+**/.claude-flow/
+.claude/settings.local.json
+.claude/projects/

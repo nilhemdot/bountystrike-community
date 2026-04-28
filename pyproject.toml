@@ -1,0 +1,24 @@
+[project]
+name = "bountystrike-v5"
+version = "0.1.0"
+description = "BountyStrike v5 — Claude Code-native autonomous bug bounty platform"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = [
+    "control-plane",
+    "mcp/oracle-mcp",
+    "mcp/evidence-mcp",
+    "mcp/dedup-mcp",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

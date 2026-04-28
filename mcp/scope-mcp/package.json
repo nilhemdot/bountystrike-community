@@ -1,0 +1,28 @@
+{
+  "name": "@bountystrike/scope-mcp",
+  "version": "0.1.0",
+  "description": "BountyStrike v5 scope-mcp — RS256 JWT scope enforcement MCP server",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "scope-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"tests pending Phase 0c\" && exit 0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}
