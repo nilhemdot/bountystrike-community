@@ -1,0 +1,26 @@
+{
+  "slug": "ywh-acmecloud",
+  "title": "AcmeCloud",
+  "url": "https://yeswehack.com/programs/ywh-acmecloud",
+  "bounty_reward_min": 150,
+  "bounty_reward_max": 20000,
+  "scopes": [
+    {
+      "scope": "*.acmecloud.io",
+      "scope_type": "web-application",
+      "asset_value": "high"
+    },
+    {
+      "scope": "api.acmecloud.io",
+      "scope_type": "api",
+      "asset_value": "medium"
+    }
+  ],
+  "out_of_scope": [
+    {
+      "scope": "marketing.acmecloud.io",
+      "scope_type": "web-application",
+      "description": "Marketing site, third-party hosted"
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+[
+  {
+    "handle": "acme-web",
+    "platform": "hackerone",
+    "payout_min": 250,
+    "payout_max": 10000,
+    "bounty_paid_ratio": 0.65,
+    "triage_acceptance_rate": 0.55,
+    "dup_rate": 0.30,
+    "last_modified_at": "2026-04-26T12:00:00+00:00",
+    "asset_distribution": {"web-application": 8, "api": 2}
+  },
+  {
+    "handle": "defi-protocol",
+    "platform": "immunefi",
+    "payout_min": 5000,
+    "payout_max": 50000,
+    "bounty_paid_ratio": 0.85,
+    "triage_acceptance_rate": 0.70,
+    "dup_rate": 0.10,
+    "last_modified_at": "2026-04-27T18:00:00+00:00",
+    "asset_distribution": {"smart_contract": 5}
+  },
+  {
+    "handle": "open-vdp-corp",
+    "platform": "hackerone",
+    "payout_min": 0,
+    "payout_max": 0,
+    "bounty_paid_ratio": 0.0,
+    "triage_acceptance_rate": 0.40,
+    "dup_rate": 0.50,
+    "last_modified_at": "2026-04-20T08:00:00+00:00",
+    "asset_distribution": {"vdp": 12}
+  },
+  {
+    "handle": "globex-api",
+    "platform": "bugcrowd",
+    "payout_min": 500,
+    "payout_max": 15000,
+    "bounty_paid_ratio": 0.70,
+    "triage_acceptance_rate": 0.60,
+    "dup_rate": 0.20,
+    "last_modified_at": "2026-04-26T20:00:00+00:00",
+    "asset_distribution": {"api": 6, "web-application": 1}
+  },
+  {
+    "handle": "skyhigh-cloud",
+    "platform": "intigriti",
+    "payout_min": 1000,
+    "payout_max": 25000,
+    "bounty_paid_ratio": 0.75,
+    "triage_acceptance_rate": 0.65,
+    "dup_rate": 0.15,
+    "last_modified_at": "2026-04-25T10:00:00+00:00",
+    "asset_distribution": {"cloud_config": 4, "api": 2}
+  }
+]

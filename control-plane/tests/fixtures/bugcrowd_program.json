@@ -1,0 +1,29 @@
+{
+  "code": "globex-public",
+  "name": "Globex Public",
+  "url": "https://bugcrowd.com/globex-public",
+  "min_payout": 100,
+  "max_payout": 5000,
+  "targets": {
+    "in_scope": [
+      {
+        "target": "*.globex.io",
+        "category": "website",
+        "reward_range": "p1-p3",
+        "point": 7
+      },
+      {
+        "target": "api.globex.io",
+        "category": "api",
+        "reward_range": "p1-p4",
+        "point": 9
+      }
+    ],
+    "out_of_scope": [
+      {
+        "target": "blog.globex.io",
+        "category": "website"
+      }
+    ]
+  }
+}

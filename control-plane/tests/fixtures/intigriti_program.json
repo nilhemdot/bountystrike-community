@@ -1,0 +1,33 @@
+{
+  "handle": "intigriti-acmebank",
+  "id": "intigriti-acmebank",
+  "name": "AcmeBank",
+  "url": "https://app.intigriti.com/programs/acmebank",
+  "min_bounty": 250,
+  "max_bounty": 12000,
+  "targets": {
+    "in_scope": [
+      {
+        "endpoint": "https://www.acmebank.eu/*",
+        "type": "url",
+        "tier": "elite",
+        "maxBounty": 12000,
+        "in_scope": true
+      },
+      {
+        "endpoint": "https://api.acmebank.eu/*",
+        "type": "api",
+        "tier": "professional",
+        "maxBounty": 8000,
+        "in_scope": true
+      }
+    ],
+    "out_of_scope": [
+      {
+        "endpoint": "https://staging.acmebank.eu/*",
+        "type": "url",
+        "description": "Staging — no testing"
+      }
+    ]
+  }
+}

@@ -23,6 +23,8 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.7",
     "mypy>=1.13",
+    "respx>=0.21",
+    "aiosqlite>=0.20",
 ]
 
 [build-system]

@@ -1,0 +1,44 @@
+{
+  "data": [
+    {
+      "id": "1001",
+      "type": "asset",
+      "attributes": {
+        "asset_type": "URL",
+        "identifier": "*.acme.com",
+        "last_modified_at": "2026-04-20T14:30:00Z",
+        "program_handles": ["acme-corp"],
+        "tags": ["primary", "production"],
+        "notes": "Main marketing surface"
+      }
+    },
+    {
+      "id": "1002",
+      "type": "asset",
+      "attributes": {
+        "asset_type": "API",
+        "identifier": "api.acme.com",
+        "last_modified_at": "2026-04-21T09:15:00Z",
+        "program_handles": ["acme-corp"],
+        "tags": ["graphql"],
+        "notes": null
+      }
+    },
+    {
+      "id": "1003",
+      "type": "asset",
+      "attributes": {
+        "asset_type": "GOOGLE_PLAY_APP_ID",
+        "identifier": "com.acme.app",
+        "last_modified_at": "2026-04-21T11:00:00Z",
+        "program_handles": ["acme-corp"],
+        "tags": [],
+        "notes": null
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.hackerone.com/v1/organizations/77/assets?page%5Bsize%5D=100&page%5Bnumber%5D=1",
+    "next": null
+  }
+}

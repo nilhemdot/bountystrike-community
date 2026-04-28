@@ -1,0 +1,19 @@
+{
+  "id": "immunefi-acmedefi",
+  "project": "AcmeDefi",
+  "url": "https://immunefi.com/bounty/acmedefi",
+  "minBounty": 5000,
+  "maxBounty": 1000000,
+  "impacts": [
+    {
+      "asset": "0xACME0000000000000000000000000000000000DA0",
+      "severity": "critical",
+      "bounty": 1000000
+    },
+    {
+      "asset": "0xACME0000000000000000000000000000000000F00D",
+      "severity": "high",
+      "bounty": 100000
+    }
+  ]
+}

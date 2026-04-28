@@ -1,0 +1,155 @@
+# BountyStrike v5 — Solo Mode Stack
+# Reference: docs/research/05-deployment.md §Solo Mode Setup / docker-compose.yml
+#
+# Launch (from repo root):
+#   docker compose -f infra/docker/docker-compose.yml --env-file .env up -d
+#
+# All passwords/secrets sourced from .env (see .env.example, 21 keys).
+# No hardcoded credentials — fail loudly if env unset (we use ${VAR:?...} syntax).
+
+name: bountystrike
+
+services:
+
+  # --------------------------------------------------------------------------
+  # postgres — pgvector/pgvector:pg17 (Postgres 17 + pgvector preinstalled)
+  # Mounts ../sql/*.sql via /docker-entrypoint-initdb.d (auto-runs on first boot)
+  # --------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: bs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bs
+      POSTGRES_DB: bountystrike
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init scripts auto-execute alphabetically on first DB creation only.
+      - ../sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bs -d bountystrike"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - bountystrike
+
+  # --------------------------------------------------------------------------
+  # redis — kill switch flag + cache (AOF + password)
+  # Note: research/05 specifies redis:8.0-alpine; we use 7-alpine for stability
+  # in Phase 0b — upgrade to 8.x in Phase 1 when GA.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: bs-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - bountystrike
+
+  # --------------------------------------------------------------------------
+  # hatchet — workflow engine (Postgres-backed)
+  # Workflows: ScopeIngest, EVRanker, ScanJob, TriageJob, ReportJob
+  # --------------------------------------------------------------------------
+  hatchet:
+    image: ghcr.io/hatchet-dev/hatchet-engine:latest
+    container_name: bs-hatchet
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://bs:${POSTGRES_PASSWORD}@postgres:5432/bountystrike?sslmode=disable
+      SERVER_GRPC_PORT: "7070"
+      SERVER_PORT: "8080"
+      SERVER_AUTH_COOKIE_SECRETS: ${HATCHET_COOKIE_SECRET:?HATCHET_COOKIE_SECRET must be set in .env}
+      SERVER_GRPC_BROADCAST_ADDRESS: hatchet:7070
+    ports:
+      - "127.0.0.1:7070:7070"   # gRPC
+      - "127.0.0.1:8080:8080"   # HTTP
+    volumes:
+      - hatchet_data:/var/lib/hatchet
+    networks:
+      - bountystrike
+
+  # --------------------------------------------------------------------------
+  # langfuse — self-hosted LLM observability (Sonnet/Opus traces, cost track)
+  # --------------------------------------------------------------------------
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: bs-langfuse
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://bs:${POSTGRES_PASSWORD}@postgres:5432/bountystrike?sslmode=disable
+      NEXTAUTH_SECRET: ${LANGFUSE_SECRET:?LANGFUSE_SECRET must be set in .env}
+      NEXTAUTH_URL: http://localhost:3000
+      SALT: ${LANGFUSE_SALT:?LANGFUSE_SALT must be set in .env}
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - bountystrike
+
+  # --------------------------------------------------------------------------
+  # caddy — reverse proxy (TLS off for solo dev; flip on for SaaS)
+  # --------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: bs-caddy
+    restart: unless-stopped
+    depends_on:
+      - hatchet
+      - langfuse
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - bountystrike
+
+# ============================================================================
+# Named volumes (default driver = local)
+# ============================================================================
+volumes:
+  postgres_data:
+  redis_data:
+  hatchet_data:
+  caddy_data:
+  caddy_config:
+
+# ============================================================================
+# Default bridge network — service-name DNS resolution between containers
+# ============================================================================
+networks:
+  bountystrike:
+    driver: bridge
+    name: bountystrike

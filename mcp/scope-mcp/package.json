@@ -8,10 +8,10 @@
     "scope-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"tests pending Phase 0c\" && exit 0"
+    "test": "tsc --noEmit && node --test --import tsx 'test/**/*.test.ts'"
   },
   "license": "MIT",
   "dependencies": {

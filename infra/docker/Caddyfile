@@ -1,0 +1,36 @@
+# BountyStrike v5 — Solo Mode Caddyfile
+# TLS off for local dev; SaaS flips on auto-LetsEncrypt by replacing `:80` with `host.example.com`.
+#
+# Routes:
+#   /api/*       → control-plane (Phase 1+, runs on host port 8000)
+#   /langfuse/*  → langfuse:3000  (LLM observability dashboard)
+#   /hatchet/*   → hatchet:8080   (workflow engine HTTP)
+#   /            → simple ack so root probe doesn't 502
+
+{
+    # global options — local dev defaults
+    auto_https off
+    admin off
+}
+
+:80 {
+    # control-plane API (FastAPI/Go service runs on host:8000 in Phase 1+)
+    handle_path /api/* {
+        reverse_proxy host.docker.internal:8000
+    }
+
+    # Langfuse self-hosted dashboard
+    handle_path /langfuse/* {
+        reverse_proxy langfuse:3000
+    }
+
+    # Hatchet engine HTTP UI
+    handle_path /hatchet/* {
+        reverse_proxy hatchet:8080
+    }
+
+    # Root health
+    handle / {
+        respond "BountyStrike v5 — solo stack up" 200
+    }
+}
