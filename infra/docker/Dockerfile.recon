@@ -1,0 +1,96 @@
+# syntax=docker/dockerfile:1.7
+#
+# BountyStrike v5 — recon-agent runtime container.
+#
+# Stage 1 ("toolchain") builds pinned ProjectDiscovery binaries from
+# source; Stage 2 ("runtime") is a slim Python image with the binaries
+# copied in and control-plane source layered on top.
+#
+# Per .claude/agents/recon.md the recon-agent shells out to:
+#   subfinder  v2.6.6   passive subdomain enum + active DNS brute
+#   httpx      v1.6.9   HTTP probe + tech fingerprint
+#   katana     v1.1.2   endpoint crawler with form extraction
+#
+# Build (from repo root):
+#   docker build -f infra/docker/Dockerfile.recon -t bs-recon:dev .
+#
+# Run (one-shot — orchestrator wires the env):
+#   docker run --rm \
+#     -e SCOPE_JWT=... -e PROGRAM_HANDLE=acme -e PLATFORM=hackerone \
+#     -e DATABASE_URL=postgresql://... -e SCAN_JOB_ID=$(uuidgen) \
+#     bs-recon:dev
+
+# ============================================================================
+# Stage 1 — toolchain: build pinned PD binaries from upstream tags.
+# ============================================================================
+FROM golang:1.23-alpine AS toolchain
+
+# git is needed by `go install` to clone tagged source.
+RUN apk add --no-cache git
+
+ENV GOBIN=/out \
+    CGO_ENABLED=0 \
+    GOFLAGS="-trimpath"
+
+RUN mkdir -p /out
+
+# Pinned versions match `.claude/agents/recon.md`. Bumping any of these is
+# a deliberate, reviewed change — never floating tags.
+RUN go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
+    go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.9         && \
+    go install github.com/projectdiscovery/katana/cmd/katana@v1.1.2
+
+# Smoke-check inside the build: if any binary is broken we want to know
+# now, not at first scan-job dispatch.
+RUN /out/subfinder -version 2>&1 | grep -F "v2.6.6" && \
+    /out/httpx     -version 2>&1 | grep -F "v1.6.9" && \
+    /out/katana    -version 2>&1 | grep -F "v1.1.2"
+
+
+# ============================================================================
+# Stage 2 — runtime: slim Python with PD binaries layered in.
+# ============================================================================
+FROM python:3.12-slim AS runtime
+
+# uv is the project's package manager (per pyproject + uv.lock at root).
+# Copying the official static binary keeps the image small.
+COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /usr/local/bin/uv
+
+# Runtime deps: ca-certs for HTTPS, tini for PID-1 signal handling so
+# `docker stop` reaches the Python process cleanly when an
+# orchestrator-level kill switch fires.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pull the three Go binaries from the toolchain stage. They are static
+# (CGO_ENABLED=0) so the slim base needs no libc shims.
+COPY --from=toolchain /out/subfinder /usr/local/bin/subfinder
+COPY --from=toolchain /out/httpx     /usr/local/bin/httpx
+COPY --from=toolchain /out/katana    /usr/local/bin/katana
+
+# Non-root user — recon-agent has no business writing outside its scratch
+# directory and the orchestrator mounts state via env, not a volume.
+RUN useradd --create-home --shell /usr/sbin/nologin recon
+USER recon
+WORKDIR /home/recon/app
+
+# Copy control-plane source. The recon harness lives under
+# `control_plane.domains.recon` and is consumed via `python -m`.
+COPY --chown=recon:recon control-plane /home/recon/app/control-plane
+COPY --chown=recon:recon uv.lock pyproject.toml* /home/recon/app/
+
+# Resolve + install python deps. `uv sync --frozen` refuses to update
+# uv.lock — fail loud if the lock is out of date instead of silently
+# drifting between dev and prod.
+RUN cd control-plane && uv sync --frozen --no-dev
+
+# Sanity check: the harness module must be importable in the final image.
+RUN cd control-plane && uv run python -c \
+    "import control_plane.domains.recon as r; \
+     assert hasattr(r, 'ReconService'); \
+     print('recon harness OK')"
+
+# Tini owns PID 1; the python entrypoint is the recon CLI module.
+ENTRYPOINT ["/usr/bin/tini", "--", "uv", "run", "--directory", "control-plane", \
+            "python", "-m", "control_plane.domains.recon"]
