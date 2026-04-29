@@ -91,18 +91,31 @@ For each interesting endpoint, insert a `findings` row:
 
 ```sql
 INSERT INTO findings (
-  id, scan_job_id, program_handle, platform,
-  host, path, status, hypothesis_reason, created_at
+  id, job_id, program_handle, platform,
+  url, parameter, cwe, status, created_at
 ) VALUES (
-  gen_random_uuid(), :scan_job_id, :program_handle, :platform,
-  :host, :path, 'hypothesis', :reason, now()
+  gen_random_uuid(), :job_id, :program_handle, :platform,
+  :url, :parameter, :cwe, 'hypothesis', now()
 )
 ON CONFLICT DO NOTHING;
 ```
 
-`hypothesis_reason` is a short string: `xss-candidate`, `ssrf-candidate`,
-`sqli-candidate`, `open-redirect-candidate`, `ssti-candidate`, etc.
-The exploit-agent filters on this column.
+`cwe` is the vuln-type discriminator the validator-agent uses for oracle
+selection. Use these values:
+
+| Signal | cwe value |
+|--------|-----------|
+| Reflected parameter in HTML context | `xss-candidate` |
+| Parameter accepted as a URL | `ssrf-candidate` |
+| Parameter used in SQL (numeric/string context) | `sqli-candidate` |
+| Parameter rendered in template response | `ssti-candidate` |
+| Parameter used as redirect destination | `open-redirect-candidate` |
+| Parameter forwarded to internal URL | `ssrf-imds-candidate` |
+| Resource access without ownership check | `idor-candidate` |
+| Parameter passed to shell/exec | `rce-candidate` |
+
+`url` is the full URL (e.g. `https://target.example.com/search`).
+`parameter` is the query-string key to inject (e.g. `q`).
 
 ### Step 6 — Update scan_jobs
 
@@ -112,7 +125,7 @@ SET status = 'recon_complete',
     hosts_found = :host_count,
     endpoints_found = :endpoint_count,
     completed_at = now()
-WHERE id = :scan_job_id;
+WHERE id = :job_id;
 ```
 
 ## Output Contract
