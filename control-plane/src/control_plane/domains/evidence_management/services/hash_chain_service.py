@@ -6,7 +6,14 @@ from control_plane.domains.evidence_management.aggregates import AuditLogEntry
 
 
 class HashChainService:
-    """Stateless service — manages the hash chain for audit log entries."""
+    """Stateless service — manages the hash chain for audit log entries.
+
+    Concurrency: ``append_entry`` opens a transaction (savepoint when nested)
+    and acquires a per-finding advisory lock via ``pg_advisory_xact_lock``.
+    This serializes chain extension across concurrent workers writing to the
+    same ``finding_id`` without blocking writes to other findings, and the
+    lock auto-releases on transaction end. See migration 03.
+    """
 
     async def get_latest_chain_hash(self, finding_id: uuid.UUID, conn) -> bytes:
         """Return prev_hash for the next audit entry. Returns b'' for genesis."""
@@ -23,28 +30,36 @@ class HashChainService:
         payload: dict,
         conn,
     ) -> AuditLogEntry:
-        """Get latest hash, create entry, persist it, return the entry."""
-        prev_hash = await self.get_latest_chain_hash(finding_id, conn)
-        entry = AuditLogEntry.create(
-            finding_id=finding_id,
-            entry_type=entry_type,
-            payload=payload,
-            prev_hash=prev_hash,
-        )
-        await conn.execute(
-            """
-            INSERT INTO audit_log (id, finding_id, entry_type, payload, prev_hash, chain_hash, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            """,
-            entry.id,
-            entry.finding_id,
-            entry.entry_type,
-            entry.payload,  # production conn must register a JSONB codec or pre-serialize
-            entry.prev_hash,
-            entry.chain_hash,
-            entry.created_at,
-        )
-        return entry
+        """Append a hash-chained audit entry under a per-finding advisory lock."""
+        async with conn.transaction():
+            # Per-finding serialization. hashtext + bigint cast keeps the lock
+            # keyspace within int8; collisions only block unrelated finding_ids
+            # whose hashtext collides — acceptable for an advisory namespace.
+            await conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtext($1::text)::bigint)",
+                str(finding_id),
+            )
+            prev_hash = await self.get_latest_chain_hash(finding_id, conn)
+            entry = AuditLogEntry.create(
+                finding_id=finding_id,
+                entry_type=entry_type,
+                payload=payload,
+                prev_hash=prev_hash,
+            )
+            await conn.execute(
+                """
+                INSERT INTO audit_log (id, finding_id, entry_type, payload, prev_hash, chain_hash, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                """,
+                entry.id,
+                entry.finding_id,
+                entry.entry_type,
+                entry.payload,  # production conn must register a JSONB codec or pre-serialize
+                entry.prev_hash,
+                entry.chain_hash,
+                entry.created_at,
+            )
+            return entry
 
 
 __all__ = ["HashChainService"]

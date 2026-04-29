@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "xss",
+    "url": "http://localhost:3000/#/search?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before Phase 1.1c run",
+    "tags": ["example", "do-not-run"]
+  }
+]

@@ -57,33 +57,62 @@ SCAN_JOB_ID        — UUID of the parent scan_jobs row (pre-created)
 Parse `targets` claim → build allowed-host set. Parse `exclusions` → build
 deny list. Parse `rate_limits`.
 
-### Step 2 — Subdomain Enumeration
+### Step 2 — Subdomain Enumeration (`subfinder`)
 
 For each `wildcards` entry (e.g. `*.acme.com`):
 
-1. DNS brute-force using a curated wordlist (top-5000 subdomains).
-2. Certificate transparency logs via `crt.sh` API (rate-limit 1 rps).
-3. Deduplicate, filter against `exclusions.hostnames`.
-4. Resolve A/AAAA records; skip unresolvable.
+```bash
+subfinder -d acme.com -silent -all -json \
+  -timeout 30 -max-time 5 \
+  -exclude-sources alienvault \
+  > /tmp/subfinder.jsonl
+```
 
-For `exact_hosts`: include as-is without brute-force.
+`subfinder` aggregates passive sources (crt.sh, certspotter, securitytrails,
+hackertarget, etc.) and DNS brute (`-all` enables active resolvers). Parse
+each JSONL line → `host`. Deduplicate, filter against
+`exclusions.hostnames`. Resolve A/AAAA records via the orchestrator's DNS
+resolver; skip unresolvable.
 
-### Step 3 — HTTP Fingerprinting
+For `exact_hosts`: include as-is without enumeration.
 
-For each live host (port 80 + 443):
+### Step 3 — HTTP Fingerprinting (`httpx`)
 
-- HEAD request → collect `Server`, `X-Powered-By`, `Content-Type`.
-- Infer tech stack: framework, language, WAF presence.
-- Record response code; skip 4xx hosts that return 403 on `/`.
-- Honour `rate_limits` throughout.
+Pipe live hosts into `httpx` (ProjectDiscovery, not the Python httpx
+library):
 
-### Step 4 — Endpoint Discovery
+```bash
+httpx -l /tmp/hosts.txt \
+  -silent -json \
+  -title -tech-detect -status-code -content-length \
+  -ports 80,443 -threads 25 -rate-limit ${SCOPE_DEFAULT_RPS} \
+  > /tmp/httpx.jsonl
+```
 
-For hosts that return 200:
+For each JSONL row collect: `url`, `status_code`, `tech`, `title`,
+`webserver`, `tls.subject_dn`. Discard rows whose path resolves to an
+`exclusions.paths` prefix. Honour `rate_limits.relaxed_hosts` by re-running
+those hosts with the per-host RPS override.
 
-- Crawl up to 3 hops (BFS, same-origin only).
-- Collect unique URL paths (ignore query-string variations).
-- Check `robots.txt` and `sitemap.xml` for extra paths.
+### Step 4 — Endpoint Discovery (`katana`)
+
+```bash
+katana -list /tmp/live_urls.txt \
+  -silent -jsonl \
+  -depth 3 -strategy breadth-first \
+  -rate-limit ${SCOPE_DEFAULT_RPS} \
+  -scope ".*\.acme\.com$" \
+  -known-files robotstxt,sitemapxml \
+  -form-extraction \
+  > /tmp/katana.jsonl
+```
+
+`-scope` regex is built from the scope JWT's `wildcards` so katana never
+crawls off-target. `-form-extraction` surfaces parameters the validator
+can pivot on.
+
+Parse each JSONL row → `(url, method, parameters[])`. Drop URLs whose path
+matches `exclusions.paths`.
 
 ### Step 5 — Hypothesis Generation
 
@@ -157,3 +186,22 @@ The orchestrator wires the following hooks around this agent:
 - `oracle-mcp`: not used during recon (verification is the validator-agent's job).
 - Postgres `DATABASE_URL` with write access to `scan_jobs` and `findings`.
 - Network egress allowed only to in-scope hosts (enforced by VM iptables from scope JWT).
+
+### External binaries (ProjectDiscovery toolchain)
+
+The recon harness shells out to these binaries — install once into the
+runtime image (see `infra/docker/`) at pinned versions:
+
+| Binary | Min version | Purpose |
+|---|---|---|
+| `subfinder` | v2.6.6 | passive subdomain enum + active DNS brute |
+| `httpx` | v1.6.9 | HTTP probe + tech fingerprint |
+| `katana` | v1.1.2 | endpoint crawler with form extraction |
+
+Pin via `go install github.com/projectdiscovery/{subfinder,httpx,katana}/v2/cmd/...@vX.Y.Z`
+in the recon container `Dockerfile`. The harness validates `--version`
+matches a pinned hash on startup and aborts on drift.
+
+Note: ProjectDiscovery `httpx` binary is unrelated to the Python `httpx`
+package used elsewhere in control-plane. The recon container must NOT
+shadow either name on `PATH`.

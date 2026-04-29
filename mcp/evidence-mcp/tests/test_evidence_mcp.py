@@ -72,6 +72,9 @@ def patch_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     srv.blob_store = BlobStore(blob_root)
     srv.audit_store = AuditStore(db_path)
     srv._initialized = False
+    # Per-finding locks are bound to the running event loop; pytest-asyncio
+    # creates a fresh loop per test, so stale locks must not leak across tests.
+    srv._finding_locks.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +218,52 @@ async def test_audit_chain_order():
     # Payload seq values must be in ascending order.
     seqs = [json.loads(e["payload"])["seq"] for e in entries]
     assert seqs == sorted(seqs)
+
+
+# ---------------------------------------------------------------------------
+# 6b. Concurrent append must not fork the chain
+# ---------------------------------------------------------------------------
+
+
+async def test_audit_chain_concurrent_appends_do_not_fork():
+    """N concurrent appends to the same finding_id must produce a single
+    linear chain (no two entries sharing the same prev_hash)."""
+    import asyncio
+
+    from evidence_mcp.server import append_audit_entry, get_audit_chain
+
+    fid = "77777777-0000-0000-0000-000000000007"
+    n = 12
+
+    await asyncio.gather(
+        *[
+            append_audit_entry(
+                finding_id=fid,
+                entry_type="oracle_result",
+                payload={"seq": i},
+            )
+            for i in range(n)
+        ]
+    )
+
+    result = await get_audit_chain(fid)
+    entries = result["entries"]
+    assert len(entries) == n
+
+    # Each chain_hash must be unique — duplicates indicate a fork.
+    chain_hashes = [e["chain_hash_hex"] for e in entries]
+    assert len(set(chain_hashes)) == n, "duplicate chain_hash → fork detected"
+
+    # The chain must be reconstructible from genesis: walking forward,
+    # each entry's chain_hash equals sha256(prev_chain_hash || payload).
+    prev = b""
+    for entry in entries:
+        payload_dict = json.loads(entry["payload"])
+        expected = _chain_hash(prev, payload_dict)
+        assert entry["chain_hash_hex"] == expected.hex(), (
+            "chain integrity broken under concurrency"
+        )
+        prev = bytes.fromhex(entry["chain_hash_hex"])
 
 
 # ---------------------------------------------------------------------------

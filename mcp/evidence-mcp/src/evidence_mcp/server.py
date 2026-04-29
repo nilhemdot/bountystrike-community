@@ -42,6 +42,27 @@ audit_store = AuditStore(EVIDENCE_DB)
 _initialized = False
 _init_lock = asyncio.Lock()
 
+# Per-finding append serialization. SQLite has no advisory locks and our
+# AuditStore methods open fresh connections per call, so the read-prev/
+# write-new pair is non-atomic across separate calls. Without this lock,
+# two concurrent append_audit_entry callers for the same finding_id would
+# each read the same prev_hash and fork the chain. In-process scope is
+# sufficient — evidence-mcp is a single-process stdio server. Multi-process
+# deployments must use control-plane HashChainService (Postgres advisory
+# lock) instead.
+_finding_locks: dict[str, asyncio.Lock] = {}
+_finding_locks_mutex = asyncio.Lock()
+
+
+async def _get_finding_lock(finding_id: str) -> asyncio.Lock:
+    """Return the per-finding append lock, creating it on first use."""
+    async with _finding_locks_mutex:
+        lock = _finding_locks.get(finding_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            _finding_locks[finding_id] = lock
+        return lock
+
 
 async def _ensure_initialized() -> None:
     """Initialize AuditStore exactly once, even under concurrent callers."""
@@ -188,21 +209,23 @@ async def append_audit_entry(
     """
     await _ensure_initialized()
 
-    prev_hash = await audit_store.get_latest_chain_hash(finding_id)
-    chain_hash_bytes = _chain_hash(prev_hash, payload)
-    payload_json = json.dumps(payload, sort_keys=True, default=str)
-    entry_id = str(uuid.uuid4())
-    created_at = datetime.now(UTC).isoformat()
+    lock = await _get_finding_lock(finding_id)
+    async with lock:
+        prev_hash = await audit_store.get_latest_chain_hash(finding_id)
+        chain_hash_bytes = _chain_hash(prev_hash, payload)
+        payload_json = json.dumps(payload, sort_keys=True, default=str)
+        entry_id = str(uuid.uuid4())
+        created_at = datetime.now(UTC).isoformat()
 
-    await audit_store.append(
-        id=entry_id,
-        finding_id=finding_id,
-        entry_type=entry_type,
-        payload=payload_json,
-        prev_hash=prev_hash,
-        chain_hash=chain_hash_bytes,
-        created_at=created_at,
-    )
+        await audit_store.append(
+            id=entry_id,
+            finding_id=finding_id,
+            entry_type=entry_type,
+            payload=payload_json,
+            prev_hash=prev_hash,
+            chain_hash=chain_hash_bytes,
+            created_at=created_at,
+        )
 
     return {
         "entry_id": entry_id,
