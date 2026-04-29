@@ -156,8 +156,10 @@ async def main() -> None:
     evidence_mcp_url = os.environ.get("EVIDENCE_MCP_URL", "evidence-mcp")
     dedup_mcp_url    = os.environ.get("DEDUP_MCP_URL",    "dedup-mcp")
     max_validators   = int(os.environ.get("MAX_VALIDATORS", "5"))
+    max_reporters    = int(os.environ.get("MAX_REPORTERS",  "3"))
     recon_timeout    = int(os.environ.get("RECON_TIMEOUT", "3600"))
     claude_cmd       = os.environ.get("CLAUDE_CMD", "claude")
+    skip_report      = os.environ.get("SKIP_REPORT", "").lower() in ("1", "true", "yes")
 
     dsn = database_url.replace("+asyncpg", "")
     conn: asyncpg.Connection = await asyncpg.connect(dsn)
@@ -231,10 +233,49 @@ async def main() -> None:
 
         await asyncio.gather(*[_validate_one(fid) for fid in finding_ids])
 
+        # ── Report ─────────────────────────────────────────────────────────
+        if skip_report:
+            _log("SKIP_REPORT set — skipping reporter-agent phase")
+        else:
+            validated_ids = await conn.fetch(
+                "SELECT id FROM findings WHERE job_id = $1 AND status = 'validated'",
+                job_id,
+            )
+            validated_ids = [str(r["id"]) for r in validated_ids]
+            _log(f"{len(validated_ids)} validated findings to report")
+
+            if validated_ids:
+                rep_semaphore = asyncio.Semaphore(max_reporters)
+                rep_failed = 0
+
+                async def _report_one(finding_id: str) -> None:
+                    nonlocal rep_failed
+                    async with rep_semaphore:
+                        reporter_env: dict[str, str] = {
+                            "SCOPE_JWT":        scope_jwt,
+                            "PROGRAM_HANDLE":   program_handle,
+                            "PLATFORM":         platform,
+                            "DATABASE_URL":     database_url,
+                            "FINDING_ID":       finding_id,
+                            "EVIDENCE_MCP_URL": evidence_mcp_url,
+                        }
+                        # Forward platform API tokens if set
+                        for tok_var in ("H1_API_TOKEN", "BUGCROWD_API_TOKEN", "IMMUNEFI_API_TOKEN", "REPORTER_MODEL"):
+                            if tok_var in os.environ:
+                                reporter_env[tok_var] = os.environ[tok_var]
+                        rc = await _run_agent("reporter", reporter_env, claude_cmd)
+                        if rc != 0:
+                            nonlocal rep_failed  # type: ignore[misc]
+                            rep_failed += 1
+                        _log(f"reporter finding={finding_id} rc={rc}")
+
+                await asyncio.gather(*[_report_one(fid) for fid in validated_ids])
+
         # ── Summary ────────────────────────────────────────────────────────
         counts = await _count_by_status(conn, job_id)
         _log(
             f"complete — validated={counts.get('validated', 0)} "
+            f"submitted={counts.get('submitted', 0)} "
             f"duplicate={counts.get('duplicate', 0)} "
             f"archived={counts.get('archived', 0)} "
             f"pending={counts.get('validation_pending', 0)} "
