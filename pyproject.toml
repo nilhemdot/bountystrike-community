@@ -12,6 +12,9 @@ members = [
     "mcp/dedup-mcp",
 ]
 
+[tool.uv.sources]
+oracle-mcp = { workspace = true }
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
