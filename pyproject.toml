@@ -11,6 +11,7 @@ members = [
     "mcp/evidence-mcp",
     "mcp/dedup-mcp",
     "mcp/kev-mcp",
+    "mcp/ev-mcp",
 ]
 
 [tool.uv.sources]
