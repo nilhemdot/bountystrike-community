@@ -14,6 +14,7 @@ import uuid
 import structlog
 
 from .aggregates import ApprovalRequest, ApprovalRequestStatus
+from .finding_status_cache import FindingStatusCache
 from .repositories import ApprovalRequestStore
 from .value_objects import (
     CREDENTIAL_THEFT_BUG_CLASSES,
@@ -105,10 +106,41 @@ def classify_tier(context: ApprovalContext) -> ApprovalTier:
 
 
 class ApprovalGateService:
-    """Operator-facing API for the approval lifecycle."""
+    """Operator-facing API for the approval lifecycle.
 
-    def __init__(self, store: ApprovalRequestStore) -> None:
+    Args:
+        store: Durable record of the approval requests.
+        status_cache: Optional fast cache keyed by ``finding_id`` so the
+            PreToolUse hook (a separate process) can answer
+            "is this finding cleared for submission?" in <1ms. Service
+            writes the cache on every state transition; hook reads only.
+    """
+
+    def __init__(
+        self,
+        store: ApprovalRequestStore,
+        status_cache: FindingStatusCache | None = None,
+    ) -> None:
         self._store = store
+        self._cache = status_cache
+
+    async def _publish_status(
+        self,
+        finding_id: uuid.UUID,
+        status: ApprovalRequestStatus,
+    ) -> None:
+        """Best-effort cache update — never fail the request on cache errors."""
+        if self._cache is None:
+            return
+        try:
+            await self._cache.set_status(finding_id, status)
+        except Exception as exc:  # noqa: BLE001 — cache is opportunistic
+            log.warning(
+                "approval.cache.publish_failed",
+                finding_id=str(finding_id),
+                status=status.value,
+                error=str(exc),
+            )
 
     async def open_request(
         self,
@@ -126,6 +158,7 @@ class ApprovalGateService:
         if tier == ApprovalTier.T0:
             request.status = ApprovalRequestStatus.APPROVED
         await self._store.save(request)
+        await self._publish_status(finding_id, request.status)
         log.info(
             "approval.opened",
             request_id=str(request.id),
@@ -217,6 +250,7 @@ class ApprovalGateService:
             )
 
         await self._store.save(request)
+        await self._publish_status(request.finding_id, request.status)
         return request
 
     async def is_approved(self, request_id: uuid.UUID) -> bool:

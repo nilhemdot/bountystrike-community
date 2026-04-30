@@ -18,6 +18,11 @@ Public surface:
 from __future__ import annotations
 
 from .aggregates import ApprovalRequest, ApprovalRequestStatus
+from .finding_status_cache import (
+    FindingStatusCache,
+    InMemoryFindingStatusCache,
+    RedisFindingStatusCache,
+)
 from .repositories import ApprovalRequestStore, InMemoryApprovalRequestStore
 from .services import (
     ApprovalGateService,
@@ -40,7 +45,10 @@ __all__ = [
     "ApprovalRequestStore",
     "ApprovalTier",
     "DuplicateApprovalError",
+    "FindingStatusCache",
     "InMemoryApprovalRequestStore",
+    "InMemoryFindingStatusCache",
     "NotApprovableError",
+    "RedisFindingStatusCache",
     "classify_tier",
 ]
