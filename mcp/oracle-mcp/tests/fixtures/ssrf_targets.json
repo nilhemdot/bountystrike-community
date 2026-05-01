@@ -1,0 +1,82 @@
+[
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/v1?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "naive q-fetch",
+    "tags": ["ssrf", "naive"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/v2?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "webhook-style destination fetch",
+    "tags": ["ssrf", "webhook"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/v3?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "image-proxy fetch",
+    "tags": ["ssrf", "image-proxy"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/v4?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "follow-redirect fetch",
+    "tags": ["ssrf", "redirect-follow"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/v5?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "scheme-only check",
+    "tags": ["ssrf", "weak-validation"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/c1?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "echo-only no fetch",
+    "tags": ["clean", "no-fetch"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/c2?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "host allowlist",
+    "tags": ["clean", "allowlist"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/c3?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "regex hostname filter",
+    "tags": ["clean", "regex-filter"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/c4?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "internal-id map lookup",
+    "tags": ["clean", "id-map"]
+  },
+  {
+    "oracle": "ssrf",
+    "url": "http://localhost:5098/c5?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "rejects strings with colon",
+    "tags": ["clean", "char-filter"]
+  }
+]

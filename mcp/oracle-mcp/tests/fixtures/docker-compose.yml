@@ -11,3 +11,32 @@ services:
       timeout: 1s
       retries: 30
     restart: "no"
+
+  oast-collector:
+    build: ./oast_collector
+    image: bs5/oast-collector:0.1.0
+    container_name: bs5-oast-collector
+    ports:
+      - "5097:5097"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5097/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"
+
+  ssrf-lab:
+    build: ./ssrf_lab
+    image: bs5/ssrf-lab:0.1.0
+    container_name: bs5-ssrf-lab
+    ports:
+      - "5098:5098"
+    depends_on:
+      oast-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5098/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"

@@ -1,0 +1,232 @@
+{
+  "oracle": "ssrf",
+  "total": 10,
+  "true_positives": 5,
+  "false_positives": 0,
+  "true_negatives": 5,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/v1?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "naive q-fetch",
+        "tags": [
+          "ssrf",
+          "naive"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs67b516d0dd2ace3e1e60a85e",
+        "interaction_count": 1,
+        "interaction_type": "http",
+        "source_ip": "127.0.0.1",
+        "timestamp": "2026-05-01T07:40:56.471069+00:00",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/v2?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "webhook-style destination fetch",
+        "tags": [
+          "ssrf",
+          "webhook"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs0c9791da1fc066bfec2ed4c5",
+        "interaction_count": 1,
+        "interaction_type": "http",
+        "source_ip": "127.0.0.1",
+        "timestamp": "2026-05-01T07:40:56.492622+00:00",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/v3?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "image-proxy fetch",
+        "tags": [
+          "ssrf",
+          "image-proxy"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs322ece0fe8c323353ffdacbb",
+        "interaction_count": 1,
+        "interaction_type": "http",
+        "source_ip": "127.0.0.1",
+        "timestamp": "2026-05-01T07:40:56.509162+00:00",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/v4?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "follow-redirect fetch",
+        "tags": [
+          "ssrf",
+          "redirect-follow"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs7e7656b4a4eede3130e561c8",
+        "interaction_count": 1,
+        "interaction_type": "http",
+        "source_ip": "127.0.0.1",
+        "timestamp": "2026-05-01T07:40:56.526738+00:00",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/v5?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "scheme-only check",
+        "tags": [
+          "ssrf",
+          "weak-validation"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs24acc0b135aec01dfcaede31",
+        "interaction_count": 1,
+        "interaction_type": "http",
+        "source_ip": "127.0.0.1",
+        "timestamp": "2026-05-01T07:40:56.544566+00:00",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/c1?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "echo-only no fetch",
+        "tags": [
+          "clean",
+          "no-fetch"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs938ef447c4c4708783a7ee67",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/c2?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "host allowlist",
+        "tags": [
+          "clean",
+          "allowlist"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bs58545aacb6603a6e4cf05e72",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/c3?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "regex hostname filter",
+        "tags": [
+          "clean",
+          "regex-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bsc266c669232a9a9238e6a5d0",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/c4?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "internal-id map lookup",
+        "tags": [
+          "clean",
+          "id-map"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bsf6b463de6abd9eecf196987a",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf",
+        "url": "http://localhost:5098/c5?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "rejects strings with colon",
+        "tags": [
+          "clean",
+          "char-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "callback_url": "http://127.0.0.1:5097/cb/bsdc467ff3b91fce305e9633fe",
+        "param": "q"
+      }
+    }
+  ]
+}

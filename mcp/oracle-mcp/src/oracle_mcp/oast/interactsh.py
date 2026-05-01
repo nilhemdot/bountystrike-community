@@ -41,6 +41,26 @@ DEFAULT_SERVER = os.environ.get("INTERACTSH_SERVER_URL", "https://oast.fun")
 DEFAULT_PREFIX = os.environ.get("INTERACTSH_TOKEN_PREFIX", "bs")
 
 
+def _server_supports_subdomain_callbacks(server_url: str) -> bool:
+    """Heuristic: only real DNS hostnames can host wildcard subdomain callbacks.
+
+    Local OAST collectors running on ``127.0.0.1`` / ``localhost`` cannot
+    receive a request to ``<token>.127.0.0.1`` (DNS won't resolve), so we
+    fall back to a path-based callback that the collector handles at
+    ``/cb/<token>``.
+    """
+    host = server_url.removeprefix("https://").removeprefix("http://")
+    host_only = host.split("/", 1)[0].split(":", 1)[0]
+    if not host_only:
+        return False
+    if host_only in {"localhost", "127.0.0.1", "::1"}:
+        return False
+    # Bare IP literal (no letters) ⇒ no DNS ⇒ path callback.
+    if all(ch.isdigit() or ch == "." for ch in host_only):
+        return False
+    return True
+
+
 @dataclass(frozen=True, slots=True)
 class InteractshToken:
     """Opaque handle returned by ``register_token``."""
@@ -50,15 +70,32 @@ class InteractshToken:
     registered_at: float
 
     @property
+    def _supports_subdomain(self) -> bool:
+        return _server_supports_subdomain_callbacks(self.server)
+
+    @property
     def callback_url(self) -> str:
-        """HTTP callback URL embedded in payloads (e.g. for SSRF/RCE OOB)."""
+        """HTTP callback URL embedded in payloads (e.g. for SSRF/RCE OOB).
+
+        Subdomain form for real OAST hosts (``http://<tok>.oast.fun``);
+        path form for localhost / IP-only collectors
+        (``http://127.0.0.1:5097/cb/<tok>``) where wildcard DNS is
+        unavailable.
+        """
         host = self.server.removeprefix("https://").removeprefix("http://")
-        return f"http://{self.token}.{host}"
+        host_with_port = host.split("/", 1)[0]
+        if self._supports_subdomain:
+            return f"http://{self.token}.{host_with_port}"
+        scheme = "https" if self.server.startswith("https://") else "http"
+        return f"{scheme}://{host_with_port}/cb/{self.token}"
 
     @property
     def callback_host(self) -> str:
         host = self.server.removeprefix("https://").removeprefix("http://")
-        return f"{self.token}.{host}"
+        host_with_port = host.split("/", 1)[0]
+        if self._supports_subdomain:
+            return f"{self.token}.{host_with_port}"
+        return host_with_port
 
 
 @dataclass(frozen=True, slots=True)
