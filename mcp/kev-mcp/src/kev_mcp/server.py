@@ -1,9 +1,11 @@
 """FastMCP server for kev-mcp.
 
-Exposes three tools (build-plan §4.7 prescribes two; ``kev_status`` is
-an operational add-on for cache freshness checks):
+Exposes four tools (build-plan §4.7 prescribes ``kev_get_recent`` and
+``kev_match_program``; ``kev_lookup`` and ``kev_status`` are
+operational add-ons for one-shot CVE lookup and cache health checks):
 
 * ``kev_get_recent(hours=72)``
+* ``kev_match_program(tech_stack, ...)``
 * ``kev_lookup(cve_id)``
 * ``kev_status()``
 
@@ -109,6 +111,136 @@ async def kev_get_recent(hours: int = 72) -> dict:
         key=lambda r: (r["epss"] is None, -(r["epss"] or 0.0)),
     )
     return {"window_hours": hours, "count": len(rows), "entries": rows}
+
+
+def _normalize_tech_token(raw: str) -> str:
+    """Lower-case and strip the ``/version`` suffix from a tech token.
+
+    httpx ``-tech-detect`` output looks like ``nginx/1.25``, ``Node.js``,
+    ``WordPress 6.4``. Reduces to ``nginx`` / ``node.js`` / ``wordpress``
+    so substring containment against KEV ``vendor_project`` / ``product``
+    is symmetric.
+    """
+    token = raw.strip().lower()
+    if not token:
+        return ""
+    # Drop "/version" or " version" suffix.
+    for sep in ("/", " "):
+        idx = token.find(sep)
+        if idx > 0:
+            token = token[:idx]
+            break
+    return token
+
+
+def _tech_matches_kev(tech_norm: set[str], vendor_project: str, product: str) -> bool:
+    """Bidirectional substring match between tech tokens and KEV row.
+
+    Either direction counts as a hit:
+
+      - tech token is a substring of vendor/product (``"nginx"`` ↔
+        ``"NGINX, Inc."``)
+      - vendor/product is a substring of tech token (rare but happens
+        for niche products that show up as a parent name)
+    """
+    if not tech_norm:
+        return False
+    vp = vendor_project.lower()
+    pr = product.lower()
+    for tok in tech_norm:
+        if not tok:
+            continue
+        if tok in vp or tok in pr or vp in tok or pr in tok:
+            return True
+    return False
+
+
+@mcp.tool()
+async def kev_match_program(
+    tech_stack: list[str],
+    max_age_hours: float | None = None,
+    min_epss: float = 0.0,
+) -> dict:
+    """Cross-reference a program's detected tech stack against CISA KEV.
+
+    Build-plan §4.7: given a list of technology fingerprints (e.g. from
+    ``httpx -tech-detect`` or Trickest's ``server-report.csv``), return
+    the KEV entries whose ``vendor_project`` / ``product`` overlaps any
+    fingerprint. Each match is EPSS-merged so callers can rank by
+    exploitation likelihood without a second tool call.
+
+    Args:
+        tech_stack: List of tech tokens (e.g.
+            ``["nginx/1.25", "WordPress 6.4", "FastAPI"]``). Versions
+            are stripped before matching; matching is case-insensitive
+            and bidirectional substring.
+        max_age_hours: If set, drop KEV rows older than this many hours
+            (the freshness window where first-mover advantage is
+            highest). ``None`` = no age filter.
+        min_epss: Drop matches whose EPSS is below this threshold. Rows
+            with no EPSS score are kept iff ``min_epss`` is 0.
+
+    Returns:
+        ``{"tech_stack": [...], "count": int, "matches": [...]}``
+        where each match carries the same shape as ``kev_get_recent``
+        rows. Sorted by EPSS desc (None → bottom), then age asc.
+    """
+    if not isinstance(tech_stack, list):
+        return {"error": "tech_stack must be a list of strings", "matches": []}
+
+    tech_norm = {
+        _normalize_tech_token(t)
+        for t in tech_stack
+        if isinstance(t, str) and t.strip()
+    }
+    tech_norm.discard("")
+    if not tech_norm:
+        return {"tech_stack": tech_stack, "count": 0, "matches": []}
+
+    entries = await cache.get_entries()
+    now = datetime.utcnow()
+    matched = [
+        e for e in entries
+        if _tech_matches_kev(tech_norm, e.vendor_project, e.product)
+    ]
+
+    if max_age_hours is not None:
+        cutoff = float(max_age_hours)
+        matched = [e for e in matched if e.age_hours(now) <= cutoff]
+
+    cve_ids = [e.cve_id for e in matched]
+    try:
+        epss_map = await epss_client.lookup(cve_ids) if cve_ids else {}
+    except Exception:
+        epss_map = {}
+
+    rows: list[dict] = []
+    for e in matched:
+        score = epss_map.get(e.cve_id)
+        epss_val = score.epss if score else None
+        if min_epss > 0 and (epss_val is None or epss_val < min_epss):
+            continue
+        rows.append({
+            "cve_id": e.cve_id,
+            "vendor_project": e.vendor_project,
+            "product": e.product,
+            "date_added": e.date_added.isoformat(),
+            "age_hours": round(e.age_hours(now), 2),
+            "short_description": e.short_description,
+            "known_ransomware": e.known_ransomware_use,
+            "epss": epss_val,
+            "epss_percentile": score.percentile if score else None,
+            "epss_date": score.date if score else None,
+        })
+
+    rows.sort(
+        key=lambda r: (
+            r["epss"] is None,
+            -(r["epss"] or 0.0),
+            r["age_hours"],
+        ),
+    )
+    return {"tech_stack": tech_stack, "count": len(rows), "matches": rows}
 
 
 @mcp.tool()

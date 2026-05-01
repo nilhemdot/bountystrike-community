@@ -437,3 +437,184 @@ async def test_tool_returns_are_json_serializable():
     c = await kev_status()
     for payload in (a, b, c):
         json.dumps(payload)  # raises TypeError if not serializable
+
+
+# ---------------------------------------------------------------------------
+# 7. kev_match_program — vendor/product cross-reference vs tech_stack
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def match_program_fixture(monkeypatch: pytest.MonkeyPatch):
+    """Override the autouse fixture's cache with KEV rows that have
+    realistic vendor/product names so substring matching can be exercised.
+    """
+    import kev_mcp.server as srv
+
+    rows = [
+        KevEntry(
+            cve_id="CVE-NGINX-1",
+            vendor_project="NGINX, Inc.",
+            product="NGINX",
+            date_added=_FROZEN_TODAY - timedelta(days=2),
+            short_description="nginx config bug",
+            known_ransomware_use=False,
+        ),
+        KevEntry(
+            cve_id="CVE-WP-1",
+            vendor_project="Automattic",
+            product="WordPress",
+            date_added=_FROZEN_TODAY - timedelta(days=10),
+            short_description="WP core RCE",
+            known_ransomware_use=True,
+        ),
+        KevEntry(
+            cve_id="CVE-OLD-NGINX",
+            vendor_project="NGINX, Inc.",
+            product="NGINX",
+            date_added=_FROZEN_TODAY - timedelta(days=400),
+            short_description="ancient nginx bug",
+            known_ransomware_use=False,
+        ),
+        KevEntry(
+            cve_id="CVE-IRRELEVANT",
+            vendor_project="SomeCo",
+            product="Kettle Firmware",
+            date_added=_FROZEN_TODAY - timedelta(days=1),
+            short_description="irrelevant",
+            known_ransomware_use=False,
+        ),
+    ]
+
+    async def fake_lookup(cve_ids):
+        return {
+            "CVE-NGINX-1": EpssScore(
+                cve="CVE-NGINX-1", epss=0.85, percentile=0.95, date="2024-08-01"
+            ),
+            "CVE-WP-1": EpssScore(
+                cve="CVE-WP-1", epss=0.30, percentile=0.70, date="2024-08-01"
+            ),
+            "CVE-OLD-NGINX": EpssScore(
+                cve="CVE-OLD-NGINX", epss=0.10, percentile=0.40, date="2024-08-01"
+            ),
+        }
+
+    loader = _StubLoader([rows])
+    srv.cache = KevCache(loader, ttl_seconds=60.0, clock=lambda: 0.0)  # type: ignore[arg-type]
+    monkeypatch.setattr(srv, "datetime", _FrozenDatetime)
+    monkeypatch.setattr(srv.epss_client, "lookup", fake_lookup)
+    return srv
+
+
+async def test_match_program_substring_hits_vendor_and_product(
+    match_program_fixture,
+):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack=["nginx/1.25", "WordPress 6.4"])
+    cves = {r["cve_id"] for r in result["matches"]}
+    assert "CVE-NGINX-1" in cves
+    assert "CVE-WP-1" in cves
+    assert "CVE-IRRELEVANT" not in cves
+
+
+async def test_match_program_strips_version_suffix(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    # Caller passes the raw httpx tech-detect string with "/version".
+    result = await kev_match_program(tech_stack=["NGINX/1.25.3"])
+    cves = {r["cve_id"] for r in result["matches"]}
+    assert "CVE-NGINX-1" in cves
+
+
+async def test_match_program_age_filter(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    # 30-day window drops CVE-OLD-NGINX (added 400d ago) but keeps CVE-NGINX-1.
+    result = await kev_match_program(
+        tech_stack=["nginx"], max_age_hours=24 * 30
+    )
+    cves = {r["cve_id"] for r in result["matches"]}
+    assert "CVE-NGINX-1" in cves
+    assert "CVE-OLD-NGINX" not in cves
+
+
+async def test_match_program_min_epss_filter(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    # min_epss=0.5 drops CVE-WP-1 (0.30) and CVE-OLD-NGINX (0.10).
+    result = await kev_match_program(
+        tech_stack=["nginx", "wordpress"], min_epss=0.5
+    )
+    cves = {r["cve_id"] for r in result["matches"]}
+    assert cves == {"CVE-NGINX-1"}
+
+
+async def test_match_program_sorts_by_epss_desc_then_age_asc(
+    match_program_fixture,
+):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack=["nginx", "wordpress"])
+    epss_seq = [r["epss"] for r in result["matches"]]
+    not_none = [e for e in epss_seq if e is not None]
+    assert not_none == sorted(not_none, reverse=True)
+
+
+async def test_match_program_empty_tech_stack(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack=[])
+    assert result["matches"] == []
+    assert result["count"] == 0
+
+
+async def test_match_program_drops_blank_and_non_string_tokens(
+    match_program_fixture,
+):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack=["", "   ", None, "nginx"])  # type: ignore[list-item]
+    cves = {r["cve_id"] for r in result["matches"]}
+    assert "CVE-NGINX-1" in cves
+
+
+async def test_match_program_rejects_non_list_input(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack="nginx")  # type: ignore[arg-type]
+    assert "error" in result
+    assert result["matches"] == []
+
+
+async def test_match_program_survives_epss_failure(
+    match_program_fixture, monkeypatch: pytest.MonkeyPatch
+):
+    """EPSS API down: KEV matches still surface, with epss=None."""
+    import kev_mcp.server as srv
+
+    async def boom(_cves):
+        raise httpx.ConnectError("epss down")
+
+    monkeypatch.setattr(srv.epss_client, "lookup", boom)
+
+    from kev_mcp.server import kev_match_program
+    result = await kev_match_program(tech_stack=["nginx"])
+    assert result["count"] >= 1
+    assert all(r["epss"] is None for r in result["matches"])
+
+
+async def test_match_program_return_is_json_serializable(match_program_fixture):
+    from kev_mcp.server import kev_match_program
+
+    result = await kev_match_program(tech_stack=["nginx", "wordpress"])
+    json.dumps(result)
+
+
+def test_normalize_tech_token_strips_version_and_lowercases():
+    from kev_mcp.server import _normalize_tech_token
+
+    assert _normalize_tech_token("NGINX/1.25.3") == "nginx"
+    assert _normalize_tech_token("WordPress 6.4") == "wordpress"
+    assert _normalize_tech_token("FastAPI") == "fastapi"
+    assert _normalize_tech_token("  ") == ""
