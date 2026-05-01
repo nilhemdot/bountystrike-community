@@ -1,0 +1,322 @@
+[
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v1?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "naive body reflection",
+    "tags": ["html-context", "body"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v2?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "div with sibling text",
+    "tags": ["html-context", "div"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v3?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "before structural tags",
+    "tags": ["html-context", "pre-body"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v4?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "after title before body content",
+    "tags": ["html-context", "post-head"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v5?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "inside h1",
+    "tags": ["html-context", "heading"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v6?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "paragraph wrapping list",
+    "tags": ["html-context", "paragraph"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v7?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "section after nav",
+    "tags": ["html-context", "section"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v8?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "footer reflection",
+    "tags": ["html-context", "footer"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v9?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "after aside",
+    "tags": ["html-context", "aside"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v10?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "between sibling divs",
+    "tags": ["html-context", "between-divs"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v11?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "document.write reflection",
+    "tags": ["js-context", "document.write"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v12?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "innerHTML from URL search",
+    "tags": ["js-context", "innerHTML"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v13?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "URLSearchParams + innerHTML",
+    "tags": ["js-context", "innerHTML", "client-only"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v14?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "document.write of location query",
+    "tags": ["js-context", "document.write", "client-only"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v15?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "template tag clone",
+    "tags": ["html-context", "template"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v16?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "filter strips '<script' only",
+    "tags": ["html-context", "weak-filter"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v17?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "lower-cased reflection",
+    "tags": ["html-context", "lower-case"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v18?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "double URL-decoded reflection",
+    "tags": ["html-context", "url-decode"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v19?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "inside custom element",
+    "tags": ["html-context", "custom-element"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/v20?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "after closing body+html",
+    "tags": ["html-context", "post-document"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c1?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "escaped body reflection",
+    "tags": ["clean", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c2?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "escaped div reflection",
+    "tags": ["clean", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c3?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "static page no reflection",
+    "tags": ["clean", "no-reflection"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c4?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "param read but not rendered",
+    "tags": ["clean", "no-reflection"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c5?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "escaped h1 reflection",
+    "tags": ["clean", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c6?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "JSON content type",
+    "tags": ["clean", "non-html-mime"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c7?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "plain text content type",
+    "tags": ["clean", "non-html-mime"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c8?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "CSP blocks inline event handlers",
+    "tags": ["clean", "csp"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c9?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "CSP blocks all scripts",
+    "tags": ["clean", "csp"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c10?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "echoes length only",
+    "tags": ["clean", "no-reflection"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c11?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "fixed allowlist categories",
+    "tags": ["clean", "no-reflection"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c12?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "escaped footer",
+    "tags": ["clean", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c13?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "escaped between divs",
+    "tags": ["clean", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c14?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "digits-only filter",
+    "tags": ["clean", "char-filter"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c15?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "letters-only filter",
+    "tags": ["clean", "char-filter"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c16?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "5-char truncation + escape",
+    "tags": ["clean", "truncate", "html-escape"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c17?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "textContent (not innerHTML)",
+    "tags": ["clean", "js-textcontent"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c18?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "empty body",
+    "tags": ["clean", "no-reflection"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c19?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "noscript-wrapped reflection",
+    "tags": ["clean", "noscript"]
+  },
+  {
+    "oracle": "xss",
+    "url": "http://localhost:5099/c20?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "strict allow-list filter",
+    "tags": ["clean", "char-filter"]
+  }
+]

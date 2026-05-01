@@ -1,0 +1,13 @@
+services:
+  xss-lab:
+    build: ./xss_lab
+    image: bs5/xss-lab:0.1.0
+    container_name: bs5-xss-lab
+    ports:
+      - "5099:5099"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5099/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"

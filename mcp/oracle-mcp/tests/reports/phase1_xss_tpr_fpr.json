@@ -1,0 +1,895 @@
+{
+  "oracle": "xss",
+  "total": 40,
+  "true_positives": 20,
+  "false_positives": 0,
+  "true_negatives": 20,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v1?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "naive body reflection",
+        "tags": [
+          "html-context",
+          "body"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v1?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v2?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "div with sibling text",
+        "tags": [
+          "html-context",
+          "div"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v2?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v3?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "before structural tags",
+        "tags": [
+          "html-context",
+          "pre-body"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v3?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v4?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "after title before body content",
+        "tags": [
+          "html-context",
+          "post-head"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v4?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v5?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "inside h1",
+        "tags": [
+          "html-context",
+          "heading"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v5?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v6?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "paragraph wrapping list",
+        "tags": [
+          "html-context",
+          "paragraph"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v6?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v7?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "section after nav",
+        "tags": [
+          "html-context",
+          "section"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v7?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v8?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "footer reflection",
+        "tags": [
+          "html-context",
+          "footer"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v8?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v9?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "after aside",
+        "tags": [
+          "html-context",
+          "aside"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v9?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v10?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "between sibling divs",
+        "tags": [
+          "html-context",
+          "between-divs"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v10?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v11?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "document.write reflection",
+        "tags": [
+          "js-context",
+          "document.write"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v11?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v12?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "innerHTML from URL search",
+        "tags": [
+          "js-context",
+          "innerHTML"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v12?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v13?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "URLSearchParams + innerHTML",
+        "tags": [
+          "js-context",
+          "innerHTML",
+          "client-only"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v13?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v14?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "document.write of location query",
+        "tags": [
+          "js-context",
+          "document.write",
+          "client-only"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v14?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v15?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "template tag clone",
+        "tags": [
+          "html-context",
+          "template"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v15?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v16?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "filter strips '<script' only",
+        "tags": [
+          "html-context",
+          "weak-filter"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v16?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v17?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "lower-cased reflection",
+        "tags": [
+          "html-context",
+          "lower-case"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v17?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v18?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "double URL-decoded reflection",
+        "tags": [
+          "html-context",
+          "url-decode"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v18?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v19?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "inside custom element",
+        "tags": [
+          "html-context",
+          "custom-element"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v19?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/v20?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "after closing body+html",
+        "tags": [
+          "html-context",
+          "post-document"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/v20?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 3
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c1?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "escaped body reflection",
+        "tags": [
+          "clean",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c1?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c2?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "escaped div reflection",
+        "tags": [
+          "clean",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c2?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c3?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "static page no reflection",
+        "tags": [
+          "clean",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c3?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c4?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "param read but not rendered",
+        "tags": [
+          "clean",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c4?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c5?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "escaped h1 reflection",
+        "tags": [
+          "clean",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c5?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c6?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "JSON content type",
+        "tags": [
+          "clean",
+          "non-html-mime"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c6?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c7?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "plain text content type",
+        "tags": [
+          "clean",
+          "non-html-mime"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c7?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c8?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "CSP blocks inline event handlers",
+        "tags": [
+          "clean",
+          "csp"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c8?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c9?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "CSP blocks all scripts",
+        "tags": [
+          "clean",
+          "csp"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c9?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c10?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "echoes length only",
+        "tags": [
+          "clean",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c10?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c11?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "fixed allowlist categories",
+        "tags": [
+          "clean",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c11?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c12?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "escaped footer",
+        "tags": [
+          "clean",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c12?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c13?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "escaped between divs",
+        "tags": [
+          "clean",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c13?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c14?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "digits-only filter",
+        "tags": [
+          "clean",
+          "char-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c14?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c15?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "letters-only filter",
+        "tags": [
+          "clean",
+          "char-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c15?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c16?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "5-char truncation + escape",
+        "tags": [
+          "clean",
+          "truncate",
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c16?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c17?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "textContent (not innerHTML)",
+        "tags": [
+          "clean",
+          "js-textcontent"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c17?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c18?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "empty body",
+        "tags": [
+          "clean",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c18?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c19?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "noscript-wrapped reflection",
+        "tags": [
+          "clean",
+          "noscript"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c19?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    },
+    {
+      "target": {
+        "oracle": "xss",
+        "url": "http://localhost:5099/c20?q=__placeholder__",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "strict allow-list filter",
+        "tags": [
+          "clean",
+          "char-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "injected_url": "http://localhost:5099/c20?q=%3Cimg+src%3Dx+onerror%3D%22window.__bs5xss%3D1%22%3E",
+        "attempts": 3,
+        "successes": 0
+      }
+    }
+  ]
+}
