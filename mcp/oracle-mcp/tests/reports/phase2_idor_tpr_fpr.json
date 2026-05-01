@@ -1,0 +1,437 @@
+{
+  "oracle": "idor",
+  "total": 20,
+  "true_positives": 10,
+  "false_positives": 0,
+  "true_negatives": 10,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v1/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "any bearer grants owner profile",
+        "tags": [
+          "bearer",
+          "any-token"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v1/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v2/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "no auth at all",
+        "tags": [
+          "no-auth"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v2/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v3/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "token presence only \u2014 no per-user check",
+        "tags": [
+          "bearer",
+          "presence-only"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v3/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v4/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "cookie session \u2014 any cookie works",
+        "tags": [
+          "cookie"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v4/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v5/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "JSON owner profile \u2014 same shape both",
+        "tags": [
+          "bearer",
+          "json"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v5/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v6/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "user id in path ignored",
+        "tags": [
+          "bearer",
+          "path-id"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v6/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v7/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "api_key in query \u2014 both keys equal",
+        "tags": [
+          "api-key",
+          "query"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v8/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "X-User-Id header \u2014 trusted client-side",
+        "tags": [
+          "header",
+          "trust"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v8/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v9/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "any non-empty Authorization header",
+        "tags": [
+          "bearer",
+          "presence-only"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v9/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/v10/profile",
+        "param": "Authorization",
+        "expected_verdict": "validated",
+        "label": "regex token format \u2014 both pass",
+        "tags": [
+          "bearer",
+          "regex"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/v10/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 1.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c1/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "401 for non-owner bearer",
+        "tags": [
+          "401"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c1/profile",
+        "owner_status": 200,
+        "accessor_status": 401
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c2/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "403 forbidden",
+        "tags": [
+          "403"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c2/profile",
+        "owner_status": 200,
+        "accessor_status": 403
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c3/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "404 hides existence",
+        "tags": [
+          "404"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c3/profile",
+        "owner_status": 200,
+        "accessor_status": 404
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c4/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "200 + dissimilar body",
+        "tags": [
+          "200",
+          "low-jaccard"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c4/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 0.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c5/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "401 with WWW-Authenticate",
+        "tags": [
+          "401",
+          "challenge"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c5/profile",
+        "owner_status": 200,
+        "accessor_status": 401
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c6/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "403 with JSON error body",
+        "tags": [
+          "403",
+          "json"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c6/profile",
+        "owner_status": 200,
+        "accessor_status": 403
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c7/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "200 + completely different content",
+        "tags": [
+          "200",
+          "low-jaccard"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c7/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 0.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c8/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "302 redirect to login",
+        "tags": [
+          "302"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c8/profile",
+        "owner_status": 200,
+        "accessor_status": 302
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c9/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "200 + empty body",
+        "tags": [
+          "200",
+          "empty"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c9/profile",
+        "owner_status": 200,
+        "accessor_status": 200,
+        "jaccard_similarity": 0.0
+      }
+    },
+    {
+      "target": {
+        "oracle": "idor",
+        "url": "http://localhost:5092/c10/profile",
+        "param": "Authorization",
+        "expected_verdict": "unreproducible",
+        "label": "500 server error",
+        "tags": [
+          "500"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "resource_url": "http://localhost:5092/c10/profile",
+        "owner_status": 200,
+        "accessor_status": 500
+      }
+    }
+  ]
+}

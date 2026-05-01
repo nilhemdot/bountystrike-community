@@ -92,3 +92,16 @@ services:
       timeout: 1s
       retries: 30
     restart: "no"
+
+  idor-lab:
+    build: ./idor_lab
+    image: bs5/idor-lab:0.1.0
+    container_name: bs5-idor-lab
+    ports:
+      - "5092:5092"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5092/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"

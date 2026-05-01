@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "idor",
+    "url": "http://localhost:5092/v1/profile",
+    "param": "Authorization",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before running",
+    "tags": ["example", "do-not-run"]
+  }
+]

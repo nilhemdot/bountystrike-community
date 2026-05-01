@@ -1,0 +1,22 @@
+[
+  {"oracle": "idor", "url": "http://localhost:5092/v1/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "any bearer grants owner profile",        "tags": ["bearer", "any-token"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v2/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "no auth at all",                          "tags": ["no-auth"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v3/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "token presence only — no per-user check", "tags": ["bearer", "presence-only"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v4/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "cookie session — any cookie works",       "tags": ["cookie"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v5/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "JSON owner profile — same shape both",    "tags": ["bearer", "json"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v6/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "user id in path ignored",                 "tags": ["bearer", "path-id"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v7/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "api_key in query — both keys equal",      "tags": ["api-key", "query"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v8/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "X-User-Id header — trusted client-side",  "tags": ["header", "trust"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v9/profile",  "param": "Authorization", "expected_verdict": "validated",      "label": "any non-empty Authorization header",      "tags": ["bearer", "presence-only"]},
+  {"oracle": "idor", "url": "http://localhost:5092/v10/profile", "param": "Authorization", "expected_verdict": "validated",      "label": "regex token format — both pass",          "tags": ["bearer", "regex"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c1/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "401 for non-owner bearer",                "tags": ["401"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c2/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "403 forbidden",                           "tags": ["403"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c3/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "404 hides existence",                     "tags": ["404"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c4/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "200 + dissimilar body",                   "tags": ["200", "low-jaccard"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c5/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "401 with WWW-Authenticate",               "tags": ["401", "challenge"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c6/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "403 with JSON error body",                "tags": ["403", "json"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c7/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "200 + completely different content",      "tags": ["200", "low-jaccard"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c8/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "302 redirect to login",                   "tags": ["302"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c9/profile",  "param": "Authorization", "expected_verdict": "unreproducible", "label": "200 + empty body",                        "tags": ["200", "empty"]},
+  {"oracle": "idor", "url": "http://localhost:5092/c10/profile", "param": "Authorization", "expected_verdict": "unreproducible", "label": "500 server error",                        "tags": ["500"]}
+]
