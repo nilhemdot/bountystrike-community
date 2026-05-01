@@ -960,8 +960,55 @@ discovery starts. No new external dependencies. No spec edits.
   push still pending. Without it, no production env runs the
   `subfinder/httpx/katana` chain.
 * **`1.1f-deploy`** — R2 live-credential verification still pending.
-* **Round 9 follow-up: semantic dedup live-PG** — `DedupStore.semantic_search`
-  pgvector path still mock-only.
+* **Round 9 follow-up: validator-spec compliance audit** — assert every
+  `findings.status='validated'` row has a paired `dedup_fingerprints`
+  entry on the next orchestrator dry-run.
+
+---
+
+## Round 11 — semantic dedup live-PG (closes Round 9 follow-up)
+
+Round 9 closed the structural-fingerprint live-PG gap. Round 11
+closes the semantic-search live-PG gap. The mock-store unit tests in
+``mcp/dedup-mcp/tests/test_semantic_dedup.py`` never exercise
+pgvector's ``<=>`` operator, the HNSW index, or the ENUM-typed
+``status`` filter — bugs in any of those would only surface in
+production. These tests run :meth:`DedupStore.semantic_search`
+against the migrated DB with controlled embeddings.
+
+### 28. Semantic-search real-PG suite
+
+**File:** `tests/integration/test_dedup_semantic_postgres.py`
+
+Embeddings are constructed deterministically — unit vectors with
+controlled cosine to ``e_0`` — so similarity assertions are exact
+modulo float32 noise from pgvector's internal storage (tolerance
+1e-4). The query is always aligned with ``e_0``; seeded findings sit
+at controlled angles so each test pins down one behavioural axis.
+
+| # | Test | What it asserts |
+|---|---|---|
+| 1 | `test_semantic_search_exact_match_returns_similarity_one` | A finding seeded with the query vector returns with similarity ≈ 1.0 and the right `finding_id` / `cwe`. |
+| 2 | `test_semantic_search_threshold_filters_low_similarity` | Two findings (sim 1.0 + sim 0.80); threshold 0.75 returns both, threshold 0.95 prunes the 0.80 row. Pins the FastMCP T2/T3 tier semantics in the live store. |
+| 3 | `test_semantic_search_isolated_by_program_handle` | Same embedding seeded under two programs; query against one program only returns its own row. Catches cross-program leak regressions in the WHERE clause. |
+| 4 | `test_semantic_search_excludes_archived_rejected_duplicate` | Default `exclude_statuses=("archived","rejected","duplicate")` hides those rows; passing `exclude_statuses=()` returns all four statuses. |
+| 5 | `test_semantic_search_orthogonal_vector_returns_empty` | A finding at ``e_1`` (orthogonal to the query at ``e_0``) is below the 0.5 threshold so the result list is empty — no false positives at the cosine floor. |
+
+Per-test isolation via the `semantic-pg-test-` program-handle prefix
+namespace; the fixture deletes that namespace before and after every
+test. No new src code, no new migrations.
+
+### Round 11 status delta
+
+| Item | After Round 10 | After Round 11 |
+|---|---|---|
+| `DedupStore.semantic_search` live-PG coverage | mock-only | **5 real-PG tests** (exact match, threshold tiers, cross-program, status exclusion, orthogonal floor) |
+| Integration test count | 61 | **66** (+5) |
+
+### Open follow-ups
+
+* **`1.1e-deploy`** — recon container Dockerfile build + registry push.
+* **`1.1f-deploy`** — R2 live-credential verification.
 * **Round 9 follow-up: validator-spec compliance audit** — assert every
   `findings.status='validated'` row has a paired `dedup_fingerprints`
   entry on the next orchestrator dry-run.
