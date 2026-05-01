@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "ssrf_imds",
+    "url": "http://localhost:5100/v1?url=__placeholder__",
+    "param": "url",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before running",
+    "tags": ["example", "do-not-run"]
+  }
+]

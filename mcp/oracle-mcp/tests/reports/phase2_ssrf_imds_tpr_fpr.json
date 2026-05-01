@@ -1,0 +1,463 @@
+{
+  "oracle": "ssrf_imds",
+  "total": 20,
+  "true_positives": 10,
+  "false_positives": 0,
+  "true_negatives": 10,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v1?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "naive ?url= proxy",
+        "tags": [
+          "aws",
+          "naive"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v2?u=__placeholder__",
+        "param": "u",
+        "expected_verdict": "validated",
+        "label": "?u= param name variation",
+        "tags": [
+          "aws",
+          "param-rename"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "u"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v3?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "host allowlist includes 169.254.169.254",
+        "tags": [
+          "aws",
+          "allowlist-bypass"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v4?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "scheme allowlist http+https",
+        "tags": [
+          "aws",
+          "scheme-allowlist"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v5?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "HTML wrapper preserves markers",
+        "tags": [
+          "aws",
+          "html-wrap"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v6?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "JSON envelope preserves markers",
+        "tags": [
+          "aws",
+          "json-wrap"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v7?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "/redirect suffix stripped server-side",
+        "tags": [
+          "aws",
+          "url-rewrite"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v8?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "blocks 169.254.169.254 \u2014 leaks GCP",
+        "tags": [
+          "gcp",
+          "partial-defense"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "gcp",
+        "imds_url": "http://metadata.google.internal/computeMetadata/v1/",
+        "marker": "email",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v9?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "blocks /latest/ path \u2014 leaks GCP",
+        "tags": [
+          "gcp",
+          "azure",
+          "path-filter"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "gcp",
+        "imds_url": "http://metadata.google.internal/computeMetadata/v1/",
+        "marker": "email",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/v10?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "validated",
+        "label": "timestamp prefix preserves markers",
+        "tags": [
+          "aws",
+          "prefix-wrap"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "provider": "aws",
+        "imds_url": "http://169.254.169.254/latest/meta-data/",
+        "marker": "ami-id",
+        "param": "url"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c1?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "strict example.com allowlist",
+        "tags": [
+          "allowlist"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c2?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "explicit IMDS-host deny",
+        "tags": [
+          "deny-list"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c3?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "marker stripping",
+        "tags": [
+          "sanitize"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c4?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "length-only response",
+        "tags": [
+          "no-body"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c5?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "RFC1918 + link-local + host deny",
+        "tags": [
+          "ip-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c6?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "https-only scheme",
+        "tags": [
+          "scheme-filter"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c7?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "static OK response",
+        "tags": [
+          "static"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c8?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "queued status JSON",
+        "tags": [
+          "static"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c9?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "base64-encoded body",
+        "tags": [
+          "transform"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssrf_imds",
+        "url": "http://localhost:5100/c10?url=__placeholder__",
+        "param": "url",
+        "expected_verdict": "unreproducible",
+        "label": "SHA-256 hash response",
+        "tags": [
+          "transform"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "url",
+        "providers_tried": [
+          "aws",
+          "gcp",
+          "azure"
+        ]
+      }
+    }
+  ]
+}
