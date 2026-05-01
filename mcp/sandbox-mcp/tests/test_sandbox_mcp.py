@@ -378,3 +378,73 @@ def test_select_driver_firecracker_not_implemented(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(srv, "_driver", None)
     with pytest.raises(RuntimeError, match="FirecrackerDriver"):
         srv._select_driver()
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — strict bool gate, bounded streaming output.
+# ---------------------------------------------------------------------------
+
+
+async def test_local_driver_rejects_string_false_dev_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``"dev_mode_sandbox": "false"`` (string, truthy) MUST NOT bypass
+    the gate. Pre-fix, the gate used ``if not claims.get(...)`` which
+    rejected only falsey values; the literal string ``"false"`` is
+    non-empty and therefore truthy → would have allowed exec."""
+    monkeypatch.setenv(DEV_MODE_ENV, "1")
+    driver = LocalSubprocessDriver()
+    req = RunRequest(
+        finding_id="f1",
+        scope_token=_make_jwt({DEV_MODE_JWT_CLAIM: "false"}),
+        egress_allowlist=(),
+        command="echo hi",
+    )
+    with pytest.raises(RuntimeError, match=DEV_MODE_JWT_CLAIM):
+        await driver.run(req)
+
+
+async def test_local_driver_rejects_truthy_non_bool_dev_claim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``1`` is truthy — but the claim must be the literal boolean
+    ``true``, not any truthy value."""
+    monkeypatch.setenv(DEV_MODE_ENV, "1")
+    driver = LocalSubprocessDriver()
+    req = RunRequest(
+        finding_id="f1",
+        scope_token=_make_jwt({DEV_MODE_JWT_CLAIM: 1}),
+        egress_allowlist=(),
+        command="echo hi",
+    )
+    with pytest.raises(RuntimeError, match=DEV_MODE_JWT_CLAIM):
+        await driver.run(req)
+
+
+async def test_local_driver_caps_runaway_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A subprocess emitting more than MAX_OUTPUT_BYTES of stdout must
+    not OOM the orchestrator. Pre-fix, ``proc.communicate()`` buffered
+    the entire output before truncation. Post-fix, the bounded
+    streaming reader caps in-memory bytes at MAX_OUTPUT_BYTES."""
+    monkeypatch.setenv(DEV_MODE_ENV, "1")
+    from sandbox_mcp.types import MAX_OUTPUT_BYTES
+
+    driver = LocalSubprocessDriver()
+    # Emit ~ 2 × MAX_OUTPUT_BYTES via a tight loop. The truncation
+    # marker is appended inside the cap, so the final bytes are <=
+    # MAX_OUTPUT_BYTES (the slice in run() enforces a hard ceiling).
+    target_bytes = 2 * MAX_OUTPUT_BYTES
+    cmd = f"yes A | head -c {target_bytes}"
+    req = RunRequest(
+        finding_id="f1",
+        scope_token=_make_jwt({DEV_MODE_JWT_CLAIM: True}),
+        egress_allowlist=(),
+        command=cmd,
+        timeout_sec=10,
+    )
+    result = await driver.run(req)
+    # Result must exist + be capped. encode() length is what matters
+    # for the memory bound, since stdout decode keeps the same byte
+    # count under the replace-error policy for ASCII.
+    assert len(result.stdout.encode("utf-8")) <= MAX_OUTPUT_BYTES
+    assert result.verdict in {Verdict.SUCCESS, Verdict.CRASH}

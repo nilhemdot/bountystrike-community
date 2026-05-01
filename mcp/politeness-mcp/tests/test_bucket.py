@@ -253,3 +253,80 @@ async def test_request_count_increments() -> None:
         await limiter.acquire("count.example.com")
     s = await limiter.status("count.example.com")
     assert s["request_count"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — per-host lock prevents same-host concurrent
+# acquires from blowing past the rate limit.
+# ---------------------------------------------------------------------------
+
+
+async def test_per_host_lock_created_per_host() -> None:
+    """Sanity: a per-host lock exists for each tracked host and is
+    distinct across hosts. Required so that same-host calls serialise
+    while cross-host calls remain concurrent."""
+    limiter, _clock = make_limiter()
+    await limiter.acquire("a.example.com")
+    await limiter.acquire("b.example.com")
+    assert "a.example.com" in limiter._host_locks
+    assert "b.example.com" in limiter._host_locks
+    assert (
+        limiter._host_locks["a.example.com"]
+        is not limiter._host_locks["b.example.com"]
+    )
+    # Same host — same lock object on second acquire.
+    a_lock = limiter._host_locks["a.example.com"]
+    await limiter.acquire("a.example.com")
+    assert limiter._host_locks["a.example.com"] is a_lock
+
+
+async def test_concurrent_same_host_acquires_respect_rps() -> None:
+    """Pre-fix: N concurrent same-host acquires after capacity drained
+    would all sleep with the same ``would_wait`` and decrement after
+    the same single advance — total clock advance ≈ would_wait, not
+    N × would_wait. Per-host RPS collapsed to N tokens per
+    would_wait.
+
+    Post-fix: per-host lock serialises the post-drain sleeps, so
+    total clock advance is proportional to N. Test asserts the lower
+    bound that proves serialisation happened.
+    """
+    import asyncio as _asyncio
+
+    limiter, clock = make_limiter(default_rps=2)
+    host = "samehost.example.com"
+    # Drain initial 2-token capacity.
+    for _ in range(2):
+        await limiter.acquire(host)
+    t0 = clock.now()
+    # Fire 4 concurrent same-host acquires that all need to wait.
+    results = await _asyncio.gather(*[limiter.acquire(host) for _ in range(4)])
+    elapsed = clock.now() - t0
+    # All grants must have succeeded.
+    assert all(r["granted"] for r in results), [r for r in results if not r["granted"]]
+    # 4 over-capacity tokens at 2 RPS = 4 / 2 = 2.0s of total wait.
+    # Pre-fix this collapsed to ~0.5s (single overlap). Lower bound
+    # 1.0s is generous enough to be deterministic but tight enough to
+    # fail loudly if the per-host lock is removed.
+    assert elapsed >= 1.0, f"clock only advanced {elapsed:.3f}s — TOCTOU likely back"
+
+
+async def test_concurrent_cross_host_acquires_do_not_serialise() -> None:
+    """Two different hosts that are both at capacity must not block on
+    each other's per-host lock — the lock is per-host, not global."""
+    import asyncio as _asyncio
+
+    limiter, clock = make_limiter(default_rps=2)
+    # Drain host A's capacity.
+    for _ in range(2):
+        await limiter.acquire("a.example.com")
+    t0 = clock.now()
+    # Concurrent waiter on A + immediate grant on B. B should NOT wait
+    # for A's lock — different host, different lock.
+    a_result, b_result = await _asyncio.gather(
+        limiter.acquire("a.example.com"),
+        limiter.acquire("b.example.com"),
+    )
+    # B was at full capacity, must have been granted immediately.
+    assert b_result["waited_s"] == 0.0
+    assert a_result["waited_s"] > 0.0

@@ -67,7 +67,27 @@ class TokenBucketLimiter:
         self._now: Callable[[], float] = time_source or _time.monotonic
         self._sleep = sleep_fn or asyncio.sleep
         self._buckets: dict[str, HostBucket] = {}
+        # Global lock — guards ``_buckets`` / ``_host_locks`` dict
+        # mutations only. Held briefly; never spans the sleep.
         self._lock = asyncio.Lock()
+        # Per-host lock — serialises concurrent acquires for the SAME
+        # host across the sleep window. Without this, N coroutines
+        # waiting on the same host all sleep concurrently with the
+        # same projected wait, all wake, all decrement; per-host RPS
+        # collapses to N tokens served per ``would_wait`` seconds.
+        # (Audit reviewer 4, HIGH.)
+        self._host_locks: dict[str, asyncio.Lock] = {}
+
+    def _get_host_lock(self, host: str) -> asyncio.Lock:
+        """Return (creating if needed) the per-host serialising lock.
+
+        Caller MUST hold ``self._lock`` so the dict mutation is safe.
+        """
+        lock = self._host_locks.get(host)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._host_locks[host] = lock
+        return lock
 
     def _refill(self, bucket: HostBucket) -> None:
         now = self._now()
@@ -114,42 +134,66 @@ class TokenBucketLimiter:
         ``granted`` is True iff the token was successfully consumed; it is
         False when the projected wait exceeds ``MAX_WAIT_SECONDS`` — the
         caller decides whether to retry or skip.
+
+        Concurrency: same-host calls serialise on a per-host lock so
+        the ``would_wait`` projection does not race. Different hosts
+        proceed concurrently — the per-host lock isolates them.
         """
+        # Step 1 — under the global lock, get/create the bucket and
+        # the per-host lock. This is a fast hop, never spans a sleep.
         async with self._lock:
             bucket = self._get_or_create(host, rps_limit)
-            self._refill(bucket)
-            if bucket.tokens >= 1.0:
-                bucket.tokens -= 1.0
+            host_lock = self._get_host_lock(host)
+
+        # Step 2 — serialise same-host acquires under the per-host
+        # lock. Cross-host calls take their own per-host lock and
+        # proceed in parallel.
+        async with host_lock:
+            async with self._lock:
+                self._refill(bucket)
+                if bucket.tokens >= 1.0:
+                    bucket.tokens -= 1.0
+                    bucket.request_count += 1
+                    return {
+                        "host": host,
+                        "waited_s": 0.0,
+                        "would_wait_s": 0.0,
+                        "granted": True,
+                    }
+                rate = self._effective_rate(bucket, self._now())
+                need = 1.0 - bucket.tokens
+                would_wait = need / rate if rate > 0 else MAX_WAIT_SECONDS + 1
+                if would_wait > MAX_WAIT_SECONDS:
+                    return {
+                        "host": host,
+                        "waited_s": 0.0,
+                        "would_wait_s": would_wait,
+                        "granted": False,
+                    }
+
+            # Sleep WITHIN the per-host lock — concurrent same-host
+            # acquires queue behind this one — but OUTSIDE the global
+            # lock so other hosts are unaffected.
+            await self._sleep(would_wait)
+
+            async with self._lock:
+                self._refill(bucket)
+                # Post-sleep, prefer the normal decrement when refill
+                # has actually replenished a full token; fall back to
+                # the floor-to-zero decrement when refill math
+                # under-shoots (clock-skew, rounding) — we already
+                # waited for a token, so consume one regardless.
+                if bucket.tokens >= 1.0:
+                    bucket.tokens -= 1.0
+                else:
+                    bucket.tokens = max(0.0, bucket.tokens - 1.0)
                 bucket.request_count += 1
                 return {
                     "host": host,
-                    "waited_s": 0.0,
-                    "would_wait_s": 0.0,
+                    "waited_s": would_wait,
+                    "would_wait_s": would_wait,
                     "granted": True,
                 }
-            rate = self._effective_rate(bucket, self._now())
-            need = 1.0 - bucket.tokens
-            would_wait = need / rate if rate > 0 else MAX_WAIT_SECONDS + 1
-            if would_wait > MAX_WAIT_SECONDS:
-                return {
-                    "host": host,
-                    "waited_s": 0.0,
-                    "would_wait_s": would_wait,
-                    "granted": False,
-                }
-        # Sleep outside the lock so other hosts proceed concurrently.
-        await self._sleep(would_wait)
-        async with self._lock:
-            bucket = self._get_or_create(host, rps_limit)
-            self._refill(bucket)
-            bucket.tokens = max(0.0, bucket.tokens - 1.0)
-            bucket.request_count += 1
-            return {
-                "host": host,
-                "waited_s": would_wait,
-                "would_wait_s": would_wait,
-                "granted": True,
-            }
 
     async def report(
         self,
