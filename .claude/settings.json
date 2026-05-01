@@ -1,0 +1,42 @@
+{
+  "$schema": "https://claude.ai/schemas/claude-code/settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool_killswitch.py"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Write|Edit|MultiEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool_antislop.py"
+          }
+        ]
+      },
+      {
+        "matcher": "^mcp__openrouter__openrouter_complete$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool_venice_route.py"
+          }
+        ]
+      },
+      {
+        "matcher": "^mcp__[a-z0-9_-]+__submit_",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/pretool_approval_gate.py"
+          }
+        ]
+      }
+    ]
+  }
+}
