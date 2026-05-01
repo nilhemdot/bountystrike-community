@@ -73,11 +73,15 @@ def compute(vector: str) -> dict:
         impl = CVSS3(vector)
     else:
         impl = CVSS4(vector)
+    # The ``cvss`` library returns a score already rounded per the FIRST
+    # spec ("round-up to one decimal"). Re-rounding with Python's
+    # banker's-rounding ``round()`` shifts edge values (e.g. 9.05 stays
+    # 9.0 with bankers but the spec wants 9.1). Trust the library.
     score = float(impl.base_score)
     return {
         "vector": vector,
         "version": version,
-        "base_score": round(score, 1),
+        "base_score": score,
         "severity": severity_from_score(score),
     }
 

@@ -102,23 +102,25 @@ async def test_submit_sends_bearer(client, base_kwargs) -> None:
 
 
 @respx.mock
-async def test_submit_body_shape_includes_required_fields(client, base_kwargs) -> None:
+async def test_submit_body_field_values(client, base_kwargs) -> None:
+    """Tighter than a key-presence check — assert each field's *value*
+    matches the input. Audit reviewer 1 flagged that key-only
+    assertions can mask a regression that drops or swaps fields."""
     route = respx.post(
         f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     await client.submit_report(**base_kwargs)
     body = json.loads(route.calls[0].request.content)
-    for k in (
-        "programId",
-        "title",
-        "endpointUrl",
-        "severity",
-        "type",
-        "description",
-        "proofOfConcept",
-        "impact",
-    ):
-        assert k in body
+    assert body == {
+        "programId": base_kwargs["program_id"],
+        "title": base_kwargs["title"],
+        "endpointUrl": base_kwargs["endpoint_url"],
+        "severity": base_kwargs["severity"].lower(),
+        "type": base_kwargs["vuln_type"],
+        "description": base_kwargs["description"],
+        "proofOfConcept": base_kwargs["proof_of_concept"],
+        "impact": base_kwargs["impact"],
+    }
 
 
 @respx.mock

@@ -123,23 +123,27 @@ async def test_submit_sends_bearer_auth(client_with_mock, base_kwargs) -> None:
 
 
 @respx.mock
-async def test_submit_body_includes_required_fields(client_with_mock, base_kwargs) -> None:
+async def test_submit_body_field_values(client_with_mock, base_kwargs) -> None:
+    """Tighter than a key-presence check — assert each field's *value*
+    matches the input. A regression that drops a field, sends severity
+    in upper-case, or swaps cvss for description would slip past a
+    keys-only test (audit reviewer 1 flagged this as a false-green
+    risk)."""
     route = respx.post(
         f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
     ).respond(201, json={"id": 1, "title": "x", "state": "ASKED"})
     await client_with_mock.submit_report(**base_kwargs)
     import json
     sent_body = json.loads(route.calls[0].request.content)
-    for key in (
-        "title",
-        "scope",
-        "vulnerability_type",
-        "severity",
-        "cvss",
-        "description",
-        "exploit_information",
-    ):
-        assert key in sent_body
+    assert sent_body == {
+        "title": base_kwargs["title"],
+        "scope": base_kwargs["scope"],
+        "vulnerability_type": base_kwargs["vulnerability_type"],
+        "severity": base_kwargs["severity"].lower(),
+        "cvss": base_kwargs["cvss_vector"],
+        "description": base_kwargs["description"],
+        "exploit_information": base_kwargs["exploit_information"],
+    }
 
 
 # ---------------------------------------------------------------------------

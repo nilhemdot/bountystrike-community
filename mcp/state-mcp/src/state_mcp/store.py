@@ -40,13 +40,32 @@ FINDING_STATUSES: frozenset[str] = frozenset({
 })
 
 
+def _strip_asyncpg_driver(dsn: str) -> str:
+    """Strip the SQLAlchemy ``+asyncpg`` driver suffix from the scheme.
+
+    asyncpg's ``create_pool`` accepts ``postgresql://`` but not the
+    SQLAlchemy-style ``postgresql+asyncpg://``. Naive substring replace
+    on the full DSN would also corrupt a password literal containing
+    the ``+asyncpg`` substring (hypothetical, but defensive). Parse the
+    scheme portion explicitly so only the driver suffix is touched.
+    """
+    if "://" not in dsn:
+        return dsn
+    scheme, rest = dsn.split("://", 1)
+    if "+" in scheme:
+        base, suffix = scheme.split("+", 1)
+        if suffix.lower() == "asyncpg":
+            scheme = base
+    return f"{scheme}://{rest}"
+
+
 class StateStore:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
     @classmethod
     async def create(cls, dsn: str) -> "StateStore":
-        pool = await asyncpg.create_pool(dsn.replace("+asyncpg", ""))
+        pool = await asyncpg.create_pool(_strip_asyncpg_driver(dsn))
         return cls(pool)
 
     async def close(self) -> None:
@@ -203,12 +222,42 @@ class StateStore:
             args = (new_status, finding_id, expected_current_status)
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(sql, *args)
+            if row is None:
+                # Optimistic-lock UPDATE returned 0 rows. Distinguish
+                # "row does not exist" from "row exists but status
+                # mismatched the expectation" — both used to surface
+                # as the same ``updated=False`` shape, leaving the
+                # caller unable to tell whether it raced another
+                # worker or was handed a bad finding_id.
+                #
+                # The follow-up SELECT runs on the same connection so
+                # there is no extra acquire / round-trip cost beyond
+                # a single query.
+                exists_row = await conn.fetchrow(
+                    "SELECT status::text AS status FROM findings WHERE id = $1::uuid",
+                    finding_id,
+                )
         if row is None:
-            return {"updated": False, "finding_id": finding_id, "status": None}
+            current_status = (
+                exists_row["status"] if exists_row is not None else None
+            )
+            return {
+                "updated": False,
+                "finding_id": finding_id,
+                "status": current_status,
+                "finding_exists": exists_row is not None,
+                "reason": (
+                    "row_missing"
+                    if exists_row is None
+                    else "expected_status_mismatch"
+                ),
+            }
         return {
             "updated": True,
             "finding_id": finding_id,
             "status": row["status"],
+            "finding_exists": True,
+            "reason": "ok",
         }
 
 

@@ -189,7 +189,13 @@ async def test_update_status_success_no_lock(conn: AsyncMock) -> None:
     conn.fetchrow.return_value = {"status": "validated"}
     store = make_store_with_mock_conn(conn)
     out = await _update_finding_status_impl(store, "fid-1", "validated", None)
-    assert out == {"updated": True, "finding_id": "fid-1", "status": "validated"}
+    assert out == {
+        "updated": True,
+        "finding_id": "fid-1",
+        "status": "validated",
+        "finding_exists": True,
+        "reason": "ok",
+    }
 
 
 async def test_update_status_optimistic_lock_succeeds(conn: AsyncMock) -> None:
@@ -199,15 +205,42 @@ async def test_update_status_optimistic_lock_succeeds(conn: AsyncMock) -> None:
         store, "fid-1", "exploit_attempt", "hypothesis"
     )
     assert out["updated"] is True
+    assert out["reason"] == "ok"
 
 
-async def test_update_status_optimistic_lock_fails(conn: AsyncMock) -> None:
-    conn.fetchrow.return_value = None
+async def test_update_status_lock_fails_with_row_missing(conn: AsyncMock) -> None:
+    """No row exists at all — distinguish from status mismatch."""
+    conn.fetchrow.side_effect = [None, None]  # UPDATE returns 0; SELECT returns 0
     store = make_store_with_mock_conn(conn)
     out = await _update_finding_status_impl(
         store, "fid-1", "exploit_attempt", "hypothesis"
     )
-    assert out == {"updated": False, "finding_id": "fid-1", "status": None}
+    assert out == {
+        "updated": False,
+        "finding_id": "fid-1",
+        "status": None,
+        "finding_exists": False,
+        "reason": "row_missing",
+    }
+
+
+async def test_update_status_lock_fails_with_status_mismatch(conn: AsyncMock) -> None:
+    """Row exists but its current status is not what the caller
+    expected — another worker won the claim race. Caller can defer
+    cleanly without confusing this with a vanished row."""
+    # UPDATE returns 0 rows; SELECT finds the row with a different status.
+    conn.fetchrow.side_effect = [None, {"status": "validated"}]
+    store = make_store_with_mock_conn(conn)
+    out = await _update_finding_status_impl(
+        store, "fid-1", "exploit_attempt", "hypothesis"
+    )
+    assert out == {
+        "updated": False,
+        "finding_id": "fid-1",
+        "status": "validated",
+        "finding_exists": True,
+        "reason": "expected_status_mismatch",
+    }
 
 
 async def test_update_status_rejects_unknown_target() -> None:
@@ -285,3 +318,110 @@ async def test_kb_query_escapes_both_product_and_version(conn: AsyncMock) -> Non
     sent_args = conn.fetch.call_args.args
     pattern = next((a for a in sent_args if isinstance(a, str) and a.startswith("%")), None)
     assert pattern == "%p\\%a%v\\_b%"
+
+
+# ---------------------------------------------------------------------------
+# DSN driver-suffix stripping (audit reviewer 3, LOW).
+# ---------------------------------------------------------------------------
+
+
+def test_strip_asyncpg_driver_handles_sqlalchemy_form() -> None:
+    from state_mcp.store import _strip_asyncpg_driver
+
+    assert (
+        _strip_asyncpg_driver("postgresql+asyncpg://u:p@h:5432/db")
+        == "postgresql://u:p@h:5432/db"
+    )
+
+
+def test_strip_asyncpg_driver_passthrough_when_no_suffix() -> None:
+    from state_mcp.store import _strip_asyncpg_driver
+
+    assert (
+        _strip_asyncpg_driver("postgresql://u:p@h:5432/db")
+        == "postgresql://u:p@h:5432/db"
+    )
+
+
+def test_strip_asyncpg_driver_does_not_corrupt_password() -> None:
+    """A password literal containing ``+asyncpg`` (admittedly unusual)
+    must not be mangled; only the scheme suffix is touched."""
+    from state_mcp.store import _strip_asyncpg_driver
+
+    src = "postgresql://u:my+asyncpg+pass@h:5432/db"
+    assert _strip_asyncpg_driver(src) == src
+
+
+def test_strip_asyncpg_driver_handles_dsn_without_scheme() -> None:
+    from state_mcp.store import _strip_asyncpg_driver
+
+    # No ``://`` separator → return as-is. asyncpg will reject; we
+    # don't try to second-guess the input.
+    assert _strip_asyncpg_driver("not-a-dsn") == "not-a-dsn"
+
+
+# ---------------------------------------------------------------------------
+# Connection-leak guard — exception during a query must still release the
+# pool connection (audit reviewer 3, HIGH test gap). Confirms the
+# ``async with self._pool.acquire()`` context manager exits cleanly on
+# both normal and exception paths.
+# ---------------------------------------------------------------------------
+
+
+async def test_pool_releases_connection_when_query_raises() -> None:
+    """If ``conn.fetchrow`` raises, the pool's acquire context manager
+    must still call ``__aexit__`` so the connection returns to the
+    pool. Pre-fix this was untested; without the ``async with`` exit
+    contract a stray exception would leak a connection per failed
+    query and the pool would exhaust under sustained errors."""
+    from unittest.mock import MagicMock
+
+    pool = MagicMock()
+    cm = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = RuntimeError("simulated db error")
+    cm.__aenter__.return_value = conn
+    cm.__aexit__.return_value = None
+    pool.acquire = MagicMock(return_value=cm)
+
+    store = StateStore(pool)
+    with pytest.raises(RuntimeError, match="simulated db error"):
+        await store.get_finding("any-uuid")
+    # __aexit__ must have fired exactly once — that's the connection
+    # release. If the ``async with`` were missing or replaced with a
+    # bare acquire, this assertion would fail.
+    assert cm.__aexit__.await_count == 1
+
+
+async def test_pool_releases_connection_on_query_artifacts_exception() -> None:
+    from unittest.mock import MagicMock
+
+    pool = MagicMock()
+    cm = AsyncMock()
+    conn = AsyncMock()
+    conn.fetch.side_effect = RuntimeError("boom")
+    cm.__aenter__.return_value = conn
+    cm.__aexit__.return_value = None
+    pool.acquire = MagicMock(return_value=cm)
+
+    store = StateStore(pool)
+    with pytest.raises(RuntimeError, match="boom"):
+        await store.query_artifacts("any-uuid")
+    assert cm.__aexit__.await_count == 1
+
+
+async def test_pool_releases_connection_on_update_status_exception() -> None:
+    from unittest.mock import MagicMock
+
+    pool = MagicMock()
+    cm = AsyncMock()
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = RuntimeError("update boom")
+    cm.__aenter__.return_value = conn
+    cm.__aexit__.return_value = None
+    pool.acquire = MagicMock(return_value=cm)
+
+    store = StateStore(pool)
+    with pytest.raises(RuntimeError, match="update boom"):
+        await store.update_finding_status("fid-x", "validated", None)
+    assert cm.__aexit__.await_count == 1

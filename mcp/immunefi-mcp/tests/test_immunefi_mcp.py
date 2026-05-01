@@ -140,23 +140,25 @@ async def test_submit_201_authenticated(client_authed, base_kwargs) -> None:
 
 
 @respx.mock
-async def test_submit_body_shape(client_anon, base_kwargs) -> None:
+async def test_submit_body_field_values(client_anon, base_kwargs) -> None:
+    """Tighter than a key-presence check — assert each field's *value*
+    matches the input. Audit reviewer 1 flagged key-only assertions
+    as a false-green risk for regressions that drop / swap fields."""
     route = respx.post(f"{DEFAULT_BASE_URL}/v1/reports").respond(
         201, json=_success()
     )
     await client_anon.submit_report(**base_kwargs)
     body = json.loads(route.calls[0].request.content)
-    for k in (
-        "programme",
-        "title",
-        "severity",
-        "asset_type",
-        "asset",
-        "impact",
-        "vulnerability_details",
-        "proof_of_concept",
-    ):
-        assert k in body
+    assert body == {
+        "programme": base_kwargs["programme"],
+        "title": base_kwargs["title"],
+        "severity": base_kwargs["severity"].lower(),
+        "asset_type": base_kwargs["asset_type"].lower(),
+        "asset": base_kwargs["asset"],
+        "impact": base_kwargs["impact"],
+        "vulnerability_details": base_kwargs["vulnerability_details"],
+        "proof_of_concept": base_kwargs["proof_of_concept"],
+    }
 
 
 @respx.mock
