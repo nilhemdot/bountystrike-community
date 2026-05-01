@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v1?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before running",
+    "tags": ["example", "do-not-run"]
+  }
+]

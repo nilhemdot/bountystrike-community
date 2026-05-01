@@ -1,0 +1,162 @@
+[
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v1?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "naive 302 — no validation",
+    "tags": ["302", "naive"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v2?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "301 permanent — same naive shape",
+    "tags": ["301", "naive"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v3?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "307 method-preserving redirect",
+    "tags": ["307", "naive"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v4?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "weak prefix check — only blocks evil://",
+    "tags": ["302", "weak-prefix"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v5?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "two-hop chain — internal then external",
+    "tags": ["302", "multi-hop"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v6?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "blocks only javascript: scheme",
+    "tags": ["302", "scheme-denylist"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v7?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "substring denylist — only blocks 'evil'",
+    "tags": ["302", "substring-denylist"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v8?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "raw Location header — no parsing",
+    "tags": ["302", "raw-header"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v9?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "https-only — but any host accepted",
+    "tags": ["302", "scheme-allowlist"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/v10?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "validated",
+    "label": "to/next param fallback — same shape",
+    "tags": ["302", "param-alias"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c1?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "no scheme allowed — relative paths only",
+    "tags": ["allowlist", "relative"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c2?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "host allowlist (partner + legit only)",
+    "tags": ["allowlist", "host"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c3?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "no redirect — static 200",
+    "tags": ["no-redirect"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c4?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "fixed internal redirect ignores param",
+    "tags": ["fixed-target"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c5?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "regex allowlist — relative path only",
+    "tags": ["allowlist", "regex"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c6?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "rejects any URL with netloc/scheme",
+    "tags": ["allowlist", "url-parse"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c7?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "hash-based fixed allowlist — param can't steer",
+    "tags": ["fixed-target", "hash"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c8?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "same-origin check",
+    "tags": ["origin-check"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c9?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "meta-refresh only — oracle follows HTTP redirects only",
+    "tags": ["meta-refresh", "oracle-limit"]
+  },
+  {
+    "oracle": "open_redirect",
+    "url": "http://localhost:5095/c10?to=__placeholder__",
+    "param": "to",
+    "expected_verdict": "unreproducible",
+    "label": "Link header — not a redirect",
+    "tags": ["link-header"]
+  }
+]
