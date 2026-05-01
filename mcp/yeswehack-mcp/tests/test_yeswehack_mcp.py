@@ -342,3 +342,37 @@ async def test_extra_does_not_overwrite_contract_fields(
     assert body["title"] == base_kwargs["title"]
     assert body["severity"] == "medium"
     assert body["custom_field"] == "kept"
+
+
+# ---------------------------------------------------------------------------
+# 429 retry coverage.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_429_retried_then_succeeds(client_with_mock, base_kwargs) -> None:
+    with patch("yeswehack_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(
+            f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+        ).mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(201, json={"id": 99, "title": "x", "state": "ASKED"}),
+            ]
+        )
+        out = await client_with_mock.submit_report(**base_kwargs)
+    assert out["submission_id"] == 99
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_429_gives_up_after_max_retries(client_with_mock, base_kwargs) -> None:
+    with patch("yeswehack_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(
+            f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+        ).respond(429, headers={"Retry-After": "0"}, json={"error": "rate limit"})
+        with pytest.raises(YesWeHackError) as info:
+            await client_with_mock.submit_report(**base_kwargs)
+    assert info.value.status_code == 429
+    assert "rate-limited" in str(info.value)
+    assert route.call_count == 3

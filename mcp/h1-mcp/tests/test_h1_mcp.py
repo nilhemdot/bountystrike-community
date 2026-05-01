@@ -416,3 +416,48 @@ async def test_non_json_2xx_raises_typed_error(client_with_env, base_kwargs) -> 
     )
     with pytest.raises(HackerOneError, match="non-JSON 2xx body"):
         await client_with_env.submit_report(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 429 retry with Retry-After honor (audit reviewer 1, MEDIUM).
+# ---------------------------------------------------------------------------
+
+
+def test_parse_retry_after_seconds() -> None:
+    from h1_mcp.client import RETRY_AFTER_CAP_SEC, _parse_retry_after
+
+    assert _parse_retry_after("12") == 12.0
+    # Capped at RETRY_AFTER_CAP_SEC.
+    assert _parse_retry_after("99999") == RETRY_AFTER_CAP_SEC
+    # Negative rejected.
+    assert _parse_retry_after("-1") is None
+    # Empty / garbage returns None.
+    assert _parse_retry_after("") is None
+    assert _parse_retry_after("not-a-number") is None
+
+
+@respx.mock
+async def test_429_retried_then_succeeds(client_with_env, base_kwargs) -> None:
+    with patch("h1_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(201, json=_success_payload("rl-1")),
+            ]
+        )
+        out = await client_with_env.submit_report(**base_kwargs)
+    assert out["submission_id"] == "rl-1"
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_429_gives_up_after_max_retries(client_with_env, base_kwargs) -> None:
+    with patch("h1_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(
+            429, headers={"Retry-After": "0"}, json={"errors": [{"status": "429"}]}
+        )
+        with pytest.raises(HackerOneError) as info:
+            await client_with_env.submit_report(**base_kwargs)
+    assert info.value.status_code == 429
+    assert "rate-limited" in str(info.value)
+    assert route.call_count == 3  # initial + 2 retries

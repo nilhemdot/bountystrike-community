@@ -86,6 +86,40 @@ def _truncate_body(body: Any) -> Any:
     return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
 
+# RFC 7231 §7.1.3 — Retry-After is either an integer seconds count or
+# an HTTP-date. We honor seconds; HTTP-date parsing is deferred (rare
+# in practice for API rate limits, and the fallback backoff still
+# produces correct retry behaviour).
+RETRY_AFTER_CAP_SEC = 60
+
+
+def _parse_retry_after(value: str) -> float | None:
+    """Return seconds to wait per a Retry-After header, or None."""
+    if not value:
+        return None
+    value = value.strip()
+    try:
+        secs = float(value)
+        if secs < 0:
+            return None
+        return min(secs, RETRY_AFTER_CAP_SEC)
+    except ValueError:
+        # HTTP-date form — try to parse via email.utils.parsedate_to_datetime
+        try:
+            from datetime import datetime, timezone
+            from email.utils import parsedate_to_datetime
+
+            target = parsedate_to_datetime(value)
+            if target.tzinfo is None:
+                target = target.replace(tzinfo=timezone.utc)
+            delta = (target - datetime.now(tz=timezone.utc)).total_seconds()
+            if delta < 0:
+                return 0.0
+            return min(delta, RETRY_AFTER_CAP_SEC)
+        except Exception:
+            return None
+
+
 H1_SEVERITIES: frozenset[str] = frozenset(
     {"none", "low", "medium", "high", "critical"}
 )
@@ -251,8 +285,36 @@ class HackerOneClient:
                     "raw": payload,
                 }
 
+            if resp.status_code == 429:
+                # 429 — retried with the server's Retry-After hint when
+                # provided, otherwise the standard backoff. Capped at
+                # RETRY_AFTER_CAP_SEC so a hostile / buggy upstream
+                # cannot stall the orchestrator for hours.
+                if attempt < MAX_RETRIES:
+                    server_wait = _parse_retry_after(
+                        resp.headers.get("retry-after", "")
+                    )
+                    backoff_wait = RETRY_BACKOFF_S[
+                        min(attempt, len(RETRY_BACKOFF_S) - 1)
+                    ]
+                    import asyncio as _asyncio
+
+                    await _asyncio.sleep(
+                        max(server_wait or 0.0, backoff_wait)
+                    )
+                    continue
+                try:
+                    body_obj = resp.json()
+                except Exception:
+                    body_obj = resp.text
+                raise HackerOneError(
+                    f"rate-limited (429) after {MAX_RETRIES + 1} attempts",
+                    status_code=429,
+                    body=_truncate_body(body_obj),
+                )
+
             if 400 <= resp.status_code < 500:
-                # 4xx — never retried.
+                # Other 4xx — never retried; caller must fix the report.
                 try:
                     body_obj = resp.json()
                 except Exception:

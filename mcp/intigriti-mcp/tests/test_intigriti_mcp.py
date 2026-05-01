@@ -340,3 +340,35 @@ async def test_error_body_truncated(client, base_kwargs) -> None:
     )
     assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
     assert "TRUNCATED" in body_repr
+
+
+# ---------------------------------------------------------------------------
+# 429 retry coverage.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_429_retried_then_succeeds(client, base_kwargs) -> None:
+    with patch("intigriti_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/submissions").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(201, json={"id": "rl-1", "state": "Open"}),
+            ]
+        )
+        out = await client.submit_report(**base_kwargs)
+    assert out["submission_id"] == "rl-1"
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_429_gives_up_after_max_retries(client, base_kwargs) -> None:
+    with patch("intigriti_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/submissions").respond(
+            429, headers={"Retry-After": "0"}, json={"error": "rate limit"}
+        )
+        with pytest.raises(IntigritiError) as info:
+            await client.submit_report(**base_kwargs)
+    assert info.value.status_code == 429
+    assert "rate-limited" in str(info.value)
+    assert route.call_count == 3

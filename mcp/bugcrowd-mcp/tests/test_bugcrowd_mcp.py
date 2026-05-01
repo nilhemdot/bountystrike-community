@@ -352,3 +352,35 @@ async def test_non_json_2xx_raises_typed_error(client, base_kwargs) -> None:
     )
     with pytest.raises(BugcrowdError, match="non-JSON 2xx body"):
         await client.submit_report(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 429 retry coverage.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_429_retried_then_succeeds(client, base_kwargs) -> None:
+    with patch("bugcrowd_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/submissions").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(201, json=_success_jsonapi()),
+            ]
+        )
+        out = await client.submit_report(**base_kwargs)
+    assert out["submission_id"] == _SUBMISSION_UUID
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_429_gives_up_after_max_retries(client, base_kwargs) -> None:
+    with patch("bugcrowd_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+            429, headers={"Retry-After": "0"}, json={"errors": [{"status": "429"}]}
+        )
+        with pytest.raises(BugcrowdError) as info:
+            await client.submit_report(**base_kwargs)
+    assert info.value.status_code == 429
+    assert "rate-limited" in str(info.value)
+    assert route.call_count == 3

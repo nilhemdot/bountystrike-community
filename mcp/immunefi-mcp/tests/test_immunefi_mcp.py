@@ -350,3 +350,35 @@ async def test_non_json_2xx_raises_typed_error(client_anon, base_kwargs) -> None
     )
     with pytest.raises(ImmunefiError, match="non-JSON 2xx body"):
         await client_anon.submit_report(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# 429 retry coverage.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_429_retried_then_succeeds(client_anon, base_kwargs) -> None:
+    with patch("immunefi_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/reports").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(201, json=_success()),
+            ]
+        )
+        out = await client_anon.submit_report(**base_kwargs)
+    assert out["submission_id"] == "rep-uuid"
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_429_gives_up_after_max_retries(client_anon, base_kwargs) -> None:
+    with patch("immunefi_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
+        route = respx.post(f"{DEFAULT_BASE_URL}/v1/reports").respond(
+            429, headers={"Retry-After": "0"}, json={"error": "rate limit"}
+        )
+        with pytest.raises(ImmunefiError) as info:
+            await client_anon.submit_report(**base_kwargs)
+    assert info.value.status_code == 429
+    assert "rate-limited" in str(info.value)
+    assert route.call_count == 3

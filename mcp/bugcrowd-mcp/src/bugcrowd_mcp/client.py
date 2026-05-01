@@ -96,6 +96,34 @@ def _truncate_body(body: Any) -> Any:
     head = s[: MAX_ERROR_BODY_BYTES - 64]
     return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
+
+RETRY_AFTER_CAP_SEC = 60
+
+
+def _parse_retry_after(value: str) -> float | None:
+    if not value:
+        return None
+    value = value.strip()
+    try:
+        secs = float(value)
+        if secs < 0:
+            return None
+        return min(secs, RETRY_AFTER_CAP_SEC)
+    except ValueError:
+        try:
+            from datetime import datetime, timezone
+            from email.utils import parsedate_to_datetime
+
+            target = parsedate_to_datetime(value)
+            if target.tzinfo is None:
+                target = target.replace(tzinfo=timezone.utc)
+            delta = (target - datetime.now(tz=timezone.utc)).total_seconds()
+            if delta < 0:
+                return 0.0
+            return min(delta, RETRY_AFTER_CAP_SEC)
+        except Exception:
+            return None
+
 # Severity name → Bugcrowd integer (P1..P5).
 SEVERITY_TO_INT: dict[str, int] = {
     "critical": 1,
@@ -251,6 +279,30 @@ class BugcrowdClient:
                     "created_at": attrs.get("created_at"),
                     "raw": payload,
                 }
+
+            if resp.status_code == 429:
+                if attempt < MAX_RETRIES:
+                    server_wait = _parse_retry_after(
+                        resp.headers.get("retry-after", "")
+                    )
+                    backoff_wait = RETRY_BACKOFF_S[
+                        min(attempt, len(RETRY_BACKOFF_S) - 1)
+                    ]
+                    import asyncio as _asyncio
+
+                    await _asyncio.sleep(
+                        max(server_wait or 0.0, backoff_wait)
+                    )
+                    continue
+                try:
+                    body_obj = resp.json()
+                except Exception:
+                    body_obj = resp.text
+                raise BugcrowdError(
+                    f"rate-limited (429) after {MAX_RETRIES + 1} attempts",
+                    status_code=429,
+                    body=_truncate_body(body_obj),
+                )
 
             if 400 <= resp.status_code < 500:
                 try:
