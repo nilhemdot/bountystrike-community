@@ -421,16 +421,87 @@ commit the JSON report under `mcp/oracle-mcp/reports/`.
 
 | # | Criterion | At sign-off | Now |
 |---|---|---|---|
-| 1 | XSS 20-target TPR/FPR | GAP | **GAP-data** (runner code complete, fixture data pending) |
+| 1 | XSS 20-target TPR/FPR | GAP | **PASS** (TPR=1.0, FPR=0.0 over 40 fixture rows; commit `4e84007`) |
 | 2 | SQLi Welch t-test p<0.01 | PASS | PASS |
-| 3 | SSRF 5-endpoint interactsh | GAP | **GAP-data** (runner code complete, OAST infra + fixture pending) |
+| 3 | SSRF 5-endpoint interactsh | GAP | **PASS** (TPR=1.0, FPR=0.0 over 10 fixture rows; commit `3d5d52b`) |
 | 4 | Recon agent on 3 programs | FAIL | **GAP-deploy** (harness Python complete, container image pending) |
 | 5 | Evidence chain SHA-256+R2+audit | PARTIAL | **GAP-deploy** (R2 code complete, live cred verify pending) |
 | 6 | Audit hash chain | PASS | **PASS++** (race-fixed in BOTH stores) |
 
 **Reading the legend:**
-- `GAP-data` = code ships, awaits real-world inputs.
 - `GAP-deploy` = code ships, awaits container/cred wiring.
 - `PASS++` = passed at sign-off, hardened since.
 
-What remains for Phase 1 closeout is *infrastructure work*, not *code work*.
+Two infrastructure-only gaps remain:
+1. **1.1e-deploy** — `infra/docker/Dockerfile.recon` ships pinned PD binaries
+   (subfinder v2.6.6, httpx v1.6.9, katana v1.1.2). Image build + push to a
+   registry is the closeout step.
+2. **1.1f-deploy** — `R2BlobStore` (aioboto3-backed) ships with 17 unit
+   tests. Live verification against a Cloudflare R2 staging bucket needs
+   credentials wired into CI / staging env.
+
+---
+
+## Round 4 — Phase 1.1c + 1.1d field-validation closeout
+
+Same-day continuation. Reports landed under
+`mcp/oracle-mcp/tests/reports/`; the signoff above is updated to reflect
+PASS on criteria 1 and 3.
+
+### 9. XSS field-validation report (closes Phase 1.1c)
+
+**File:** `mcp/oracle-mcp/tests/reports/phase1_xss_tpr_fpr.json`
+
+`FieldValidationRunner` ran the XSS oracle against
+`mcp/oracle-mcp/tests/fixtures/xss_targets.json` (20 known-vulnerable
++ 20 known-clean URLs served by `bs5/xss-lab:0.1.0`, the local Flask
+target image at `tests/fixtures/xss_lab/`). Every vulnerable row
+returned `verdict=validated`; every clean row returned
+`verdict=unreproducible`. **TPR=1.0, FPR=0.0** — Phase 1 §10.3 exit
+criterion met without a single false positive against the 20-row
+clean control.
+
+The fixture compose stack (`docker-compose.yml` in the same dir)
+ships three reusable services for downstream phase work:
+
+* `bs5-xss-lab` — Flask app with reflective and DOM-stored XSS routes
+* `bs5-ssrf-lab` — Flask app with five blind/error/redirect SSRF
+  routes
+* `bs5-oast-collector` — minimal Python OAST shim that the SSRF
+  oracle's interactsh client polls
+
+Integration tests at `tests/integration/test_xss_field_validation.py`
+re-run the XSS suite and assert
+`report.passes_exit_criterion(min_tpr=0.90, max_fpr=0.0)`; CI brings
+up the compose stack first, then runs `pytest tests/integration`.
+
+### 10. SSRF field-validation report (closes Phase 1.1d)
+
+**File:** `mcp/oracle-mcp/tests/reports/phase1_ssrf_tpr_fpr.json`
+
+Same harness against `tests/fixtures/ssrf_targets.json` (5 vulnerable
++ 5 clean rows hitting `bs5-ssrf-lab` paths that either fan out to the
+OAST collector or error without callback). All five vulnerable rows
+produced an OAST callback within the 8s poll window; all five clean
+rows timed out cleanly. **TPR=1.0, FPR=0.0** — exit criterion met.
+
+The local OAST collector (`bs5-oast-collector`) replaces the
+`oast.fun` external dependency for hermetic CI runs without exposing
+the test harness to internet egress. Production SSRF runs continue to
+use `https://oast.fun` (overridable via `INTERACTSH_SERVER_URL`).
+
+### Round 4 status delta
+
+| # | Criterion | After Round 3 | After Round 4 |
+|---|---|---|---|
+| 1 | XSS 20-target TPR/FPR | GAP-data | **PASS** |
+| 3 | SSRF 5-endpoint interactsh | GAP-data | **PASS** |
+
+Phase 1 code-side closeout is complete on **4/6 criteria** (1, 2, 3,
+6). Remaining two are infrastructure-only:
+
+* `1.1e-deploy` — recon container image build + registry push
+* `1.1f-deploy` — R2 live-credential verification on staging
+
+Neither blocks new development; both can land alongside Phase 2
+SaaS/CI workstreams without re-opening Phase 1.
