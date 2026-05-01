@@ -1126,5 +1126,87 @@ to its `fetch` / `fetchval` methods to model the audit queries:
 
 ### Open follow-ups
 
-* **`1.1e-deploy`** — recon container Dockerfile build + registry push.
 * **`1.1f-deploy`** — R2 live-credential verification.
+
+---
+
+## Round 14 — `1.1e-deploy` recon image CI (closes 1.1e code-side)
+
+`infra/docker/Dockerfile.recon` (97 lines) had been complete since
+Phase 1 Round 3 (multi-stage build, pinned subfinder v2.6.6 / httpx
+v1.6.9 / katana v1.1.2, version smoke-check, non-root user, tini
+PID-1, importability check). What was missing for `1.1e-deploy` was
+CI plumbing — the image had no path to a registry. Round 14 closes
+that gap.
+
+### 33. `.dockerignore`
+
+**File:** `.dockerignore` (repo root, NEW)
+
+Without a `.dockerignore`, the build context shipped 593MB into
+the daemon (`.venv/` alone was 510MB). After this file the
+effective context drops to ~62MB. Excludes:
+
+* VCS metadata (`.git/`, `.github/`, `.gitignore`, `.gitattributes`).
+* Python virtual envs + bytecode caches (`.venv/`, `**/__pycache__/`,
+  `**/*.py[cod]`, `**/*.egg-info/`).
+* Tooling caches (`.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`,
+  `.coverage`, `htmlcov/`, `.tox/`).
+* Editor / OS detritus (`.idea/`, `.vscode/`, `.DS_Store`, `*.swp`).
+* Session memory + transient working dirs (`learn/`).
+* Documentation (`docs/`, `README.md`, root `*.md`).
+* Top-level `tests/` (recon image only ships `control-plane/tests/`
+  via the existing `Dockerfile.recon` line 80 COPY).
+* Other `infra/docker/` artefacts (Caddyfile, docker-compose.yml)
+  and `infra/sql/` migrations — recon image doesn't consume them.
+* Claude Code agent specs + project-local config (`.mcp.json`,
+  `.claude/`, `.claude-flow/`, `pyrightconfig.json`).
+* Plan / spec scratch (`plans/`, `.specs/`).
+
+### 34. `.github/workflows/recon-image.yml`
+
+**File:** `.github/workflows/recon-image.yml` (NEW). Repo had zero
+GitHub Actions before this round — this is the first workflow.
+
+* **Trigger:** `push: { branches: [master] }` with `paths` filter on
+  `control-plane/**`, `infra/docker/Dockerfile.recon`, `pyproject.toml`,
+  `uv.lock`, `.dockerignore`, the workflow file itself. PR builds
+  intentionally skipped per the `1.1e-deploy` plan.
+* **Auth:** ghcr.io via OIDC — `permissions: contents: read +
+  packages: write + id-token: write`. No PAT secret to manage.
+* **Concurrency:** `recon-image-${{ github.ref }}` with
+  `cancel-in-progress: true` so superseded master pushes don't
+  waste runner minutes.
+* **Steps:** checkout → `setup-buildx-action@v3` →
+  `login-action@v3` (ghcr.io with `${{ secrets.GITHUB_TOKEN }}`) →
+  `metadata-action@v5` computing tags + OCI labels →
+  `build-push-action@v6` with GHA layer cache + provenance + SBOM.
+* **Tag matrix per push:** `latest` (master only), `sha-<short>`
+  (always), `run-<github.run_id>` (always — full traceability into
+  the Actions run that produced the image).
+* **Image name:** `ghcr.io/${{ github.repository_owner }}/bs-recon`
+  (lowercased by metadata-action — ghcr.io requires lowercase).
+
+### Round 14 status delta
+
+| Item | After Round 13 | After Round 14 |
+|---|---|---|
+| `1.1e-deploy` recon container CI | OPEN (Dockerfile shipped, no push path) | **CLOSED code-side** (`.dockerignore` + `recon-image.yml` workflow with OIDC + GHA cache + provenance + SBOM) |
+| Repo CI presence | none | first workflow (`.github/workflows/recon-image.yml`) |
+| Build context size (uncached) | 593MB | **62MB** (-89%) |
+
+### Open follow-ups (not in this round)
+
+* **Multi-arch builds** — single-arch `linux/amd64` only. Adding
+  `linux/arm64` doubles build time; defer until a real arm64 deploy
+  target exists.
+* **Image signing (cosign keyless)** — provenance + SBOM via
+  `build-push-action` are sufficient for now. Cosign is a separate
+  hardening round.
+* **Tag retention policy** — old `sha-*` and `run-*` tags accumulate
+  on ghcr.io indefinitely. Prune in a later round if storage grows.
+* **First-time package visibility toggle** — after the first push
+  succeeds, GitHub UI needs a one-time public/private setting on
+  the new package. Not a code change.
+* **`1.1f-deploy`** — R2 live-credential verification still needs
+  Cloudflare creds; remains the only Phase-1 follow-up open.

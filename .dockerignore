@@ -1,0 +1,63 @@
+# Build-context excludes for `docker build -f infra/docker/Dockerfile.recon`.
+# Keep the context to what the recon image actually copies in:
+# control-plane source tree, root pyproject.toml, uv.lock.
+#
+# Without this file `.venv/` (hundreds of MB), session memory dirs under
+# `learn/`, the full git history, and pytest caches all ship into the
+# build context — slow and leaks dev artefacts into image layers.
+
+# VCS + CI metadata.
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Python virtual envs + bytecode caches.
+.venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+
+# Tooling caches.
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+**/.coverage
+**/htmlcov/
+**/.tox/
+
+# Editor / OS detritus.
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Session memory + transient working dirs (NOT for production images).
+learn/
+
+# Documentation + top-level prose — not consumed by the recon harness.
+docs/
+README.md
+*.md
+
+# Repo-root tests folder; recon harness only ships its own
+# `control-plane/tests/` (Dockerfile.recon line 80 copies the whole
+# control-plane tree). Top-level `tests/integration/` would otherwise
+# bloat the context with PG fixtures.
+tests/
+
+# Other infra not consumed by Dockerfile.recon (the build references
+# only `infra/docker/Dockerfile.recon` itself, never the others).
+infra/docker/Caddyfile
+infra/docker/docker-compose.yml
+infra/sql/
+
+# Claude Code agent specs + project-local config — image doesn't need them.
+.mcp.json
+.claude/
+.claude-flow/
+pyrightconfig.json
+
+# Plan files + scratch.
+.specs/
+plans/

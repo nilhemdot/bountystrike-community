@@ -1,0 +1,84 @@
+name: recon-image
+
+# Build + push the recon-agent container image to ghcr.io.
+#
+# Auth: OIDC via the built-in GITHUB_TOKEN — no PAT secret to manage.
+# Trigger: every push to master that touches the recon image's inputs.
+# Tag pattern: ghcr.io/<owner>/bs-recon:{latest, sha-<short>, <run_id>}.
+#
+# First run will be slow (cold GHA cache + `go install` of subfinder /
+# httpx / katana from source). Subsequent runs hit the layer cache.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "control-plane/**"
+      - "infra/docker/Dockerfile.recon"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".dockerignore"
+      - ".github/workflows/recon-image.yml"
+
+# Superseded master pushes cancel any in-flight build to avoid wasting
+# runner minutes on a stale commit.
+concurrency:
+  group: recon-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-and-push:
+    name: Build & push recon image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # ghcr.io requires lowercase image names; metadata-action
+          # lowercases ${{ github.repository_owner }} for us.
+          images: ghcr.io/${{ github.repository_owner }}/bs-recon
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=run-${{ github.run_id }}
+          labels: |
+            org.opencontainers.image.title=bs-recon
+            org.opencontainers.image.description=BountyStrike v5 recon-agent runtime (subfinder/httpx/katana + control-plane recon harness)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/Dockerfile.recon
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Provenance + SBOM are the cheap supply-chain hooks the
+          # build-plan §6.6 audit log will eventually consume.
+          provenance: true
+          sbom: true
