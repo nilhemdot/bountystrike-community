@@ -26,3 +26,6 @@ htmlcov/
 .swarm/
 .claude/memory.db
 ruvector.db
+
+# ECC /learn skill artifacts (local session-pattern extractions)
+learn/
