@@ -1,0 +1,38 @@
+{
+  "pythonVersion": "3.12",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "control-plane/src",
+    "control-plane/tests",
+    "mcp/oracle-mcp/src",
+    "mcp/oracle-mcp/tests",
+    "mcp/evidence-mcp/src",
+    "mcp/evidence-mcp/tests",
+    "mcp/dedup-mcp/src",
+    "mcp/dedup-mcp/tests",
+    "mcp/kev-mcp/src",
+    "mcp/kev-mcp/tests",
+    "mcp/ev-mcp/src",
+    "mcp/ev-mcp/tests",
+    "tests",
+    "scripts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "extraPaths": [
+    "control-plane/src",
+    "mcp/oracle-mcp/src",
+    "mcp/evidence-mcp/src",
+    "mcp/dedup-mcp/src",
+    "mcp/kev-mcp/src",
+    "mcp/ev-mcp/src"
+  ],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": true,
+  "reportMissingModuleSource": false
+}
