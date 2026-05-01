@@ -163,12 +163,21 @@ async def _validatable_finding_ids(conn: asyncpg.Connection, job_id: str) -> lis
     return [str(r["id"]) for r in rows]
 
 
-async def _t2_pending_finding_ids(conn: asyncpg.Connection, job_id: str) -> list[str]:
+async def _pending_tier_finding_ids(
+    conn: asyncpg.Connection, job_id: str, tier: ApprovalTier
+) -> list[str]:
+    """Findings parked at ``approval_pending_t2`` / ``approval_pending_t3``."""
+    status_col = f"approval_pending_{tier.value.lower()}"
     rows = await conn.fetch(
-        "SELECT id FROM findings WHERE job_id = $1 AND status = 'approval_pending_t2'",
-        job_id,
+        "SELECT id FROM findings WHERE job_id = $1 AND status = $2",
+        job_id, status_col,
     )
     return [str(r["id"]) for r in rows]
+
+
+async def _t2_pending_finding_ids(conn: asyncpg.Connection, job_id: str) -> list[str]:
+    """Backwards-compat shim — use :func:`_pending_tier_finding_ids` for new code."""
+    return await _pending_tier_finding_ids(conn, job_id, ApprovalTier.T2)
 
 
 async def _count_by_status(conn: asyncpg.Connection, job_id: str) -> dict[str, int]:
@@ -352,11 +361,12 @@ async def _exploit_one(
         return rc
 
 
-async def _enqueue_pending_t2(
+async def _enqueue_pending_tier(
     conn: asyncpg.Connection,
     finding_ids: list[str],
+    tier: ApprovalTier,
 ) -> list[str]:
-    """Enqueue any rows the exploit-agent flipped to approval_pending_t2.
+    """Enqueue any rows parked at ``approval_pending_t2`` / ``approval_pending_t3``.
 
     Returns the list of finding_ids that now have a pending entry in
     ``approval_queue``. Idempotent: an already-enqueued finding is a no-op.
@@ -375,14 +385,22 @@ async def _enqueue_pending_t2(
             json.dumps(row["chain_steps"]) if row and row["chain_steps"] else None
         )
         try:
-            await queue_enqueue(conn, fid, ApprovalTier.T2, poc_text=poc_text)
+            await queue_enqueue(conn, fid, tier, poc_text=poc_text)
             enqueued.append(fid_str)
         except ApprovalQueueError as exc:
             _log(f"  enqueue skipped finding={fid_str}: {exc}")
     return enqueued
 
 
-async def _wait_t2_token(
+async def _enqueue_pending_t2(
+    conn: asyncpg.Connection,
+    finding_ids: list[str],
+) -> list[str]:
+    """Backwards-compat shim — use :func:`_enqueue_pending_tier` for new code."""
+    return await _enqueue_pending_tier(conn, finding_ids, ApprovalTier.T2)
+
+
+async def _wait_token(
     conn: asyncpg.Connection,
     finding_id: str,
     timeout_seconds: float,
@@ -391,6 +409,10 @@ async def _wait_t2_token(
     fid = uuid.UUID(finding_id)
     token = await queue_wait_for_approval(conn, fid, timeout_seconds=timeout_seconds)
     return str(token) if token else None
+
+
+# Legacy alias retained for callers that imported the T2-specific name.
+_wait_t2_token = _wait_token
 
 
 # ---------------------------------------------------------------------------
@@ -547,6 +569,37 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                 _log(f"finding={finding_id} rc={rc} ({completed}/{len(finding_ids)} done)")
 
         await asyncio.gather(*[_validate_one(fid) for fid in finding_ids])
+
+        # ── T3 approval ────────────────────────────────────────────────────
+        # The validator (or a future post-validate classifier) flips
+        # high-impact findings to ``approval_pending_t3`` based on CVSS,
+        # bug class, hop count, etc (build-plan §6.3). Two distinct
+        # operators must approve before the reporter-agent submits.
+        pending_t3 = await _pending_tier_finding_ids(conn, job_id, ApprovalTier.T3)
+        if pending_t3:
+            _log(
+                f"{len(pending_t3)} finding(s) require T3 approval — "
+                f"enqueueing and waiting (timeout={approval_timeout}s). "
+                f"Run `scripts/approve.py list --tier T3` in another shell. "
+                f"T3 needs TWO distinct approvers."
+            )
+            enqueued_t3 = await _enqueue_pending_tier(conn, pending_t3, ApprovalTier.T3)
+            for fid in enqueued_t3:
+                token = await _wait_token(conn, fid, approval_timeout)
+                if token is None:
+                    _log(f"  T3 approval denied/expired for finding={fid} → archiving")
+                    await conn.execute(
+                        "UPDATE findings SET status='archived', updated_at=now() "
+                        "WHERE id = $1",
+                        uuid.UUID(fid),
+                    )
+                    continue
+                _log(f"  T3 approved finding={fid} → promoting to validated for reporter")
+                await conn.execute(
+                    "UPDATE findings SET status='validated', updated_at=now() "
+                    "WHERE id = $1",
+                    uuid.UUID(fid),
+                )
 
         # ── Report ─────────────────────────────────────────────────────────
         if skip_report:

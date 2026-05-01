@@ -114,6 +114,32 @@ class FakeOrchestratorDB:
             row["approved_at"] = datetime.now(UTC)
             return "UPDATE 1"
 
+        if "SET status='approved', approver_id_2=$2" in sql_n:
+            finding_id, approver_id_2, token = args
+            row = self.approval_queue[finding_id]
+            row["status"] = "approved"
+            row["approver_id_2"] = approver_id_2
+            row["token"] = token
+            row["approved_at"] = datetime.now(UTC)
+            return "UPDATE 1"
+
+        if "UPDATE approval_queue SET approver_id=$2, reason=$3" in sql_n:
+            finding_id, approver_id, reason = args
+            row = self.approval_queue[finding_id]
+            row["approver_id"] = approver_id
+            row["reason"] = reason
+            return "UPDATE 1"
+
+        if sql_n.startswith("UPDATE findings SET status='archived'"):
+            (fid,) = args
+            self.findings[str(fid)]["status"] = "archived"
+            return "UPDATE 1"
+
+        if sql_n.startswith("UPDATE findings SET status='validated'"):
+            (fid,) = args
+            self.findings[str(fid)]["status"] = "validated"
+            return "UPDATE 1"
+
         raise NotImplementedError(f"FakeOrchestratorDB.execute: {sql_n[:80]}")
 
     # ------- fetchval ----------------------------------------------------
@@ -150,6 +176,15 @@ class FakeOrchestratorDB:
                 {"id": uuid.UUID(f["id"])}
                 for f in self.findings.values()
                 if f["job_id"] == job_id and f["status"] == "approval_pending_t2"
+            ]
+
+        # Tier-parametrised query — orchestrator passes status as $2.
+        if "WHERE job_id = $1 AND status = $2" in sql_n:
+            job_id, status = args
+            return [
+                {"id": uuid.UUID(f["id"])}
+                for f in self.findings.values()
+                if f["job_id"] == job_id and f["status"] == status
             ]
 
         if "WHERE job_id = $1 AND status = 'validated'" in sql_n:
@@ -211,9 +246,16 @@ class FakeOrchestratorDB:
 class SubagentSimulator:
     """Build a fake _run_agent that mutates the FakeOrchestratorDB."""
 
-    def __init__(self, db: FakeOrchestratorDB, *, exploit_outcome: str = "success") -> None:
+    def __init__(
+        self,
+        db: FakeOrchestratorDB,
+        *,
+        exploit_outcome: str = "success",
+        validator_outcome: str = "validated",
+    ) -> None:
         self.db = db
         self.exploit_outcome = exploit_outcome  # "success" | "needs_t2" | "failed"
+        self.validator_outcome = validator_outcome  # "validated" | "needs_t3"
         self.calls: list[tuple[str, dict[str, str]]] = []
 
     async def __call__(
@@ -267,7 +309,10 @@ class SubagentSimulator:
         if agent_type == "validator":
             fid = env_extras["FINDING_ID"]
             f = self.db.findings[fid]
-            f["status"] = "validated"
+            if self.validator_outcome == "needs_t3":
+                f["status"] = "approval_pending_t3"
+            else:
+                f["status"] = "validated"
             return 0
 
         if agent_type == "reporter":
@@ -439,6 +484,102 @@ async def test_t2_approval_flow(monkeypatch, fake_db, orchestrator_module):
 
     statuses = {f["status"] for f in fake_db.findings.values()}
     assert "validated" in statuses
+
+
+@pytest.mark.asyncio
+async def test_t3_approval_two_actors_promotes_to_validated(
+    monkeypatch, fake_db, orchestrator_module
+):
+    """Validator flips finding to approval_pending_t3 → orchestrator enqueues
+    T3 → two distinct operators approve → finding promoted back to validated
+    → reporter runs."""
+    monkeypatch.setenv("SKIP_SCANNER", "1")
+    monkeypatch.setenv("SKIP_EXPLOIT", "1")
+    monkeypatch.setenv("APPROVAL_TIMEOUT", "30")
+
+    import control_plane.domains.approval_gate.queue as q_mod
+    monkeypatch.setattr(q_mod, "_backoff_seconds", lambda _attempt: 0.01)
+
+    sim = SubagentSimulator(
+        fake_db,
+        exploit_outcome="success",
+        validator_outcome="needs_t3",
+    )
+    monkeypatch.setattr(orchestrator_module, "_run_agent", sim)
+
+    import asyncio as aio
+
+    from control_plane.domains.approval_gate import queue_approve
+
+    async def t3_auto_approver() -> None:
+        for _ in range(500):
+            if fake_db.approval_queue:
+                fid = next(iter(fake_db.approval_queue))
+                row = fake_db.approval_queue[fid]
+                if row["status"] == "pending":
+                    if row["approver_id"] is None:
+                        await queue_approve(fake_db, fid, "op1", reason="t3 first")
+                    elif row["approver_id"] != "op2":
+                        await queue_approve(fake_db, fid, "op2", reason="t3 second")
+                        return
+            await aio.sleep(0.005)
+
+    approver_task = aio.create_task(t3_auto_approver())
+    try:
+        await orchestrator_module.main()
+    finally:
+        if not approver_task.done():
+            approver_task.cancel()
+            import contextlib
+            with contextlib.suppress(aio.CancelledError):
+                await approver_task
+
+    types = [t for t, _ in sim.calls]
+    assert "validator" in types
+    assert "reporter" in types
+
+    statuses = {f["status"] for f in fake_db.findings.values()}
+    # Finding should have been promoted to validated, then submitted by reporter.
+    assert "submitted" in statuses
+
+    # Approval queue row finalised approved with both approver fields set.
+    fid = next(iter(fake_db.approval_queue))
+    qrow = fake_db.approval_queue[fid]
+    assert qrow["status"] == "approved"
+    assert qrow["approver_id"] == "op1"
+    assert qrow["approver_id_2"] == "op2"
+
+
+@pytest.mark.asyncio
+async def test_t3_denial_archives_finding(
+    monkeypatch, fake_db, orchestrator_module
+):
+    """T3 expires/denied → finding flipped to archived, reporter does not run for it."""
+    monkeypatch.setenv("SKIP_SCANNER", "1")
+    monkeypatch.setenv("SKIP_EXPLOIT", "1")
+    monkeypatch.setenv("APPROVAL_TIMEOUT", "1")  # tight timeout — let it expire
+
+    import control_plane.domains.approval_gate.queue as q_mod
+    monkeypatch.setattr(q_mod, "_backoff_seconds", lambda _attempt: 0.05)
+
+    sim = SubagentSimulator(
+        fake_db,
+        exploit_outcome="success",
+        validator_outcome="needs_t3",
+    )
+    monkeypatch.setattr(orchestrator_module, "_run_agent", sim)
+
+    await orchestrator_module.main()
+
+    types = [t for t, _ in sim.calls]
+    # Reporter should NOT run for the T3-denied finding (no validated rows
+    # remain when the wait times out → empty validated_ids → no reporter).
+    assert "validator" in types
+    assert "reporter" not in types
+
+    statuses = {f["status"] for f in fake_db.findings.values()}
+    assert "archived" in statuses
+    assert "submitted" not in statuses
 
 
 @pytest.mark.asyncio
