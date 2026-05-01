@@ -18,14 +18,20 @@ from .repositories import (
     RedisKillSwitchStore,
     make_kill_switch_store,
 )
-from .services import KillSwitchService
+from .services import (
+    AgentSupervisor,
+    KillSwitchService,
+    WorkerScope,
+)
 from .value_objects import KillSwitchState
 
 __all__ = [
+    "AgentSupervisor",
     "InMemoryKillSwitchStore",
     "KillSwitchService",
     "KillSwitchState",
     "KillSwitchStore",
     "RedisKillSwitchStore",
+    "WorkerScope",
     "make_kill_switch_store",
 ]

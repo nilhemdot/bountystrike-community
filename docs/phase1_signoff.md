@@ -567,7 +567,181 @@ Validator-agent spec extended (`.claude/agents/validator.md` Step 1) to accept `
 
 * **F2 — schema-vs-spec contract test.** Bug-2 only surfaced because the dry-run hit live DB. A test that loads `infra/sql/*.sql` into an ephemeral Postgres and verifies every SQL statement in `.claude/agents/*.md` parses against it would catch this drift class. Deferred — ~60-90 min, not on the W9-10 critical path.
 * **Firecracker driver in `sandbox-mcp`.** The local + docker drivers shipped in Phase 1 are fine for sprint smoke tests; production exploit-agent runs need the Firecracker microVM driver from build-plan §3.2.
-* **T3 plumbing in orchestrator.** Queue + CLI handle T3 correctly, but `_enqueue_pending_t2` only opens T2 requests. When the exploit-agent (or a future tier-classifier hook) flips a finding to `approval_pending_t3`, the orchestrator needs a parallel `_enqueue_pending_t3` path.
+* ~~**T3 plumbing in orchestrator.**~~ **CLOSED in Round 6** — `_enqueue_pending_t3` + `_wait_t3_token` parallel to the T2 path landed in commit `7001be1`.
 * **`1.1e-deploy` and `1.1f-deploy`** still open from Round 4; non-blocking.
 
-Phase 2 Week 9-10 sprint will pick up dedup-prod + T3 wiring + remaining oracle field-validation fixtures (SQLi/SSTI/IDOR/Open-Redirect/RCE) + kill-switch <5s SLA test. Phase 2 exit criteria from build-plan §10.4 lines 3748-3754 remain the gate.
+Phase 2 Week 9-10 sprint will pick up dedup-prod + remaining oracle field-validation fixture (SQLi only — SSTI/IDOR/Open-Redirect/RCE/SSRF→IMDS shipped in Round 6) + kill-switch <5s SLA test. Phase 2 exit criteria from build-plan §10.4 lines 3748-3754 remain the gate.
+
+---
+
+## Round 6 — Phase 2 W7-8 oracle field-validation closeout (2026-05-01)
+
+Same-day continuation of Round 5. Five new oracle field-validation suites landed back-to-back, each at TPR=1.0 / FPR=0.0 against published JSON fixtures, plus the T3 orchestrator plumbing that Round 5 left open.
+
+### 14. SSRF→IMDS field-validation suite (commit `e9b4b77`)
+
+**Files:**
+- `mcp/oracle-mcp/src/oracle_mcp/oracles/ssrf_imds.py` — IMDS probe targeting `169.254.169.254/latest/meta-data/` and equivalents (GCP `metadata.google.internal`, Azure `169.254.169.254` w/ Metadata header).
+- `scripts/run_ssrf_imds_field_validation.py` — CLI harness via `FieldValidationRunner`.
+- `mcp/oracle-mcp/tests/fixtures/ssrf_imds_targets.json` — vulnerable + clean control set.
+- `mcp/oracle-mcp/tests/reports/phase2_ssrf_imds_tpr_fpr.json` — published report (TPR=1.0, FPR=0.0).
+
+The oracle distinguishes IMDS-credential exfiltration from generic SSRF by inspecting response bodies for AWS-credential JSON shape, GCP `Metadata-Flavor` header, and Azure `Metadata: true` echo. False-positive guard: any 404 / Connection-refused / non-IMDS-shaped response counts as `unreproducible`.
+
+### 15. IDOR field-validation suite (commit `65fe921`)
+
+**Files:** `oracles/idor.py`, `scripts/run_idor_field_validation.py`, `fixtures/idor_targets.json`, `reports/phase2_idor_tpr_fpr.json`.
+
+Cross-tenant object-id probe: harness provides `(authenticated_user_a_token, target_url_with_user_b_resource_id)`. Oracle verdict: `validated` only if A's token successfully reads B's resource AND the response body contains B's PII fingerprint. Clean controls: same probe against properly authorized resources returns 403/404 — verdict `unreproducible`.
+
+### 16. RCE field-validation suite (commit `5493eea`)
+
+**Files:** `oracles/rce.py`, `scripts/run_rce_field_validation.py`, `fixtures/rce_targets.json`, `reports/phase2_rce_tpr_fpr.json`.
+
+Sandbox-exec verification: oracle issues a deterministic command-injection payload that, if executed, triggers an OAST callback with a known nonce. Verdict: `validated` only if the OAST collector receives the nonce within the 8s poll window. Clean controls in the fixture echo back the payload as input data without execution — verdict `unreproducible`.
+
+### 17. SSTI field-validation suite (commit `6ef4858`)
+
+**Files:** `oracles/ssti.py`, `scripts/run_ssti_field_validation.py`, `fixtures/ssti_targets.json`, `reports/phase2_ssti_tpr_fpr.json`.
+
+Two-phase oracle: (1) template-engine fingerprint via `{{7*7}}` / `${{7*7}}` / `<%= 7*7 %>` reflection-test (echo of `49` / `49` / `49`), (2) execution probe with engine-specific payload (Jinja2 `__class__.__mro__`, ERB `system()`, etc.). Verdict gating: must pass both phases to count as `validated` — fingerprint-only matches are `inconclusive` to preserve FPR=0.
+
+### 18. Open Redirect field-validation suite (commit `1b6eb64`)
+
+**Files:** `oracles/open_redirect.py`, `scripts/run_open_redirect_field_validation.py`, `fixtures/open_redirect_targets.json`, `reports/phase2_open_redirect_tpr_fpr.json`.
+
+Location-header verification: oracle injects a controlled redirect target (e.g., `https://oast.example.com/<nonce>`) into the suspect parameter, follows the redirect once, asserts `Location` header lands on the attacker-controlled host. Anti-FP guard: only count as `validated` if the redirect is unconditional (not gated by a same-origin check that the oracle's payload happened to satisfy).
+
+### 19. T3 orchestrator plumbing (commit `7001be1`)
+
+**File:** `scripts/orchestrator.py`.
+
+Round 5 left T3 enqueue+wait open. Round 6 adds `_enqueue_pending_t3` + `_wait_t3_token` parallel to the T2 path; called from the post-validator phase when `findings.status == approval_pending_t3` and from a future tier-classifier hook that flips a finding mid-pipeline. Reporter-agent is relaunched with `APPROVAL_TOKEN` env once two distinct approvers act (queue.py enforces distinct-actor at the SQL layer).
+
+### Round 6 status delta
+
+| Item | After Round 5 | After Round 6 |
+|---|---|---|
+| Oracle field-validation suites | 2/8 (XSS, SSRF) | **7/8** (XSS, SSRF, SSRF→IMDS, IDOR, RCE, SSTI, Open Redirect) |
+| Oracle accuracy on published fixtures | TPR=1.0/FPR=0.0 (XSS, SSRF) | TPR=1.0/FPR=0.0 across all 7 |
+| T3 orchestrator plumbing | OPEN | **CLOSED** (`7001be1`) |
+| SQLi field-validation suite | NOT BUILT | NOT BUILT (W9-10 target) |
+
+### Updated Phase 1 status table
+
+| # | Criterion | After Round 5 | After Round 6 |
+|---|---|---|---|
+| 1 | XSS 20-target TPR/FPR | PASS | PASS |
+| 2 | SQLi Welch t-test p<0.01 | PASS (unit) | PASS (unit); field-validation suite still pending |
+| 3 | SSRF 5-endpoint interactsh | PASS | PASS |
+| 4 | Recon agent on 3 programs | GAP-deploy | GAP-deploy |
+| 5 | Evidence chain SHA-256+R2+audit | GAP-deploy | GAP-deploy |
+| 6 | Audit hash chain | PASS++ | PASS++ |
+
+Phase 2 W7-8 sprint is fully closed. W9-10 owns: dedup-prod, kill-switch <5s SLA test, SQLi field-validation suite, and the schema-vs-spec contract test (F2). Two infrastructure deploys (1.1e-deploy, 1.1f-deploy) remain non-blocking.
+
+---
+
+## Round 7 — Phase 2 W9-10 kick-off — SQLi suite + kill-switch <5s SLA (2026-05-01)
+
+Same-day continuation of Round 6. Two W9-10 deliverables land: SQLi
+field-validation suite (back-filled from the W7-8 oracle batch — Round 6
+narrative incorrectly listed it as NOT BUILT) and the build-plan §10.4
+kill-switch SLA test backed by the Layer-3 :class:`AgentSupervisor`
+enforcer.
+
+### 20. SQLi field-validation suite — narrative correction (commit `3fbe009`)
+
+Round 6 status table read "SQLi field-validation suite | NOT BUILT |
+NOT BUILT" but commit `3fbe009 feat(phase2): SQLi field-validation
+suite — TPR=1.0 FPR=0.0` predates the Round 6 commits. The suite is
+fully shipped:
+
+* `mcp/oracle-mcp/tests/fixtures/sqli_targets.json` — 10 vulnerable +
+  10 clean rows hitting `bs5-sqli-lab` (boolean / time-based /
+  error-based variants).
+* `mcp/oracle-mcp/tests/reports/phase2_sqli_tpr_fpr.json` — TP=10,
+  FP=0, TN=10, FN=0; **TPR=1.0, FPR=0.0**.
+* `scripts/run_sqli_field_validation.py` — CLI harness via
+  :class:`FieldValidationRunner`.
+
+Oracle accuracy on published fixtures is now **8/8 at TPR=1.0,
+FPR=0.0** (XSS, SQLi, SSRF, SSRF→IMDS, IDOR, RCE, SSTI, Open Redirect).
+
+### 21. Layer-3 kill-switch enforcer — :class:`AgentSupervisor`
+
+**File:** `control-plane/src/control_plane/domains/safety/services/agent_supervisor.py`
+
+Build-plan §6.6 specifies a three-layer kill switch: Layer 1 is the
+OpenRouter Bridge guard, Layer 2 is the PreToolUse hook
+(`pretool_killswitch.py`), Layer 3 is an in-process supervisor that
+cancels live worker tasks when a halt is observed. Layers 1 and 2
+shipped earlier; this round closes Layer 3.
+
+The supervisor polls :class:`KillSwitchService` on a configurable
+cadence (default 100ms, clamped to [10ms, 1s]) and cancels registered
+:class:`asyncio.Task` workers whose :class:`WorkerScope` matches the
+observed halt tier:
+
+* :attr:`WorkerScope.SUBMIT` — cancelled at HALT_SUBMISSIONS or above.
+* :attr:`WorkerScope.SCAN` — cancelled at HALT_SCANS or above.
+* :attr:`WorkerScope.OTHER` — cancelled only at HALT_ALL.
+
+The poll loop swallows backend errors so a transient Redis hiccup
+cannot silently disable enforcement; failures are logged and the next
+poll continues. :meth:`AgentSupervisor.wait_until_quiesced` is the
+SLA hook used by shutdown paths and §10.4 regression tests.
+
+### 22. Kill-switch <5s SLA regression test (closes build-plan §10.4)
+
+**File:** `control-plane/tests/test_agent_supervisor.py`
+
+31 unit tests covering the supervisor, including the headline SLA
+check `test_kill_switch_halts_all_workers_within_5_seconds_sla` — 50
+long-running workers split across all three :class:`WorkerScope`
+tiers, kill switch flipped to ``HALT_ALL``, asserting
+`wait_until_quiesced(timeout=5.0)` returns ``True`` and the wall-clock
+budget stays under five seconds. Local run quiesces in **~0.27s** at
+the default 100ms poll cadence, leaving a 99%+ margin against the
+§10.4 budget.
+
+Coverage matrix (every parametrized case is its own pytest item):
+
+* `_scope_blocked` × 12 (state × scope cartesian product).
+* Constructor poll-interval validation (below min, above max,
+  default).
+* Lifecycle: start/stop, `start` idempotent, `stop` without `start`.
+* Registration: empty id rejected, duplicate id rejected,
+  unregister-unknown is a no-op.
+* Cancellation by tier: HALT_SUBMISSIONS only cancels SUBMIT;
+  HALT_SCANS cancels SUBMIT + SCAN; HALT_ALL cancels every scope.
+* Cancelled workers are removed from `registered_worker_ids`.
+* Naturally completed workers are reaped under INACTIVE state.
+* `wait_until_quiesced` — true with no workers, false on timeout.
+* Polling resilience — supervisor survives 3 consecutive backend
+  failures and keeps observing state.
+* §10.4 SLA — 50 workers halt within the 5s budget.
+
+### Round 7 status delta
+
+| Item | After Round 6 | After Round 7 |
+|---|---|---|
+| Oracle field-validation suites | 7/8 (SQLi listed as NOT BUILT) | **8/8** (SQLi back-filled — was already shipped in `3fbe009`) |
+| Layer-3 kill-switch enforcer | NOT BUILT | **SHIPPED** (`AgentSupervisor` + 3-tier scope cancellation) |
+| Kill-switch <5s SLA regression | NOT BUILT | **SHIPPED** (50-worker test, ~0.27s observed) |
+| Control-plane test count | 384 | **415** (+31) |
+
+### Updated Phase 1 status table
+
+| # | Criterion | After Round 6 | After Round 7 |
+|---|---|---|---|
+| 1 | XSS 20-target TPR/FPR | PASS | PASS |
+| 2 | SQLi Welch t-test p<0.01 | PASS (unit); field-validation suite still pending | **PASS++ (unit + field-validation TPR=1.0/FPR=0.0)** |
+| 3 | SSRF 5-endpoint interactsh | PASS | PASS |
+| 4 | Recon agent on 3 programs | GAP-deploy | GAP-deploy |
+| 5 | Evidence chain SHA-256+R2+audit | GAP-deploy | GAP-deploy |
+| 6 | Audit hash chain | PASS++ | PASS++ |
+
+W9-10 remaining: dedup-prod and the F2 schema-vs-spec contract test.
+Two infrastructure deploys (1.1e-deploy, 1.1f-deploy) still
+non-blocking.
