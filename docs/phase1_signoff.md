@@ -817,3 +817,69 @@ recall=1.0; "prod" needs the persistent fingerprint registration on
 the validator success path + cross-program lookup index hygiene).
 Two infrastructure deploys (1.1e-deploy, 1.1f-deploy) still
 non-blocking.
+
+---
+
+## Round 9 — dedup-prod live-Postgres coverage (2026-05-01)
+
+Same-day continuation of Round 8. The W9-10 backlog item "dedup-prod"
+narrows once the surface is mapped: ``mcp/dedup-mcp/`` already ships
+the algorithm (``compute_fingerprint`` SHA-256 over null-delimited
+``platform/program/vuln_type/host/path``), the asyncpg-backed store
+(``DedupStore.register/lookup`` with ``ON CONFLICT (fingerprint_hex)
+DO NOTHING``), the FastMCP tool surface
+(``check_duplicate``/``register_finding``/``check_semantic_duplicate``/
+``register_embedding``), and the validator-agent spec already
+prescribes the call (`.claude/agents/validator.md` lines 159-169).
+57 unit tests cover the layer with mocked stores. Only gap left was
+that no test ever exercised the asyncpg path against a real
+Postgres — the same drift class F2 closed for agent-spec SQL.
+
+### 25. dedup-mcp real-Postgres integration tests
+
+**File:** `tests/integration/test_dedup_postgres.py`
+
+5 tests gated on `BS5_PG_TEST_DSN`. Per-test isolation via a
+`dedup-pg-test-` program-handle prefix; the fixture deletes that
+namespace before and after every test so runs are order-independent
+and never touch non-test rows. All tests run against the same
+`bountystrike_dryrun` DB the F2 + approval-queue suites use.
+
+| # | Test | What it asserts |
+|---|---|---|
+| 1 | `test_register_new_persists_row` | After `DedupStore.register`, a row with the matching fingerprint, platform, program, vuln_type and finding_id exists in `dedup_fingerprints`. |
+| 2 | `test_register_idempotent_returns_original_finding` | Second `register` with the same fingerprint returns ``registered=False``, the **original** ``finding_id`` and ``first_seen_at``; the table still holds exactly one row for that fingerprint. |
+| 3 | `test_cross_program_same_vuln_yields_distinct_rows` | Same `(vuln_type, host, path)` under two different `program_handle`s produces two distinct fingerprints + two distinct rows. Regression guard against the algorithm dropping `program_handle` from the digest. |
+| 4 | `test_lookup_roundtrip` | `DedupStore.lookup` finds a registered fingerprint and returns ``None`` for an unknown one. |
+| 5 | `test_register_finding_impl_end_to_end` | The server-side ``_register_finding_impl`` (the function the FastMCP `register_finding` tool actually delegates to) round-trips through real Postgres with the right fingerprint and persists the finding_id. |
+
+The integration tests intentionally exercise no embedding / pgvector
+code — semantic dedup runs on top of the structural-fingerprint layer
+this test covers. Semantic dedup live-PG coverage is a Round 10
+candidate.
+
+### Round 9 status delta
+
+| Item | After Round 8 | After Round 9 |
+|---|---|---|
+| dedup-prod live-PG validation | mocked-only (57 unit tests) | **5 real-PG integration tests added** (register-new, idempotent, cross-program, lookup-roundtrip, server-impl end-to-end) |
+| Integration test count | 47 (approval-queue + phase2 + F2) | **57** (+5 dedup PG, includes 5 unrelated parametrise growth on F2) |
+
+### Open follow-ups
+
+* **Round 10 candidate — semantic dedup live-PG.** ``DedupStore.semantic_search``
+  uses pgvector ``<=>``; today only mock tests cover it. A real-PG
+  test would seed two findings with controlled embeddings, assert
+  cosine-similarity tier classification, and guard against pgvector
+  index regressions.
+* **Validator-spec compliance audit.** Real-PG coverage validates the
+  *store* but the validator-agent is LLM-driven — there's no test
+  that proves a Claude-Code-spawned validator actually calls
+  `register_finding` after every `validated` verdict. Add a smoke
+  test in the next orchestrator dry-run that asserts every
+  `findings.status='validated'` row has a paired
+  `dedup_fingerprints.finding_id` row.
+
+W9-10 code-side closeout is now in place: F2 (Round 8) and dedup-prod
+real-PG (Round 9) both shipped. Two infrastructure deploys
+(1.1e-deploy, 1.1f-deploy) still non-blocking.
