@@ -745,3 +745,75 @@ Coverage matrix (every parametrized case is its own pytest item):
 W9-10 remaining: dedup-prod and the F2 schema-vs-spec contract test.
 Two infrastructure deploys (1.1e-deploy, 1.1f-deploy) still
 non-blocking.
+
+---
+
+## Round 8 — F2 schema-vs-spec contract test (2026-05-01)
+
+Same-day continuation of Round 7. The W9-10 backlog item left from
+Round 5's bug-2 retrospective lands: a contract test that loads every
+``` ```sql ``` fence from `.claude/agents/*.md`, normalises ``:name``
+placeholders to positional ``$N`` parameters, and calls
+:meth:`asyncpg.Connection.prepare` against a database with migrations
+00–06 applied. Postgres's Parse phase resolves table + column names,
+so any spec referencing schema that doesn't exist surfaces as a test
+failure instead of a production crash.
+
+### 23. F2 contract test (closes Round 5 follow-up F2)
+
+**File:** `tests/integration/test_schema_vs_spec_contract.py`
+
+The test ships in three layers:
+
+* **Pure-Python extractor** (length-preserving mask of string literals
+  and ``--`` comments → ``_split_statements`` /
+  ``_substitute_named_params`` / ``_is_executable_sql``). 13 unit
+  tests cover every helper without needing Postgres.
+* **`_agent_statements()`** — walks every spec in
+  `.claude/agents/*.md`, parametrises the integration test over each
+  executable statement, and ids the parametrise so a failure points
+  directly at `(spec_path, fence_index)`.
+* **Live integration** — gated on `BS5_PG_TEST_DSN`, runs
+  `conn.prepare(...)` against the migrated DB and fails loudly on any
+  `Undefined{Column,Table,Object}Error` /
+  `PostgresSyntaxError`.
+
+22 statements parametrised across 7 specs (recon, scanner-agent,
+exploit-agent, validator, reporter, ai-vuln-hunter, cloud-recon-agent).
+
+### 24. Drifts surfaced + closed (migration 06)
+
+The first run of the contract test revealed three independent drifts.
+**Migration `infra/sql/06_recon_assets_and_drift_fixes.sql`** closes
+all three idempotently (`IF NOT EXISTS` / `ADD VALUE IF NOT EXISTS`):
+
+| # | Drift | Surface | Fix in 06 |
+|---|---|---|---|
+| 1 | `recon_assets` table missing | scanner-agent fence #0 (`SELECT host, url, tech, status_code FROM recon_assets`) | `CREATE TABLE recon_assets (id, job_id FK→scan_jobs, host, url, tech, status_code, raw, created_at, UNIQUE(job_id, host, url))` + 3 indexes |
+| 2 | `scan_jobs.findings_emitted` column missing | scanner-agent / ai-vuln-hunter / cloud-recon-agent UPDATEs that bump the running tally | `ALTER TABLE scan_jobs ADD COLUMN IF NOT EXISTS findings_emitted INTEGER DEFAULT 0` |
+| 3 | `finding_status` ENUM missing `exploit_pending_validation` | exploit-agent / validator-agent both flip findings into this state on the success path (cf. Round 5 §11) | `ALTER TYPE finding_status ADD VALUE IF NOT EXISTS 'exploit_pending_validation' BEFORE 'validation_pending'` |
+
+Migration 06 was applied to the local `bountystrike_dryrun` DB in the
+same session and the contract test runs **22/22 PASS** afterwards.
+
+### Round 8 status delta
+
+| Item | After Round 7 | After Round 8 |
+|---|---|---|
+| F2 schema-vs-spec contract test | OPEN | **SHIPPED** (35 tests: 22 parametrised contract checks + 13 helper unit tests) |
+| Schema drifts | latent (3 known) | **CLOSED** (migration 06 applied; all three drifts caught + fixed) |
+| Control-plane test count | 415 | 415 (unchanged — F2 test lives under `tests/integration/`, not `control-plane/tests/`) |
+
+### Open follow-ups
+
+* **Recon writes into `recon_assets`.** Migration 06 creates the table
+  but the recon harness in `control-plane/src/control_plane/domains/recon/`
+  doesn't yet INSERT into it. Tracked as `1.1e-recon-assets-emit`.
+* **Migration 06 needs running on staging / prod DBs.** Idempotent so
+  a re-run is safe, but the deploy step itself is operator-driven.
+
+W9-10 remaining: dedup-prod (the recall fixture from `3d9e915` shows
+recall=1.0; "prod" needs the persistent fingerprint registration on
+the validator success path + cross-program lookup index hygiene).
+Two infrastructure deploys (1.1e-deploy, 1.1f-deploy) still
+non-blocking.
