@@ -120,10 +120,52 @@ async def test_rejects_unknown_severity(client_with_env, base_kwargs) -> None:
 
 
 @respx.mock
-async def test_rejects_zero_weakness_id(client_with_env, base_kwargs) -> None:
+async def test_accepts_zero_weakness_id(client_with_env, base_kwargs) -> None:
+    """``weakness_id=0`` is H1's documented unspecified-weakness sentinel
+    (per https://api.hackerone.com/hacker-resources example). Must pass
+    the validator and reach the wire as the integer ``0``."""
+    route = respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(
+        201, json=_success_payload()
+    )
     base_kwargs["weakness_id"] = 0
+    await client_with_env.submit_report(**base_kwargs)
+    sent_body = json.loads(route.calls[0].request.content)
+    assert sent_body["data"]["attributes"]["weakness_id"] == 0
+
+
+@respx.mock
+async def test_rejects_negative_weakness_id(client_with_env, base_kwargs) -> None:
+    base_kwargs["weakness_id"] = -1
     with pytest.raises(ValueError, match="weakness_id"):
         await client_with_env.submit_report(**base_kwargs)
+
+
+@respx.mock
+async def test_rejects_negative_structured_scope_id(client_with_env, base_kwargs) -> None:
+    base_kwargs["structured_scope_id"] = -1
+    with pytest.raises(ValueError, match="structured_scope_id"):
+        await client_with_env.submit_report(**base_kwargs)
+
+
+@respx.mock
+async def test_structured_scope_id_propagates_to_body(client_with_env, base_kwargs) -> None:
+    route = respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(
+        201, json=_success_payload()
+    )
+    base_kwargs["structured_scope_id"] = 287
+    await client_with_env.submit_report(**base_kwargs)
+    sent_body = json.loads(route.calls[0].request.content)
+    assert sent_body["data"]["attributes"]["structured_scope_id"] == 287
+
+
+@respx.mock
+async def test_structured_scope_id_omitted_when_none(client_with_env, base_kwargs) -> None:
+    route = respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(
+        201, json=_success_payload()
+    )
+    await client_with_env.submit_report(**base_kwargs)
+    sent_body = json.loads(route.calls[0].request.content)
+    assert "structured_scope_id" not in sent_body["data"]["attributes"]
 
 
 def test_h1_severities_set_excludes_informational() -> None:

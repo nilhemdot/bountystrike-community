@@ -49,6 +49,7 @@ async def _submit_report_impl(
     impact: str,
     severity_rating: str,
     weakness_id: int | None = None,
+    structured_scope_id: int | None = None,
 ) -> dict:
     try:
         return {
@@ -60,6 +61,7 @@ async def _submit_report_impl(
                 impact=impact,
                 severity_rating=severity_rating,
                 weakness_id=weakness_id,
+                structured_scope_id=structured_scope_id,
             ),
         }
     except HackerOneError as exc:
@@ -79,6 +81,7 @@ async def submit_report(
     impact: str,
     severity_rating: str,
     weakness_id: int | None = None,
+    structured_scope_id: int | None = None,
 ) -> dict:
     """Submit a finding to HackerOne.
 
@@ -93,8 +96,15 @@ async def submit_report(
         impact: Impact section (markdown).
         severity_rating: ``none|low|medium|high|critical`` — H1 does not
             recognise ``informational``.
-        weakness_id: Optional MITRE CWE numeric ID (e.g. 79). Set to
-            None to let H1 triage assign it. Negative or zero raises.
+        weakness_id: Optional integer from H1's weakness catalogue
+            (NOT MITRE CWE — fetch via H1's /v1/weaknesses endpoint).
+            ``0`` is H1's documented "unspecified weakness" sentinel
+            and is accepted; negative values raise. ``None`` omits the
+            field entirely.
+        structured_scope_id: Optional integer that binds the report to
+            a specific scope-asset row from H1's structured_scopes
+            endpoint. Useful when a programme has many assets and
+            wants H1 to route the report to the right team.
 
     Returns:
         On success::
@@ -114,6 +124,7 @@ async def submit_report(
         impact=impact,
         severity_rating=severity_rating,
         weakness_id=weakness_id,
+        structured_scope_id=structured_scope_id,
     )
 
 

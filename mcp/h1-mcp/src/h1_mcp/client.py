@@ -14,8 +14,11 @@ API surface used:
             "title":                    "<= 200 chars>",
             "vulnerability_information": "<full markdown>",
             "impact":                   "<impact section>",
-            "severity_rating":          "none|low|medium|high|critical",
-            "weakness_id":              <int CWE numeric id or null>
+            "severity_rating":          "none|low|medium|high|critical",     (optional)
+            "weakness_id":              <int weakness id; H1's catalogue,    (optional)
+                                          NOT MITRE CWE>,
+            "structured_scope_id":      <int scope-asset id from H1's        (optional)
+                                          structured_scopes endpoint>
           }
         }
       }
@@ -133,6 +136,7 @@ class HackerOneClient:
         impact: str,
         severity_rating: str,
         weakness_id: int | None,
+        structured_scope_id: int | None,
     ) -> dict[str, Any]:
         attributes: dict[str, Any] = {
             "team_handle": team_handle,
@@ -143,6 +147,8 @@ class HackerOneClient:
         }
         if weakness_id is not None:
             attributes["weakness_id"] = int(weakness_id)
+        if structured_scope_id is not None:
+            attributes["structured_scope_id"] = int(structured_scope_id)
         return {"data": {"type": "report", "attributes": attributes}}
 
     async def submit_report(
@@ -153,6 +159,7 @@ class HackerOneClient:
         impact: str,
         severity_rating: str,
         weakness_id: int | None = None,
+        structured_scope_id: int | None = None,
     ) -> dict[str, Any]:
         if not team_handle:
             raise ValueError("team_handle is required")
@@ -163,13 +170,18 @@ class HackerOneClient:
             raise ValueError(
                 f"severity_rating {severity_rating!r} not in {sorted(H1_SEVERITIES)}"
             )
-        if weakness_id is not None and weakness_id <= 0:
-            raise ValueError("weakness_id must be a positive integer or None")
+        # H1 docs use ``"weakness_id": 0`` as the unspecified-weakness
+        # sentinel in their published examples. Accept any non-negative
+        # integer; reject negatives only.
+        if weakness_id is not None and weakness_id < 0:
+            raise ValueError("weakness_id must be >= 0 or None")
+        if structured_scope_id is not None and structured_scope_id < 0:
+            raise ValueError("structured_scope_id must be >= 0 or None")
 
         url = f"{self._base_url}/v1/hackers/reports"
         body = self._build_body(
             team_handle, title, vulnerability_information, impact, sev,
-            weakness_id,
+            weakness_id, structured_scope_id,
         )
 
         last_exc: Exception | None = None
