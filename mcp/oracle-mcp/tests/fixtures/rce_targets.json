@@ -1,0 +1,162 @@
+[
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v1?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Unix semicolon — ;echo NONCE_rce_marker",
+    "tags": ["unix", "semicolon"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v2?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Unix backtick — `echo NONCE_rce_marker`",
+    "tags": ["unix", "backtick"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v3?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Windows cmd — &echo NONCE_rce_marker",
+    "tags": ["windows", "cmd"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v4?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "PowerShell — |Write-Output NONCE_rce_marker",
+    "tags": ["powershell"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v5?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style JSON endpoint",
+    "tags": ["multi-style", "json"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v6?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style plaintext mid-body",
+    "tags": ["multi-style", "plaintext"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v7?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style inside HTML attribute",
+    "tags": ["multi-style", "attribute"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v8?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style inside CSS comment",
+    "tags": ["multi-style", "css"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v9?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style with cookie side-effect",
+    "tags": ["multi-style", "cookie"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/v10?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-style behind permissive header",
+    "tags": ["multi-style", "json", "header-gate"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c1?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "HTML escape — payload as text",
+    "tags": ["html-escape"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c2?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "rejects shell metacharacters",
+    "tags": ["shell-denylist"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c3?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "static response",
+    "tags": ["no-reflection"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c4?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "numeric allowlist",
+    "tags": ["allowlist", "numeric"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c5?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "regex allowlist [a-zA-Z0-9_-]",
+    "tags": ["allowlist", "regex"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c6?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "404 regardless of input",
+    "tags": ["404"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c7?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "returns SHA-256 hash only",
+    "tags": ["hash"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c8?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "strips shell metacharacters",
+    "tags": ["sanitize"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c9?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "returns length only",
+    "tags": ["length"]
+  },
+  {
+    "oracle": "rce",
+    "url": "http://localhost:5093/c10?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "cached static page",
+    "tags": ["cached"]
+  }
+]

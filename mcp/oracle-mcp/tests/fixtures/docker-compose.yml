@@ -79,3 +79,16 @@ services:
       timeout: 1s
       retries: 30
     restart: "no"
+
+  rce-lab:
+    build: ./rce_lab
+    image: bs5/rce-lab:0.1.0
+    container_name: bs5-rce-lab
+    ports:
+      - "5093:5093"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5093/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"

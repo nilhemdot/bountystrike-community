@@ -1,0 +1,434 @@
+{
+  "oracle": "rce",
+  "total": 20,
+  "true_positives": 10,
+  "false_positives": 0,
+  "true_negatives": 10,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v1?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Unix semicolon \u2014 ;echo NONCE_rce_marker",
+        "tags": [
+          "unix",
+          "semicolon"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "5357a3aecc952085",
+        "param": "q",
+        "url": "http://localhost:5093/v1?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v2?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Unix backtick \u2014 `echo NONCE_rce_marker`",
+        "tags": [
+          "unix",
+          "backtick"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_backtick_echo",
+        "nonce": "21c4a7a453440794",
+        "param": "q",
+        "url": "http://localhost:5093/v2?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v3?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Windows cmd \u2014 &echo NONCE_rce_marker",
+        "tags": [
+          "windows",
+          "cmd"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "windows_echo",
+        "nonce": "c11ad1f066e550d3",
+        "param": "q",
+        "url": "http://localhost:5093/v3?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v4?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "PowerShell \u2014 |Write-Output NONCE_rce_marker",
+        "tags": [
+          "powershell"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "powershell_write_output",
+        "nonce": "faf6e7f4d3889a85",
+        "param": "q",
+        "url": "http://localhost:5093/v4?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v5?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style JSON endpoint",
+        "tags": [
+          "multi-style",
+          "json"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "5b16a4e0b9ac1449",
+        "param": "q",
+        "url": "http://localhost:5093/v5?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v6?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style plaintext mid-body",
+        "tags": [
+          "multi-style",
+          "plaintext"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "987877cefddd6fa5",
+        "param": "q",
+        "url": "http://localhost:5093/v6?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v7?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style inside HTML attribute",
+        "tags": [
+          "multi-style",
+          "attribute"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "083f4b2e81d99b01",
+        "param": "q",
+        "url": "http://localhost:5093/v7?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v8?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style inside CSS comment",
+        "tags": [
+          "multi-style",
+          "css"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "8a7606ff4a36f8a4",
+        "param": "q",
+        "url": "http://localhost:5093/v8?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v9?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style with cookie side-effect",
+        "tags": [
+          "multi-style",
+          "cookie"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "9afdb4f9bba0409f",
+        "param": "q",
+        "url": "http://localhost:5093/v9?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/v10?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-style behind permissive header",
+        "tags": [
+          "multi-style",
+          "json",
+          "header-gate"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "injection_style": "unix_semicolon_echo",
+        "nonce": "6918e76e746a669a",
+        "param": "q",
+        "url": "http://localhost:5093/v10?q=1"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c1?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "HTML escape \u2014 payload as text",
+        "tags": [
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c1?q=1",
+        "param": "q",
+        "nonce": "f00c6f5e762deded"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c2?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "rejects shell metacharacters",
+        "tags": [
+          "shell-denylist"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c2?q=1",
+        "param": "q",
+        "nonce": "346394c1d9518d07"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c3?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "static response",
+        "tags": [
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c3?q=1",
+        "param": "q",
+        "nonce": "a068c4aecbd04993"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c4?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "numeric allowlist",
+        "tags": [
+          "allowlist",
+          "numeric"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c4?q=1",
+        "param": "q",
+        "nonce": "e95f5e66bbb7fc61"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c5?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "regex allowlist [a-zA-Z0-9_-]",
+        "tags": [
+          "allowlist",
+          "regex"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c5?q=1",
+        "param": "q",
+        "nonce": "4806eb309b9875b5"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c6?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "404 regardless of input",
+        "tags": [
+          "404"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c6?q=1",
+        "param": "q",
+        "nonce": "d6c8ed0c561df6b6"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c7?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "returns SHA-256 hash only",
+        "tags": [
+          "hash"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c7?q=1",
+        "param": "q",
+        "nonce": "e5a8fb197ae07f4c"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c8?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "strips shell metacharacters",
+        "tags": [
+          "sanitize"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c8?q=1",
+        "param": "q",
+        "nonce": "98c6ccf2946ee882"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c9?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "returns length only",
+        "tags": [
+          "length"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c9?q=1",
+        "param": "q",
+        "nonce": "1fa44eb9c2f1bb46"
+      }
+    },
+    {
+      "target": {
+        "oracle": "rce",
+        "url": "http://localhost:5093/c10?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "cached static page",
+        "tags": [
+          "cached"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "url": "http://localhost:5093/c10?q=1",
+        "param": "q",
+        "nonce": "7b28964702b10b77"
+      }
+    }
+  ]
+}
