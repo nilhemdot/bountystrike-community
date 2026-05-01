@@ -62,6 +62,9 @@ from control_plane.domains.approval_gate import (  # noqa: E402
     queue_enqueue,
     queue_wait_for_approval,
 )
+from control_plane.domains.evidence_management.services import (  # noqa: E402
+    audit_validator_compliance,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -642,6 +645,16 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
 
         # ── Summary ────────────────────────────────────────────────────────
         counts = await _count_by_status(conn, job_id)
+        # Validator-spec compliance audit (build-plan §6.3 / Round 12).
+        # Logs only — strict CI gates own the build/break decision.
+        compliance = await audit_validator_compliance(
+            conn, program_handle=program_handle
+        )
+        compliance_status = (
+            "ok"
+            if compliance.is_compliant
+            else f"{compliance.missing_fingerprint} missing"
+        )
         _log(
             f"complete — validated={counts.get('validated', 0)} "
             f"submitted={counts.get('submitted', 0)} "
@@ -650,7 +663,8 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             f"pending={counts.get('validation_pending', 0)} "
             f"approval_pending_t2={counts.get('approval_pending_t2', 0)} "
             f"exploit_pending_validation={counts.get('exploit_pending_validation', 0)} "
-            f"validator_errors={failed}"
+            f"validator_errors={failed} "
+            f"validator_compliance={compliance_status}"
         )
 
     finally:

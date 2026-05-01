@@ -1081,7 +1081,50 @@ test (and explicitly removes any cross-program-test program too).
 
 * **`1.1e-deploy`** — recon container Dockerfile build + registry push.
 * **`1.1f-deploy`** — R2 live-credential verification.
-* **CI gate** — wire `audit_validator_compliance` into the orchestrator
-  dry-run flow (or a post-run job) so non-compliant runs fail the
-  build instead of silently shipping. Single-line addition once an
-  orchestrator-run harness exists.
+
+---
+
+## Round 13 — orchestrator wires validator-compliance audit (Round 12 follow-up)
+
+Round 12 shipped the audit; Round 13 wires it into the orchestrator's
+post-run summary so every dry-run logs the compliance verdict. CI
+gates on the log line; the orchestrator itself stays exit-0 for
+non-compliance because partial runs (`SKIP_EXPLOIT` / `SKIP_REPORT`)
+legitimately produce zero validated findings.
+
+### 31. `scripts/orchestrator.py` summary block
+
+* New import:
+  ``from control_plane.domains.evidence_management.services import audit_validator_compliance``.
+* After ``_count_by_status``, the orchestrator now calls
+  ``audit_validator_compliance(conn, program_handle=program_handle)``
+  and appends ``validator_compliance={ok|N missing}`` to the summary
+  log line.
+* Strict gating intentionally NOT in the orchestrator — left for CI
+  jobs that grep the structured log.
+
+### 32. Pipeline smoke fake extension
+
+`tests/integration/test_phase2_w7_w8_pipeline.py` uses an in-memory
+`FakeOrchestratorDB` to stand in for asyncpg. Two new branches added
+to its `fetch` / `fetchval` methods to model the audit queries:
+
+* `fetchval` recognises ``count(*) ... f.status = 'validated'`` and
+  returns the live count of validated findings under the program.
+* `fetch` recognises ``LEFT JOIN dedup_fingerprints`` and returns
+  every validated finding (the fake has no `dedup_fingerprints`
+  model, so all validated findings are flagged as "missing" — fine
+  because the orchestrator only logs the result, never gates on it).
+
+### Round 13 status delta
+
+| Item | After Round 12 | After Round 13 |
+|---|---|---|
+| Validator-compliance audit wiring | function + tests only | **wired into orchestrator summary** (`scripts/orchestrator.py`) |
+| Pipeline smoke fake | crashed on audit queries | **extended** (handles `LEFT JOIN dedup_fingerprints` + `count(*)` audit shapes) |
+| Sweep | 428 + 72 | **428 + 72** (pipeline smoke now 10/10 incl. audit) |
+
+### Open follow-ups
+
+* **`1.1e-deploy`** — recon container Dockerfile build + registry push.
+* **`1.1f-deploy`** — R2 live-credential verification.

@@ -155,6 +155,14 @@ class FakeOrchestratorDB:
                 1 for f in self.findings.values()
                 if f["job_id"] == job_id and f["status"] == "hypothesis"
             )
+        # validator-compliance audit total count.
+        if "count(*)" in sql_n.lower() and "f.status = 'validated'" in sql_n:
+            (program_handle,) = args
+            return sum(
+                1 for f in self.findings.values()
+                if f["status"] == "validated"
+                and (program_handle is None or f["program_handle"] == program_handle)
+            )
         raise NotImplementedError(f"FakeOrchestratorDB.fetchval: {sql_n[:80]}")
 
     # ------- fetch -------------------------------------------------------
@@ -202,6 +210,16 @@ class FakeOrchestratorDB:
                 for f in self.findings.values()
                 if f["job_id"] == job_id
                 and f["status"] in ("hypothesis", "exploit_pending_validation")
+            ]
+
+        # validator-compliance audit missing-ids query.
+        if "LEFT JOIN dedup_fingerprints" in sql_n:
+            (program_handle,) = args
+            return [
+                {"id": uuid.UUID(f["id"])}
+                for f in self.findings.values()
+                if f["status"] == "validated"
+                and (program_handle is None or f["program_handle"] == program_handle)
             ]
 
         if "GROUP BY status" in sql_n:
