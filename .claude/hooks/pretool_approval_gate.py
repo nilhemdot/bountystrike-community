@@ -146,6 +146,24 @@ def decide(event: dict[str, Any]) -> dict[str, Any]:
     return {"decision": "allow"}
 
 
+def _to_wire(decision: dict) -> dict:
+    """Translate legacy ``{decision: allow|deny}`` to Claude Code wire schema.
+
+    Claude Code's PreToolUse hook validator rejects ``decision: "allow"``
+    (legacy enum is ``approve|block``). Emit modern ``hookSpecificOutput``
+    on deny; empty object on allow (no opinion).
+    """
+    if decision.get("decision") == "deny":
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": decision.get("reason", ""),
+            }
+        }
+    return {}
+
+
 def main() -> int:
     raw = sys.stdin.read() or "{}"
     try:
@@ -153,12 +171,12 @@ def main() -> int:
     except json.JSONDecodeError:
         # Fail-closed on malformed input ONLY at the submission boundary
         # (decide() itself fails open for non-submission tools).
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
     if not isinstance(event, dict):
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
-    sys.stdout.write(json.dumps(decide(event)))
+    sys.stdout.write(json.dumps(_to_wire(decide(event))))
     return 0
 
 

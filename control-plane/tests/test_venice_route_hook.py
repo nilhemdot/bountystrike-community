@@ -218,12 +218,12 @@ def _run_hook(stdin_payload: str) -> dict:
 
 def test_main_invalid_json_fails_open():
     out = _run_hook("not valid json")
-    assert out == {"decision": "allow"}
+    assert out == {}
 
 
 def test_main_non_object_input_fails_open():
     out = _run_hook("[]")
-    assert out == {"decision": "allow"}
+    assert out == {}
 
 
 def test_main_full_pipeline_anthropic_denial():
@@ -235,4 +235,4 @@ def test_main_full_pipeline_anthropic_denial():
         },
     })
     out = _run_hook(payload)
-    assert out["decision"] == "deny"
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"

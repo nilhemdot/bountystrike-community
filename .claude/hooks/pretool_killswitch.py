@@ -113,6 +113,26 @@ def _decide(state: str, category: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _to_wire(decision: dict) -> dict:
+    """Translate legacy ``{decision: allow|deny}`` to Claude Code wire schema.
+
+    Claude Code's PreToolUse hook validator accepts only ``approve|block``
+    on the legacy ``decision`` field, or the modern
+    ``hookSpecificOutput.permissionDecision: allow|deny|ask``. Emitting
+    ``{"decision": "allow"}`` fails schema validation with
+    ``(root): Invalid input``.
+    """
+    if decision.get("decision") == "deny":
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": decision.get("reason", ""),
+            }
+        }
+    return {}
+
+
 def main() -> int:
     try:
         event = json.loads(sys.stdin.read() or "{}")
@@ -120,7 +140,7 @@ def main() -> int:
         # Malformed input — fail open so we never wedge sessions on a
         # protocol drift. The build-plan §6.6 supervisor layer is the
         # net for this.
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
 
     tool_name = str(event.get("tool_name") or "")
@@ -129,7 +149,7 @@ def main() -> int:
 
     allow, reason = _decide(state, category)
     decision = {"decision": "allow"} if allow else {"decision": "deny", "reason": reason}
-    sys.stdout.write(json.dumps(decision))
+    sys.stdout.write(json.dumps(_to_wire(decision)))
     return 0
 
 

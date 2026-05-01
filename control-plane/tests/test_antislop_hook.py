@@ -277,7 +277,7 @@ def test_subprocess_roundtrip_clean_report() -> None:
         timeout=5,
     )
     assert proc.returncode == 0, proc.stderr
-    assert json.loads(proc.stdout) == {"decision": "allow"}
+    assert json.loads(proc.stdout) == {}
 
 
 def test_subprocess_roundtrip_malformed_input_fails_open() -> None:
@@ -289,4 +289,4 @@ def test_subprocess_roundtrip_malformed_input_fails_open() -> None:
         timeout=5,
     )
     assert proc.returncode == 0
-    assert json.loads(proc.stdout) == {"decision": "allow"}
+    assert json.loads(proc.stdout) == {}

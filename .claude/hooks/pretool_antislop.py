@@ -255,17 +255,35 @@ def decide(event: dict[str, Any]) -> dict[str, Any]:
     return evaluate(file_path, content)
 
 
+def _to_wire(decision: dict) -> dict:
+    """Translate legacy ``{decision: allow|deny}`` to Claude Code wire schema.
+
+    Claude Code's PreToolUse hook validator rejects ``decision: "allow"``
+    (legacy enum is ``approve|block``). Emit modern ``hookSpecificOutput``
+    on deny; empty object on allow (no opinion).
+    """
+    if decision.get("decision") == "deny":
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": decision.get("reason", ""),
+            }
+        }
+    return {}
+
+
 def main() -> int:
     raw = sys.stdin.read() or "{}"
     try:
         event = json.loads(raw)
     except json.JSONDecodeError:
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
     if not isinstance(event, dict):
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
-    sys.stdout.write(json.dumps(decide(event)))
+    sys.stdout.write(json.dumps(_to_wire(decide(event))))
     return 0
 
 

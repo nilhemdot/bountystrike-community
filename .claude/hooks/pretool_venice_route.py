@@ -149,6 +149,33 @@ def route(event: dict[str, Any]) -> dict[str, Any]:
     return {"decision": "allow", "updatedInput": new_args}
 
 
+def _to_wire(decision: dict) -> dict:
+    """Translate legacy ``{decision: allow|deny, ...}`` to Claude Code wire schema.
+
+    Claude Code's PreToolUse hook validator rejects ``decision: "allow"``
+    (legacy enum is ``approve|block``). Emit modern ``hookSpecificOutput``
+    on deny; empty object on plain allow; preserve ``updatedInput`` field
+    on rewrite-and-allow paths.
+    """
+    if decision.get("decision") == "deny":
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": decision.get("reason", ""),
+            }
+        }
+    if "updatedInput" in decision:
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+            },
+            "updatedInput": decision["updatedInput"],
+        }
+    return {}
+
+
 def main() -> int:
     """Entry point — read event JSON from stdin, write decision to stdout."""
     raw = sys.stdin.read() or "{}"
@@ -156,12 +183,12 @@ def main() -> int:
         event = json.loads(raw)
     except json.JSONDecodeError:
         # Fail-open per the docstring contract.
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
     if not isinstance(event, dict):
-        sys.stdout.write(json.dumps({"decision": "allow"}))
+        sys.stdout.write(json.dumps({}))
         return 0
-    sys.stdout.write(json.dumps(route(event)))
+    sys.stdout.write(json.dumps(_to_wire(route(event))))
     return 0
 
 
