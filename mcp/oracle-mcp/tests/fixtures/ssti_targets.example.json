@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v1?q=__placeholder__",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before running",
+    "tags": ["example", "do-not-run"]
+  }
+]

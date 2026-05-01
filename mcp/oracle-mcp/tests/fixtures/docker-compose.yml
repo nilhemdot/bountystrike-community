@@ -66,3 +66,16 @@ services:
       timeout: 1s
       retries: 30
     restart: "no"
+
+  ssti-lab:
+    build: ./ssti_lab
+    image: bs5/ssti-lab:0.1.0
+    container_name: bs5-ssti-lab
+    ports:
+      - "5094:5094"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5094/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"

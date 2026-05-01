@@ -1,0 +1,454 @@
+{
+  "oracle": "ssti",
+  "total": 20,
+  "true_positives": 10,
+  "false_positives": 0,
+  "true_negatives": 10,
+  "false_negatives": 0,
+  "tpr": 1.0,
+  "fpr": 0.0,
+  "results": [
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v1?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Jinja2/Twig \u2014 body context",
+        "tags": [
+          "jinja2",
+          "twig",
+          "body"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "jinja2",
+        "payload": "{{20*56}}",
+        "expected": "1120",
+        "url": "http://localhost:5094/v1?q=%7B%7B20%2A56%7D%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v2?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Jinja2/Twig \u2014 paragraph wrapping",
+        "tags": [
+          "jinja2",
+          "twig",
+          "paragraph"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "jinja2",
+        "payload": "{{15*69}}",
+        "expected": "1035",
+        "url": "http://localhost:5094/v2?q=%7B%7B15%2A69%7D%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v3?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Freemarker/Velocity \u2014 ${a*b}",
+        "tags": [
+          "freemarker",
+          "velocity"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "freemarker",
+        "payload": "${29*37}",
+        "expected": "1073",
+        "url": "http://localhost:5094/v3?q=%24%7B29%2A37%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v4?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Velocity \u2014 #set($r=a*b)${r}",
+        "tags": [
+          "velocity",
+          "set"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "velocity",
+        "payload": "#set($r=20*47)${r}",
+        "expected": "940",
+        "url": "http://localhost:5094/v4?q=%23set%28%24r%3D20%2A47%29%24%7Br%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v5?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Smarty \u2014 {a*b}",
+        "tags": [
+          "smarty"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "freemarker",
+        "payload": "${99*32}",
+        "expected": "3168",
+        "url": "http://localhost:5094/v5?q=%24%7B99%2A32%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v6?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "ERB Ruby \u2014 <%= a*b %>",
+        "tags": [
+          "erb"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "erb",
+        "payload": "<%= 74*45 %>",
+        "expected": "3330",
+        "url": "http://localhost:5094/v6?q=%3C%25%3D+74%2A45+%25%3E",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v7?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "MVEL \u2014 @{a*b}",
+        "tags": [
+          "mvel"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "mvel",
+        "payload": "@{16*83}",
+        "expected": "1328",
+        "url": "http://localhost:5094/v7?q=%40%7B16%2A83%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v8?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-dialect JSON endpoint",
+        "tags": [
+          "multi-dialect",
+          "json"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "jinja2",
+        "payload": "{{46*26}}",
+        "expected": "1196",
+        "url": "http://localhost:5094/v8?q=%7B%7B46%2A26%7D%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v9?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "Jinja2 inside HTML attribute",
+        "tags": [
+          "jinja2",
+          "attribute"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "jinja2",
+        "payload": "{{22*35}}",
+        "expected": "770",
+        "url": "http://localhost:5094/v9?q=%7B%7B22%2A35%7D%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/v10?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "multi-dialect plaintext",
+        "tags": [
+          "multi-dialect",
+          "plaintext"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "dialect": "jinja2",
+        "payload": "{{62*20}}",
+        "expected": "1240",
+        "url": "http://localhost:5094/v10?q=%7B%7B62%2A20%7D%7D",
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c1?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "HTML escape \u2014 payload as text",
+        "tags": [
+          "html-escape"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 58,
+        "b": 99,
+        "expected": "5742"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c2?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "rejects curly braces",
+        "tags": [
+          "curly-denylist"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 23,
+        "b": 54,
+        "expected": "1242"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c3?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "static response",
+        "tags": [
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 14,
+        "b": 32,
+        "expected": "448"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c4?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "numeric allowlist",
+        "tags": [
+          "allowlist",
+          "numeric"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 60,
+        "b": 53,
+        "expected": "3180"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c5?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "regex allowlist [a-zA-Z0-9 _-]",
+        "tags": [
+          "allowlist",
+          "regex"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 91,
+        "b": 74,
+        "expected": "6734"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c6?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "strips template metacharacters",
+        "tags": [
+          "sanitize"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 93,
+        "b": 22,
+        "expected": "2046"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c7?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "404 regardless of input",
+        "tags": [
+          "404",
+          "no-reflection"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 22,
+        "b": 47,
+        "expected": "1034"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c8?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "returns length only",
+        "tags": [
+          "length"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 76,
+        "b": 49,
+        "expected": "3724"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c9?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "cached static page",
+        "tags": [
+          "cached"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 21,
+        "b": 68,
+        "expected": "1428"
+      }
+    },
+    {
+      "target": {
+        "oracle": "ssti",
+        "url": "http://localhost:5094/c10?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "returns SHA-256 hash only",
+        "tags": [
+          "hash"
+        ]
+      },
+      "actual_verdict": "unreproducible",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "param": "q",
+        "a": 21,
+        "b": 21,
+        "expected": "441"
+      }
+    }
+  ]
+}

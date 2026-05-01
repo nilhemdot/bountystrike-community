@@ -1,0 +1,162 @@
+[
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v1?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Jinja2/Twig — body context",
+    "tags": ["jinja2", "twig", "body"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v2?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Jinja2/Twig — paragraph wrapping",
+    "tags": ["jinja2", "twig", "paragraph"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v3?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Freemarker/Velocity — ${a*b}",
+    "tags": ["freemarker", "velocity"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v4?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Velocity — #set($r=a*b)${r}",
+    "tags": ["velocity", "set"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v5?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Smarty — {a*b}",
+    "tags": ["smarty"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v6?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "ERB Ruby — <%= a*b %>",
+    "tags": ["erb"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v7?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "MVEL — @{a*b}",
+    "tags": ["mvel"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v8?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-dialect JSON endpoint",
+    "tags": ["multi-dialect", "json"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v9?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "Jinja2 inside HTML attribute",
+    "tags": ["jinja2", "attribute"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/v10?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "multi-dialect plaintext",
+    "tags": ["multi-dialect", "plaintext"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c1?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "HTML escape — payload as text",
+    "tags": ["html-escape"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c2?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "rejects curly braces",
+    "tags": ["curly-denylist"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c3?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "static response",
+    "tags": ["no-reflection"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c4?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "numeric allowlist",
+    "tags": ["allowlist", "numeric"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c5?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "regex allowlist [a-zA-Z0-9 _-]",
+    "tags": ["allowlist", "regex"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c6?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "strips template metacharacters",
+    "tags": ["sanitize"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c7?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "404 regardless of input",
+    "tags": ["404", "no-reflection"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c8?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "returns length only",
+    "tags": ["length"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c9?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "cached static page",
+    "tags": ["cached"]
+  },
+  {
+    "oracle": "ssti",
+    "url": "http://localhost:5094/c10?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "returns SHA-256 hash only",
+    "tags": ["hash"]
+  }
+]
