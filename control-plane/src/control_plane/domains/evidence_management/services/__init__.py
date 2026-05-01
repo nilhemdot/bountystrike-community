@@ -3,5 +3,13 @@
 from __future__ import annotations
 
 from .hash_chain_service import HashChainService
+from .validator_compliance import (
+    ComplianceReport,
+    audit_validator_compliance,
+)
 
-__all__ = ["HashChainService"]
+__all__ = [
+    "ComplianceReport",
+    "HashChainService",
+    "audit_validator_compliance",
+]

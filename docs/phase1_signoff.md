@@ -1009,6 +1009,79 @@ test. No new src code, no new migrations.
 
 * **`1.1e-deploy`** — recon container Dockerfile build + registry push.
 * **`1.1f-deploy`** — R2 live-credential verification.
-* **Round 9 follow-up: validator-spec compliance audit** — assert every
-  `findings.status='validated'` row has a paired `dedup_fingerprints`
-  entry on the next orchestrator dry-run.
+
+---
+
+## Round 12 — validator-spec compliance audit (closes Round 9 follow-up)
+
+The validator-agent (`.claude/agents/validator.md` lines 159-169) is
+specified to call ``dedup-mcp register_finding`` after every
+``validated`` verdict, persisting a row in ``dedup_fingerprints``. The
+agent is LLM-driven, so static tests can't assert it actually does.
+Round 12 ships the post-run invariant: a read-only audit that flags
+every ``findings.status='validated'`` row missing a paired
+``dedup_fingerprints.finding_id`` entry. CI / orchestrator dry-runs
+can gate on it; an empty ``missing_ids`` proves the agent followed
+the spec for that run.
+
+### 29. `audit_validator_compliance`
+
+**Files:**
+- `control-plane/src/control_plane/domains/evidence_management/services/validator_compliance.py`
+- `control-plane/src/control_plane/domains/evidence_management/services/__init__.py` (re-export)
+
+Single async function returning :class:`ComplianceReport`
+(`total_validated`, `missing_ids`, `is_compliant` property,
+`missing_fingerprint` property). LEFT JOIN against
+``dedup_fingerprints`` so unmatched rows surface as ``NULL`` —
+INNER JOIN would silently hide them. Comparison cast
+``f.id::text = d.finding_id`` is explicit because
+``dedup_fingerprints.finding_id`` is TEXT (per migration 02) while
+``findings.id`` is UUID; producer-side type confusion shows up as
+"missing match" rather than an opaque comparison.
+
+Optional ``program_handle`` argument scopes the audit to a single
+program — both the missing-set query and the total-count query gate
+on it so the report describes the same scope on both axes.
+
+### 30. Test coverage
+
+**Unit (`control-plane/tests/test_validator_compliance.py`, 10 tests):**
+
+* 4 dataclass invariants (empty / all-paired / missing-ids / frozen).
+* 6 SQL surface checks: empty result, ids-in-query-order, LEFT JOIN
+  required, ``f.id::text`` cast required, program-handle filter
+  reaches both queries, ``program_handle=None`` is global scope.
+
+**Integration (`tests/integration/test_validator_compliance_postgres.py`,
+6 tests, gated on `BS5_PG_TEST_DSN`):**
+
+| # | Test | What it asserts |
+|---|---|---|
+| 1 | `test_audit_empty_db_is_compliant` | No findings → `total_validated=0`, `is_compliant=True`. |
+| 2 | `test_audit_all_paired_is_compliant` | 2 validated findings, both with dedup rows → 0 missing. |
+| 3 | `test_audit_zero_dedup_rows_flags_every_validated` | 2 validated findings, 0 dedup rows → both ids in `missing_ids`. |
+| 4 | `test_audit_mixed_flags_only_unmatched` | 3 validated findings, 1 paired → exactly the 2 unpaired ids in `missing_ids`. |
+| 5 | `test_audit_ignores_non_validated_statuses` | `hypothesis` / `archived` rows without dedup are not flagged — only `validated` is in scope. |
+| 6 | `test_audit_program_handle_scope_isolates` | Program A audit doesn't see program B's non-compliant findings. |
+
+Per-test isolation via the `validator-compliance-pg-test`
+program-handle namespace; fixture wipes it before and after each
+test (and explicitly removes any cross-program-test program too).
+
+### Round 12 status delta
+
+| Item | After Round 11 | After Round 12 |
+|---|---|---|
+| Validator-spec compliance audit | OPEN (no automated check) | **SHIPPED** (`audit_validator_compliance` + 16 tests) |
+| Control-plane test count | 418 | **428** (+10 unit) |
+| Integration test count | 66 | **72** (+6 real-PG) |
+
+### Open follow-ups
+
+* **`1.1e-deploy`** — recon container Dockerfile build + registry push.
+* **`1.1f-deploy`** — R2 live-credential verification.
+* **CI gate** — wire `audit_validator_compliance` into the orchestrator
+  dry-run flow (or a post-run job) so non-compliant runs fail the
+  build instead of silently shipping. Single-line addition once an
+  orchestrator-run harness exists.
