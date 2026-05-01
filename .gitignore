@@ -21,3 +21,8 @@ htmlcov/
 **/.claude-flow/
 .claude/settings.local.json
 .claude/projects/
+
+# Ruflo/claude-flow runtime data
+.swarm/
+.claude/memory.db
+ruvector.db
