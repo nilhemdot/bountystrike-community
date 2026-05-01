@@ -241,3 +241,55 @@ async def test_server_impl_returns_ok_false_on_4xx(client_with_mock, base_kwargs
     assert out["ok"] is False
     assert out["status_code"] == 403
     assert out["body"] == {"error": "forbidden"}
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — base_url URL guard, body truncation, non-JSON 2xx.
+# ---------------------------------------------------------------------------
+
+
+def test_construction_rejects_metadata_ip_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("YESWEHACK_API_TOKEN", "tok")
+    from yeswehack_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        YesWeHackClient(base_url="https://169.254.169.254/")
+
+
+def test_construction_rejects_http_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("YESWEHACK_API_TOKEN", "tok")
+    monkeypatch.delenv("BS_PLATFORM_ALLOW_HTTP", raising=False)
+    from yeswehack_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        YesWeHackClient(base_url="http://api.yeswehack.com/")
+
+
+@respx.mock
+async def test_error_body_truncated(client_with_mock, base_kwargs) -> None:
+    import json as _json
+
+    from yeswehack_mcp.client import MAX_ERROR_BODY_BYTES
+
+    huge = {"err": "x" * 100_000}
+    respx.post(
+        f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+    ).respond(400, json=huge)
+    with pytest.raises(YesWeHackError) as info:
+        await client_with_mock.submit_report(**base_kwargs)
+    body_repr = (
+        info.value.body
+        if isinstance(info.value.body, str)
+        else _json.dumps(info.value.body)
+    )
+    assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
+    assert "TRUNCATED" in body_repr
+
+
+@respx.mock
+async def test_non_json_2xx_raises_typed_error(client_with_mock, base_kwargs) -> None:
+    respx.post(
+        f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+    ).respond(201, content="<html>oops</html>", headers={"content-type": "text/html"})
+    with pytest.raises(YesWeHackError, match="non-JSON 2xx body"):
+        await client_with_mock.submit_report(**base_kwargs)

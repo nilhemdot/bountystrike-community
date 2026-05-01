@@ -30,16 +30,34 @@ to drain the connection pool.
 
 from __future__ import annotations
 
+import json as _json
 import os
 from typing import Any
 
 import httpx
+
+from yeswehack_mcp._url_guard import validate_target_url
 
 API_VERSION = "v1"
 DEFAULT_BASE_URL = os.environ.get(
     "YESWEHACK_BASE_URL", "https://api.yeswehack.com"
 )
 DEFAULT_TIMEOUT_S = 30.0
+MAX_ERROR_BODY_BYTES = 4096
+_ALLOW_HTTP_BASE_URL = os.environ.get("BS_PLATFORM_ALLOW_HTTP") == "1"
+
+
+def _truncate_body(body: Any) -> Any:
+    if body is None:
+        return None
+    try:
+        s = body if isinstance(body, str) else _json.dumps(body)
+    except Exception:
+        s = str(body)
+    if len(s) <= MAX_ERROR_BODY_BYTES:
+        return body if isinstance(body, (dict, list, str)) else s
+    head = s[: MAX_ERROR_BODY_BYTES - 64]
+    return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
 # Retry policy: only retry idempotent failures (5xx, network), never 4xx.
 MAX_RETRIES = 2
@@ -66,6 +84,7 @@ class YesWeHackClient:
         self._token = api_token or os.environ.get("YESWEHACK_API_TOKEN", "")
         if not self._token:
             raise RuntimeError("YESWEHACK_API_TOKEN is not set")
+        validate_target_url(base_url, allow_http=_ALLOW_HTTP_BASE_URL)
         self._base_url = base_url.rstrip("/")
         # Allow injecting a client for tests (respx).
         self._owns_client = client is None
@@ -132,12 +151,19 @@ class YesWeHackClient:
                 ) from exc
 
             if 200 <= resp.status_code < 300:
-                payload = resp.json()
+                try:
+                    payload = resp.json()
+                except Exception as exc:
+                    raise YesWeHackError(
+                        f"non-JSON 2xx body ({type(exc).__name__})",
+                        status_code=resp.status_code,
+                        body=_truncate_body(resp.text),
+                    ) from exc
                 if not isinstance(payload, dict):
                     raise YesWeHackError(
                         "unexpected response shape (not an object)",
                         status_code=resp.status_code,
-                        body=payload,
+                        body=_truncate_body(payload),
                     )
                 return {
                     "submission_id": payload.get("id"),
@@ -155,7 +181,7 @@ class YesWeHackClient:
                 raise YesWeHackError(
                     f"client error {resp.status_code}: rejected — fix report and retry",
                     status_code=resp.status_code,
-                    body=body_obj,
+                    body=_truncate_body(body_obj),
                 )
 
             # 5xx — retryable
@@ -169,7 +195,7 @@ class YesWeHackClient:
             raise YesWeHackError(
                 f"server error {resp.status_code} after {MAX_RETRIES + 1} attempts",
                 status_code=resp.status_code,
-                body=body_obj,
+                body=_truncate_body(body_obj),
             )
 
         # Unreachable; exhausted retries always raise.

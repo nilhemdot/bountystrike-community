@@ -366,3 +366,53 @@ async def test_submit_rejects_payload_missing_data(client_with_env, base_kwargs)
     )
     with pytest.raises(HackerOneError, match="missing 'data'"):
         await client_with_env.submit_report(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — base_url URL guard, body truncation, non-JSON 2xx.
+# ---------------------------------------------------------------------------
+
+
+def test_construction_rejects_metadata_ip_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("H1_API_USERNAME", "alice")
+    monkeypatch.setenv("H1_API_TOKEN", "tok")
+    from h1_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        HackerOneClient(base_url="https://169.254.169.254/")
+
+
+def test_construction_rejects_http_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("H1_API_USERNAME", "alice")
+    monkeypatch.setenv("H1_API_TOKEN", "tok")
+    monkeypatch.delenv("BS_PLATFORM_ALLOW_HTTP", raising=False)
+    from h1_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        HackerOneClient(base_url="http://api.hackerone.com/")
+
+
+@respx.mock
+async def test_error_body_truncated(client_with_env, base_kwargs) -> None:
+    from h1_mcp.client import MAX_ERROR_BODY_BYTES
+
+    huge = {"errors": [{"detail": "x" * 100_000}]}
+    respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(400, json=huge)
+    with pytest.raises(HackerOneError) as info:
+        await client_with_env.submit_report(**base_kwargs)
+    body_repr = (
+        info.value.body
+        if isinstance(info.value.body, str)
+        else json.dumps(info.value.body)
+    )
+    assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
+    assert "TRUNCATED" in body_repr
+
+
+@respx.mock
+async def test_non_json_2xx_raises_typed_error(client_with_env, base_kwargs) -> None:
+    respx.post(f"{DEFAULT_BASE_URL}/v1/hackers/reports").respond(
+        201, content="<html>oops</html>", headers={"content-type": "text/html"}
+    )
+    with pytest.raises(HackerOneError, match="non-JSON 2xx body"):
+        await client_with_env.submit_report(**base_kwargs)

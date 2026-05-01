@@ -69,14 +69,32 @@ optional ``target_id`` (UUID), and the body is the JSON:API resource.
 
 from __future__ import annotations
 
+import json as _json
 import os
 from typing import Any
 
 import httpx
 
+from bugcrowd_mcp._url_guard import validate_target_url
+
 DEFAULT_BASE_URL = os.environ.get("BUGCROWD_BASE_URL", "https://api.bugcrowd.com")
 DEFAULT_TIMEOUT_S = 30.0
 DEFAULT_AUTH_SCHEME = os.environ.get("BUGCROWD_AUTH_SCHEME", "Token")
+MAX_ERROR_BODY_BYTES = 4096
+_ALLOW_HTTP_BASE_URL = os.environ.get("BS_PLATFORM_ALLOW_HTTP") == "1"
+
+
+def _truncate_body(body: Any) -> Any:
+    if body is None:
+        return None
+    try:
+        s = body if isinstance(body, str) else _json.dumps(body)
+    except Exception:
+        s = str(body)
+    if len(s) <= MAX_ERROR_BODY_BYTES:
+        return body if isinstance(body, (dict, list, str)) else s
+    head = s[: MAX_ERROR_BODY_BYTES - 64]
+    return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
 # Severity name → Bugcrowd integer (P1..P5).
 SEVERITY_TO_INT: dict[str, int] = {
@@ -115,6 +133,7 @@ class BugcrowdClient:
         self._token = api_token or os.environ.get("BUGCROWD_API_TOKEN", "")
         if not self._token:
             raise RuntimeError("BUGCROWD_API_TOKEN is not set")
+        validate_target_url(base_url, allow_http=_ALLOW_HTTP_BASE_URL)
         self._base_url = base_url.rstrip("/")
         self._auth_scheme = auth_scheme
         self._owns_client = client is None
@@ -208,12 +227,19 @@ class BugcrowdClient:
                 ) from exc
 
             if 200 <= resp.status_code < 300:
-                payload = resp.json()
+                try:
+                    payload = resp.json()
+                except Exception as exc:
+                    raise BugcrowdError(
+                        f"non-JSON 2xx body ({type(exc).__name__})",
+                        status_code=resp.status_code,
+                        body=_truncate_body(resp.text),
+                    ) from exc
                 if not isinstance(payload, dict) or "data" not in payload:
                     raise BugcrowdError(
                         "unexpected response shape (missing 'data')",
                         status_code=resp.status_code,
-                        body=payload,
+                        body=_truncate_body(payload),
                     )
                 data = payload["data"]
                 attrs = data.get("attributes", {}) if isinstance(data, dict) else {}
@@ -234,7 +260,7 @@ class BugcrowdClient:
                 raise BugcrowdError(
                     f"client error {resp.status_code}: rejected — fix report and retry",
                     status_code=resp.status_code,
-                    body=body_obj,
+                    body=_truncate_body(body_obj),
                 )
 
             if attempt < MAX_RETRIES:
@@ -247,7 +273,7 @@ class BugcrowdClient:
             raise BugcrowdError(
                 f"server error {resp.status_code} after {MAX_RETRIES + 1} attempts",
                 status_code=resp.status_code,
-                body=body_obj,
+                body=_truncate_body(body_obj),
             )
 
         raise BugcrowdError("retry loop exhausted unexpectedly") from last_exc

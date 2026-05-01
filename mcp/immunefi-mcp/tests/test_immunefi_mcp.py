@@ -229,3 +229,124 @@ async def test_server_impl_ok_false_on_4xx(client_anon, base_kwargs) -> None:
     out = await _submit_report_impl(client_anon, **base_kwargs)
     assert out["ok"] is False
     assert out["status_code"] == 429
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — URL guard, base_url validation, body truncation,
+# Authorization stripping on override host mismatch (CRITICAL findings
+# from the post-ship audit).
+# ---------------------------------------------------------------------------
+
+
+def test_construction_rejects_metadata_ip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A misconfigured IMMUNEFI_BASE_URL pointing at the AWS metadata
+    service must fail loudly at client construction — not silently send
+    the Bearer to 169.254.169.254 on the first submit."""
+    from immunefi_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        ImmunefiClient(api_token="t", base_url="https://169.254.169.254/")
+
+
+def test_construction_rejects_http_in_production(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """http:// base URL is rejected in production (BS_PLATFORM_ALLOW_HTTP unset)."""
+    from immunefi_mcp._url_guard import UrlGuardError
+
+    monkeypatch.delenv("BS_PLATFORM_ALLOW_HTTP", raising=False)
+    with pytest.raises(UrlGuardError):
+        ImmunefiClient(api_token="t", base_url="http://api.immunefi.com/")
+
+
+def test_construction_rejects_file_scheme() -> None:
+    from immunefi_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        ImmunefiClient(api_token="t", base_url="file:///etc/passwd")
+
+
+@respx.mock
+async def test_submit_url_with_metadata_ip_rejected(
+    client_authed, base_kwargs
+) -> None:
+    """LLM-controllable submit_url MUST not reach the AWS metadata IP."""
+    base_kwargs["submit_url"] = "https://169.254.169.254/exfil"
+    with pytest.raises(ValueError, match="URL guard"):
+        await client_authed.submit_report(**base_kwargs)
+
+
+@respx.mock
+async def test_submit_url_with_file_scheme_rejected(
+    client_authed, base_kwargs
+) -> None:
+    base_kwargs["submit_url"] = "file:///tmp/exfil"
+    with pytest.raises(ValueError, match="URL guard"):
+        await client_authed.submit_report(**base_kwargs)
+
+
+@respx.mock
+async def test_override_url_strips_auth_when_host_differs(
+    client_authed, base_kwargs
+) -> None:
+    """Authorization header MUST NOT be sent to a relay on a different
+    host than the configured base URL — the Bearer is for Immunefi, not
+    the relay."""
+    relay = "https://relay.example.com/intake"
+    route = respx.post(relay).respond(
+        201, json={"id": "rep-uuid", "status": "received", "title": "x"}
+    )
+    base_kwargs["submit_url"] = relay
+    await client_authed.submit_report(**base_kwargs)
+    sent = route.calls[0].request
+    # CRITICAL: Bearer must be stripped because host != api.immunefi.com
+    assert "authorization" not in {k.lower() for k in sent.headers.keys()}
+
+
+@respx.mock
+async def test_override_url_keeps_auth_when_host_matches(
+    client_authed, base_kwargs
+) -> None:
+    """Override URL on the SAME host (e.g. a path on api.immunefi.com)
+    keeps the Bearer — that is a legitimate per-programme path on the
+    same platform."""
+    same_host = "https://api.immunefi.com/programmes/foo/submit"
+    route = respx.post(same_host).respond(
+        201, json={"id": "rep-uuid", "status": "received", "title": "x"}
+    )
+    base_kwargs["submit_url"] = same_host
+    await client_authed.submit_report(**base_kwargs)
+    sent = route.calls[0].request
+    assert sent.headers["authorization"] == "Bearer tok-secret"
+
+
+@respx.mock
+async def test_error_body_truncated_to_max_size(client_anon, base_kwargs) -> None:
+    """A multi-MB error body MUST be capped before reaching MCP stdio."""
+    from immunefi_mcp.client import MAX_ERROR_BODY_BYTES
+
+    huge = {"err": "x" * 100_000}
+    respx.post(f"{DEFAULT_BASE_URL}/v1/reports").respond(400, json=huge)
+    with pytest.raises(ImmunefiError) as info:
+        await client_anon.submit_report(**base_kwargs)
+    body_repr = (
+        info.value.body
+        if isinstance(info.value.body, str)
+        else json.dumps(info.value.body)
+    )
+    assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
+    assert "TRUNCATED" in body_repr
+
+
+@respx.mock
+async def test_non_json_2xx_raises_typed_error(client_anon, base_kwargs) -> None:
+    """An empty / non-JSON 2xx body must raise ImmunefiError, not the
+    raw json.JSONDecodeError — preserves the typed-error contract that
+    callers depend on."""
+    respx.post(f"{DEFAULT_BASE_URL}/v1/reports").respond(
+        201, content="<html>oops</html>", headers={"content-type": "text/html"}
+    )
+    with pytest.raises(ImmunefiError, match="non-JSON 2xx body"):
+        await client_anon.submit_report(**base_kwargs)

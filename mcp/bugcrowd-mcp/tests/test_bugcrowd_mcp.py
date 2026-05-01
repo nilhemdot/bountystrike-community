@@ -304,3 +304,51 @@ async def test_server_impl_ok_false_on_4xx(client, base_kwargs) -> None:
     out = await _submit_report_impl(client, **base_kwargs)
     assert out["ok"] is False
     assert out["status_code"] == 422
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — base_url URL guard, body truncation, non-JSON 2xx.
+# ---------------------------------------------------------------------------
+
+
+def test_construction_rejects_metadata_ip_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BUGCROWD_API_TOKEN", "tok")
+    from bugcrowd_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        BugcrowdClient(base_url="https://169.254.169.254/")
+
+
+def test_construction_rejects_http_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BUGCROWD_API_TOKEN", "tok")
+    monkeypatch.delenv("BS_PLATFORM_ALLOW_HTTP", raising=False)
+    from bugcrowd_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        BugcrowdClient(base_url="http://api.bugcrowd.com/")
+
+
+@respx.mock
+async def test_error_body_truncated(client, base_kwargs) -> None:
+    from bugcrowd_mcp.client import MAX_ERROR_BODY_BYTES
+
+    huge = {"errors": [{"detail": "x" * 100_000}]}
+    respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(400, json=huge)
+    with pytest.raises(BugcrowdError) as info:
+        await client.submit_report(**base_kwargs)
+    body_repr = (
+        info.value.body
+        if isinstance(info.value.body, str)
+        else json.dumps(info.value.body)
+    )
+    assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
+    assert "TRUNCATED" in body_repr
+
+
+@respx.mock
+async def test_non_json_2xx_raises_typed_error(client, base_kwargs) -> None:
+    respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+        201, content="<html>oops</html>", headers={"content-type": "text/html"}
+    )
+    with pytest.raises(BugcrowdError, match="non-JSON 2xx body"):
+        await client.submit_report(**base_kwargs)

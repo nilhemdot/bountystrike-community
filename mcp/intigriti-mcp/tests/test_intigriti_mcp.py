@@ -235,3 +235,108 @@ async def test_submit_url_override_routes_to_relay(
     out = await client.submit_report(**base_kwargs)
     assert route.called
     assert out["submission_id"] == "relay-uuid"
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — env-var path, URL guard, host-mismatch auth strip,
+# body truncation. CRITICAL findings from the post-ship audit.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_env_var_override_takes_effect_at_call_time(
+    client, base_kwargs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """INTIGRITI_SUBMIT_URL set AFTER module import must take effect.
+
+    Pre-fix: SUBMIT_URL_OVERRIDE was captured at import time, so any
+    deploy that exported the env var post-import got the inert default.
+    The fix re-reads the env on every submit_report call.
+    """
+    relay = "https://env-relay.example.com/intake"
+    monkeypatch.setattr("intigriti_mcp.client.SUBMIT_URL_OVERRIDE", "")
+    monkeypatch.setenv("INTIGRITI_SUBMIT_URL", relay)
+    route = respx.post(relay).respond(
+        201, json={"id": "env-uuid", "state": "received"}
+    )
+    out = await client.submit_report(**base_kwargs)
+    assert route.called
+    assert out["submission_id"] == "env-uuid"
+
+
+def test_construction_rejects_metadata_ip_base_url() -> None:
+    from intigriti_mcp._url_guard import UrlGuardError
+
+    with pytest.raises(UrlGuardError):
+        IntigritiClient(api_token="t", base_url="https://169.254.169.254/")
+
+
+def test_construction_rejects_http_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from intigriti_mcp._url_guard import UrlGuardError
+
+    monkeypatch.delenv("BS_PLATFORM_ALLOW_HTTP", raising=False)
+    with pytest.raises(UrlGuardError):
+        IntigritiClient(api_token="t", base_url="http://api.intigriti.com/")
+
+
+@respx.mock
+async def test_override_url_with_metadata_ip_rejected(
+    client, base_kwargs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A poisoned INTIGRITI_SUBMIT_URL pointing at AWS IMDS must be
+    rejected at submit time, not exfil the Bearer."""
+    monkeypatch.setattr(
+        "intigriti_mcp.client.SUBMIT_URL_OVERRIDE", "https://169.254.169.254/exfil"
+    )
+    with pytest.raises(ValueError, match="URL guard"):
+        await client.submit_report(**base_kwargs)
+
+
+@respx.mock
+async def test_override_url_strips_auth_when_host_differs(
+    client, base_kwargs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    relay = "https://relay.example.com/intake"
+    monkeypatch.setattr("intigriti_mcp.client.SUBMIT_URL_OVERRIDE", relay)
+    route = respx.post(relay).respond(
+        201, json={"id": "relay-uuid", "state": "received"}
+    )
+    await client.submit_report(**base_kwargs)
+    sent = route.calls[0].request
+    assert "authorization" not in {k.lower() for k in sent.headers.keys()}
+
+
+@respx.mock
+async def test_override_url_keeps_auth_on_same_host(
+    client, base_kwargs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Override URL on the configured base host keeps the Bearer."""
+    same_host = (
+        "https://api.intigriti.com/external/researcher/v2/submissions"
+    )
+    monkeypatch.setattr("intigriti_mcp.client.SUBMIT_URL_OVERRIDE", same_host)
+    route = respx.post(same_host).respond(
+        201, json={"id": "same-uuid", "state": "received"}
+    )
+    await client.submit_report(**base_kwargs)
+    sent = route.calls[0].request
+    assert sent.headers["authorization"] == "Bearer tok-secret"
+
+
+@respx.mock
+async def test_error_body_truncated(client, base_kwargs) -> None:
+    from intigriti_mcp.client import MAX_ERROR_BODY_BYTES
+
+    huge = {"err": "x" * 100_000}
+    respx.post(f"{DEFAULT_BASE_URL}/v1/submissions").respond(400, json=huge)
+    with pytest.raises(IntigritiError) as info:
+        await client.submit_report(**base_kwargs)
+    body_repr = (
+        info.value.body
+        if isinstance(info.value.body, str)
+        else json.dumps(info.value.body)
+    )
+    assert len(body_repr) <= MAX_ERROR_BODY_BYTES + 64
+    assert "TRUNCATED" in body_repr

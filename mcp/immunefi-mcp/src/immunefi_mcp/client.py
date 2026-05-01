@@ -43,15 +43,47 @@ documented surface first. Tests lock the default contract.
 
 from __future__ import annotations
 
+import json as _json
 import os
 from typing import Any
 
 import httpx
 
+from immunefi_mcp._url_guard import (
+    UrlGuardError,
+    hosts_match,
+    validate_target_url,
+)
+
 DEFAULT_BASE_URL = os.environ.get(
     "IMMUNEFI_BASE_URL", "https://api.immunefi.com"
 )
 DEFAULT_TIMEOUT_S = 30.0
+# Cap on response body kept inside ImmunefiError.body. A misbehaving
+# upstream (or hostile proxy) could echo multi-MB responses; without
+# a cap, the body propagates into MCP stdio + agent transcripts.
+MAX_ERROR_BODY_BYTES = 4096
+# When True, the URL guard accepts http:// in addition to https:// and
+# allows loopback IPs. Tests opt in by setting BS_PLATFORM_ALLOW_HTTP=1
+# (e.g. for respx mocks against https URLs the flag has no effect, but
+# integration suites against a local httpbin do).
+_ALLOW_HTTP_BASE_URL = os.environ.get("BS_PLATFORM_ALLOW_HTTP") == "1"
+
+
+def _truncate_body(body: Any) -> Any:
+    """Cap body size to ``MAX_ERROR_BODY_BYTES``. JSON / dict bodies are
+    serialised, truncated, and the truncation is signalled by a sentinel.
+    Non-serialisable objects fall back to ``str(body)``."""
+    if body is None:
+        return None
+    try:
+        s = body if isinstance(body, str) else _json.dumps(body)
+    except Exception:
+        s = str(body)
+    if len(s) <= MAX_ERROR_BODY_BYTES:
+        return body if isinstance(body, (dict, list, str)) else s
+    head = s[: MAX_ERROR_BODY_BYTES - 64]
+    return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
 VALID_SEVERITIES: frozenset[str] = frozenset(
     {"informational", "low", "medium", "high", "critical"}
@@ -89,6 +121,9 @@ class ImmunefiClient:
         self._token = api_token if api_token is not None else os.environ.get(
             "IMMUNEFI_API_TOKEN", ""
         )
+        # base_url validation: a misconfigured IMMUNEFI_BASE_URL must not
+        # silently become a credential exfil channel.
+        validate_target_url(base_url, allow_http=_ALLOW_HTTP_BASE_URL)
         self._base_url = base_url.rstrip("/")
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
@@ -103,13 +138,13 @@ class ImmunefiClient:
     async def __aexit__(self, *_: object) -> None:
         await self.aclose()
 
-    def _headers(self) -> dict[str, str]:
+    def _headers(self, *, attach_auth: bool = True) -> dict[str, str]:
         h = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "bountystrike-immunefi-mcp/0.1",
         }
-        if self._token:
+        if attach_auth and self._token:
             h["Authorization"] = f"Bearer {self._token}"
         return h
 
@@ -156,12 +191,27 @@ class ImmunefiClient:
                 if k not in body:
                     body[k] = v
 
-        url = submit_url or f"{self._base_url}/v1/reports"
+        # Resolve URL + decide auth attachment. If the caller passed an
+        # override, validate it and only attach the platform Bearer when
+        # the override host matches the configured base URL. Otherwise
+        # the override could silently exfiltrate the token.
+        if submit_url:
+            try:
+                validate_target_url(submit_url, allow_http=_ALLOW_HTTP_BASE_URL)
+            except UrlGuardError as exc:
+                raise ValueError(f"submit_url rejected by URL guard: {exc}") from exc
+            url = submit_url
+            attach_auth = hosts_match(submit_url, self._base_url)
+        else:
+            url = f"{self._base_url}/v1/reports"
+            attach_auth = True
+
+        headers = self._headers(attach_auth=attach_auth)
 
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES + 1):
             try:
-                resp = await self._client.post(url, headers=self._headers(), json=body)
+                resp = await self._client.post(url, headers=headers, json=body)
             except httpx.RequestError as exc:
                 last_exc = exc
                 if attempt < MAX_RETRIES:
@@ -173,12 +223,19 @@ class ImmunefiClient:
                 ) from exc
 
             if 200 <= resp.status_code < 300:
-                payload = resp.json()
+                try:
+                    payload = resp.json()
+                except Exception as exc:
+                    raise ImmunefiError(
+                        f"non-JSON 2xx body ({type(exc).__name__})",
+                        status_code=resp.status_code,
+                        body=_truncate_body(resp.text),
+                    ) from exc
                 if not isinstance(payload, dict):
                     raise ImmunefiError(
                         "unexpected response shape (not an object)",
                         status_code=resp.status_code,
-                        body=payload,
+                        body=_truncate_body(payload),
                     )
                 return {
                     "submission_id": (
@@ -199,7 +256,7 @@ class ImmunefiClient:
                 raise ImmunefiError(
                     f"client error {resp.status_code}: rejected — fix report and retry",
                     status_code=resp.status_code,
-                    body=body_obj,
+                    body=_truncate_body(body_obj),
                 )
 
             if attempt < MAX_RETRIES:
@@ -212,7 +269,7 @@ class ImmunefiClient:
             raise ImmunefiError(
                 f"server error {resp.status_code} after {MAX_RETRIES + 1} attempts",
                 status_code=resp.status_code,
-                body=body_obj,
+                body=_truncate_body(body_obj),
             )
 
         raise ImmunefiError("retry loop exhausted unexpectedly") from last_exc

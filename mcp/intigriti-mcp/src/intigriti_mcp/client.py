@@ -45,19 +45,58 @@ the cross-platform reporter contract:
 
 from __future__ import annotations
 
+import json as _json
 import os
 from typing import Any
 
 import httpx
 
+from intigriti_mcp._url_guard import (
+    UrlGuardError,
+    hosts_match,
+    validate_target_url,
+)
+
 DEFAULT_BASE_URL = os.environ.get(
     "INTIGRITI_BASE_URL", "https://api.intigriti.com/external/researcher"
 )
-# Optional override: if set, ``submit_report`` POSTs here instead of the
-# (non-existent) Intigriti submission endpoint. Intended for callers
-# who run their own relay or have closed-beta submission API access.
-SUBMIT_URL_OVERRIDE = os.environ.get("INTIGRITI_SUBMIT_URL", "")
 DEFAULT_TIMEOUT_S = 30.0
+MAX_ERROR_BODY_BYTES = 4096
+_ALLOW_HTTP_BASE_URL = os.environ.get("BS_PLATFORM_ALLOW_HTTP") == "1"
+
+# Re-read at call time so a deploy that exports the var post-import
+# picks it up; the previous module-load capture made the env-var path
+# inert in production. Tests can either set the env or override the
+# attribute directly via monkeypatch.
+SUBMIT_URL_OVERRIDE_ENV = "INTIGRITI_SUBMIT_URL"
+
+
+def _current_submit_url_override() -> str:
+    """Read INTIGRITI_SUBMIT_URL on every call; backwards-compat with
+    tests that monkeypatch the legacy module attribute."""
+    legacy = globals().get("SUBMIT_URL_OVERRIDE", "")
+    if legacy:
+        return legacy
+    return os.environ.get(SUBMIT_URL_OVERRIDE_ENV, "")
+
+
+# Legacy module attribute kept for backwards compatibility with tests
+# that monkeypatch ``intigriti_mcp.client.SUBMIT_URL_OVERRIDE``. The env
+# path supersedes it via ``_current_submit_url_override``.
+SUBMIT_URL_OVERRIDE = ""
+
+
+def _truncate_body(body: Any) -> Any:
+    if body is None:
+        return None
+    try:
+        s = body if isinstance(body, str) else _json.dumps(body)
+    except Exception:
+        s = str(body)
+    if len(s) <= MAX_ERROR_BODY_BYTES:
+        return body if isinstance(body, (dict, list, str)) else s
+    head = s[: MAX_ERROR_BODY_BYTES - 64]
+    return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
 
 VALID_SEVERITIES: frozenset[str] = frozenset(
     {"informational", "low", "medium", "high", "critical", "exceptional"}
@@ -90,6 +129,9 @@ class IntigritiClient:
         self._token = api_token or os.environ.get("INTIGRITI_API_TOKEN", "")
         if not self._token:
             raise RuntimeError("INTIGRITI_API_TOKEN is not set")
+        # base_url is a Bearer destination — must not silently become an
+        # exfil channel on env misconfiguration.
+        validate_target_url(base_url, allow_http=_ALLOW_HTTP_BASE_URL)
         self._base_url = base_url.rstrip("/")
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
@@ -104,13 +146,15 @@ class IntigritiClient:
     async def __aexit__(self, *_: object) -> None:
         await self.aclose()
 
-    def _headers(self) -> dict[str, str]:
-        return {
-            "Authorization": f"Bearer {self._token}",
+    def _headers(self, *, attach_auth: bool = True) -> dict[str, str]:
+        h: dict[str, str] = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "bountystrike-intigriti-mcp/0.1",
         }
+        if attach_auth:
+            h["Authorization"] = f"Bearer {self._token}"
+        return h
 
     async def submit_report(
         self,
@@ -153,12 +197,26 @@ class IntigritiClient:
         # endpoint — see the module docstring. The default below WILL
         # 404 on the live platform; a real submission requires
         # INTIGRITI_SUBMIT_URL to point at a relay you control.
-        url = SUBMIT_URL_OVERRIDE or f"{self._base_url}/v1/submissions"
+        override = _current_submit_url_override()
+        if override:
+            try:
+                validate_target_url(override, allow_http=_ALLOW_HTTP_BASE_URL)
+            except UrlGuardError as exc:
+                raise ValueError(
+                    f"INTIGRITI_SUBMIT_URL rejected by URL guard: {exc}"
+                ) from exc
+            url = override
+            attach_auth = hosts_match(override, self._base_url)
+        else:
+            url = f"{self._base_url}/v1/submissions"
+            attach_auth = True
+
+        headers = self._headers(attach_auth=attach_auth)
 
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES + 1):
             try:
-                resp = await self._client.post(url, headers=self._headers(), json=body)
+                resp = await self._client.post(url, headers=headers, json=body)
             except httpx.RequestError as exc:
                 last_exc = exc
                 if attempt < MAX_RETRIES:
@@ -170,12 +228,19 @@ class IntigritiClient:
                 ) from exc
 
             if 200 <= resp.status_code < 300:
-                payload = resp.json()
+                try:
+                    payload = resp.json()
+                except Exception as exc:
+                    raise IntigritiError(
+                        f"non-JSON 2xx body ({type(exc).__name__})",
+                        status_code=resp.status_code,
+                        body=_truncate_body(resp.text),
+                    ) from exc
                 if not isinstance(payload, dict):
                     raise IntigritiError(
                         "unexpected response shape (not an object)",
                         status_code=resp.status_code,
-                        body=payload,
+                        body=_truncate_body(payload),
                     )
                 return {
                     "submission_id": (
@@ -196,7 +261,7 @@ class IntigritiClient:
                 raise IntigritiError(
                     f"client error {resp.status_code}: rejected — fix report and retry",
                     status_code=resp.status_code,
-                    body=body_obj,
+                    body=_truncate_body(body_obj),
                 )
 
             if attempt < MAX_RETRIES:
@@ -209,7 +274,7 @@ class IntigritiClient:
             raise IntigritiError(
                 f"server error {resp.status_code} after {MAX_RETRIES + 1} attempts",
                 status_code=resp.status_code,
-                body=body_obj,
+                body=_truncate_body(body_obj),
             )
 
         raise IntigritiError("retry loop exhausted unexpectedly") from last_exc

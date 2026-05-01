@@ -53,13 +53,38 @@ spawn time; the MCP itself never logs either value.
 
 from __future__ import annotations
 
+import json as _json
 import os
 from typing import Any
 
 import httpx
 
+from h1_mcp._url_guard import validate_target_url
+
 DEFAULT_BASE_URL = os.environ.get("H1_BASE_URL", "https://api.hackerone.com")
 DEFAULT_TIMEOUT_S = 30.0
+MAX_ERROR_BODY_BYTES = 4096
+_ALLOW_HTTP_BASE_URL = os.environ.get("BS_PLATFORM_ALLOW_HTTP") == "1"
+
+
+def _truncate_body(body: Any) -> Any:
+    """Cap response body size kept in :class:`HackerOneError.body`.
+
+    Without truncation, a hostile / misbehaving upstream that echoes
+    the request (or the Authorization header) in a 4xx/5xx body
+    propagates that into MCP stdio + agent transcripts.
+    """
+    if body is None:
+        return None
+    try:
+        s = body if isinstance(body, str) else _json.dumps(body)
+    except Exception:
+        s = str(body)
+    if len(s) <= MAX_ERROR_BODY_BYTES:
+        return body if isinstance(body, (dict, list, str)) else s
+    head = s[: MAX_ERROR_BODY_BYTES - 64]
+    return f"{head}…<TRUNCATED:{len(s) - len(head)} bytes>"
+
 
 H1_SEVERITIES: frozenset[str] = frozenset(
     {"none", "low", "medium", "high", "critical"}
@@ -99,6 +124,9 @@ class HackerOneClient:
             raise RuntimeError("H1_API_USERNAME is not set")
         if not self._token:
             raise RuntimeError("H1_API_TOKEN is not set")
+        # base_url is the Bearer destination — must not silently become
+        # an exfil channel on env misconfiguration.
+        validate_target_url(base_url, allow_http=_ALLOW_HTTP_BASE_URL)
         self._base_url = base_url.rstrip("/")
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
@@ -199,12 +227,19 @@ class HackerOneClient:
                 ) from exc
 
             if 200 <= resp.status_code < 300:
-                payload = resp.json()
+                try:
+                    payload = resp.json()
+                except Exception as exc:
+                    raise HackerOneError(
+                        f"non-JSON 2xx body ({type(exc).__name__})",
+                        status_code=resp.status_code,
+                        body=_truncate_body(resp.text),
+                    ) from exc
                 if not isinstance(payload, dict) or "data" not in payload:
                     raise HackerOneError(
                         "unexpected response shape (missing 'data')",
                         status_code=resp.status_code,
-                        body=payload,
+                        body=_truncate_body(payload),
                     )
                 data = payload["data"]
                 attrs = data.get("attributes", {}) if isinstance(data, dict) else {}
@@ -225,7 +260,7 @@ class HackerOneClient:
                 raise HackerOneError(
                     f"client error {resp.status_code}: rejected — fix report and retry",
                     status_code=resp.status_code,
-                    body=body_obj,
+                    body=_truncate_body(body_obj),
                 )
 
             # 5xx — retryable.
@@ -239,7 +274,7 @@ class HackerOneClient:
             raise HackerOneError(
                 f"server error {resp.status_code} after {MAX_RETRIES + 1} attempts",
                 status_code=resp.status_code,
-                body=body_obj,
+                body=_truncate_body(body_obj),
             )
 
         raise HackerOneError("retry loop exhausted unexpectedly") from last_exc
