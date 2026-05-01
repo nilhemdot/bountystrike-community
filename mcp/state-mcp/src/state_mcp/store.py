@@ -98,24 +98,37 @@ class StateStore:
 
         Match semantics:
           - Always filter ``cwe`` exact match.
-          - ``product`` / ``version`` filter only when supplied.
+          - ``product`` / ``version`` filter the URL field via ILIKE
+            with LIKE-metacharacters in caller input ESCAPED so a
+            caller cannot inject ``%`` / ``_`` to broaden the match.
           - Status restricted to ``validated`` / ``confirmed`` /
             ``submitted`` so we never recommend a chain that the
             validator later rejected.
+
+        **Known limitation** (audit reviewer 3, MEDIUM): the matcher
+        is a URL substring proxy because the schema does not yet have
+        dedicated tech-stack columns. ``product=wordpress version=6.4``
+        will match any URL containing both substrings in order, e.g.
+        ``https://wordpress.com/blog/2024/06/04/foo`` (false-match).
+        Tracked for a follow-up that adds a tech-stack JSONB column
+        to ``findings`` and switches this query to a precise-key match.
         """
         statuses: tuple[str, ...] = ("validated", "confirmed", "submitted")
         if product and version:
+            # ESCAPE clause + escape caller input so callers can't
+            # inject LIKE metacharacters to widen the match.
             sql = """
                 SELECT id, cwe, oracle_method, evidence_hash, url, parameter,
                        status::text AS status, program_handle
                 FROM findings
                 WHERE cwe = $1
                   AND status::text = ANY($2::text[])
-                  AND url ILIKE $3
+                  AND url ILIKE $3 ESCAPE '\\'
                 ORDER BY updated_at DESC
                 LIMIT $4
             """
-            args: tuple = (cwe, list(statuses), f"%{product}%{version}%", int(limit))
+            pattern = f"%{_escape_like(product)}%{_escape_like(version)}%"
+            args: tuple = (cwe, list(statuses), pattern, int(limit))
         elif product:
             sql = """
                 SELECT id, cwe, oracle_method, evidence_hash, url, parameter,
@@ -123,11 +136,11 @@ class StateStore:
                 FROM findings
                 WHERE cwe = $1
                   AND status::text = ANY($2::text[])
-                  AND url ILIKE $3
+                  AND url ILIKE $3 ESCAPE '\\'
                 ORDER BY updated_at DESC
                 LIMIT $4
             """
-            args = (cwe, list(statuses), f"%{product}%", int(limit))
+            args = (cwe, list(statuses), f"%{_escape_like(product)}%", int(limit))
         else:
             sql = """
                 SELECT id, cwe, oracle_method, evidence_hash, url, parameter,
@@ -197,6 +210,23 @@ class StateStore:
             "finding_id": finding_id,
             "status": row["status"],
         }
+
+
+def _escape_like(s: str) -> str:
+    """Escape Postgres ILIKE metacharacters in caller-supplied input.
+
+    Without this, a caller passing ``product='_'`` matches every
+    single-character substring in the URL (every URL); ``%`` matches
+    any substring. Both are widening attacks against the
+    experience-KB query: not SQL injection (asyncpg binds the
+    parameter), but they expand the match scope past the caller's
+    intent. Used together with ``ESCAPE '\\'`` clause in the SQL.
+    """
+    return (
+        s.replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
 
 
 def _row_to_dict(row: asyncpg.Record) -> dict:

@@ -293,3 +293,52 @@ async def test_non_json_2xx_raises_typed_error(client_with_mock, base_kwargs) ->
     ).respond(201, content="<html>oops</html>", headers={"content-type": "text/html"})
     with pytest.raises(YesWeHackError, match="non-JSON 2xx body"):
         await client_with_mock.submit_report(**base_kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — `extra` passthrough (closes contract drift vs
+# 00c-context7-verifications.md, which specified the parameter from the
+# start). Mirrors the immunefi / intigriti pattern.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_extra_passthrough_appended(client_with_mock, base_kwargs) -> None:
+    """Programme-specific fields land in the request body without
+    forking the client."""
+    import json as _json
+
+    route = respx.post(
+        f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+    ).respond(201, json={"id": 42, "title": "x", "state": "ASKED"})
+    base_kwargs["extra"] = {
+        "report_attachments": [{"id": "att-1"}],
+        "tracker_id": "ywh-7",
+    }
+    await client_with_mock.submit_report(**base_kwargs)
+    body = _json.loads(route.calls[0].request.content)
+    assert body["report_attachments"] == [{"id": "att-1"}]
+    assert body["tracker_id"] == "ywh-7"
+
+
+@respx.mock
+async def test_extra_does_not_overwrite_contract_fields(
+    client_with_mock, base_kwargs
+) -> None:
+    """Silent shadowing of e.g. ``severity`` would defeat the validator
+    above. Contract fields MUST win against ``extra``."""
+    import json as _json
+
+    route = respx.post(
+        f"{DEFAULT_BASE_URL}/api/v1/programs/acme/reports"
+    ).respond(201, json={"id": 1, "title": "x", "state": "ASKED"})
+    base_kwargs["extra"] = {
+        "title": "OVERWRITE-ATTEMPT",
+        "severity": "critical",  # base_kwargs has 'medium'
+        "custom_field": "kept",
+    }
+    await client_with_mock.submit_report(**base_kwargs)
+    body = _json.loads(route.calls[0].request.content)
+    assert body["title"] == base_kwargs["title"]
+    assert body["severity"] == "medium"
+    assert body["custom_field"] == "kept"

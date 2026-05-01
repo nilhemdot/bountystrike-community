@@ -118,6 +118,7 @@ class YesWeHackClient:
         cvss_vector: str,
         description: str,
         exploit_information: str,
+        extra: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if not program_slug:
             raise ValueError("program_slug is required")
@@ -126,7 +127,7 @@ class YesWeHackClient:
         if severity.lower() not in {"informational", "low", "medium", "high", "critical"}:
             raise ValueError(f"severity {severity!r} not recognised")
         url = f"{self._base_url}/api/{API_VERSION}/programs/{program_slug}/reports"
-        body = {
+        body: dict[str, Any] = {
             "title": title,
             "scope": scope,
             "vulnerability_type": vulnerability_type,
@@ -135,6 +136,18 @@ class YesWeHackClient:
             "description": description,
             "exploit_information": exploit_information,
         }
+        # Programme-specific fields not part of the canonical contract.
+        # YesWeHack body shape is unverified against context7 (the
+        # library is not indexed); the ``extra`` escape hatch lets
+        # callers add fields a programme requires without forking the
+        # client. Contract fields above are NEVER overwritten —
+        # silent shadowing of e.g. ``severity`` would defeat the
+        # validator above. This mirrors the immunefi / intigriti
+        # pattern documented in 00c-context7-verifications.md.
+        if extra:
+            for k, v in extra.items():
+                if k not in body:
+                    body[k] = v
 
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES + 1):

@@ -36,25 +36,48 @@ def test_strips_whitespace() -> None:
 @pytest.mark.parametrize(
     "slug,expected",
     [
+        # XSS family
         ("xss", "CWE-79"),
         ("xss-candidate", "CWE-79"),
         ("stored-xss", "CWE-79"),
         ("reflected-xss", "CWE-79"),
         ("dom-xss", "CWE-79"),
+        # SQL / NoSQL / LDAP / XXE
         ("sqli", "CWE-89"),
         ("blind-sqli", "CWE-89"),
+        ("nosql-injection", "CWE-943"),
+        ("ldap-injection", "CWE-90"),
+        ("xxe", "CWE-611"),
+        ("xxe-via-svg", "CWE-611"),
+        # SSRF
         ("ssrf", "CWE-918"),
         ("ssrf-imds", "CWE-918"),
         ("ssrf-imds-candidate", "CWE-918"),
-        ("ssti", "CWE-94"),
-        ("rce", "CWE-78"),
+        # Template / code / command injection
+        ("ssti", "CWE-1336"),                 # NEW: was CWE-94, now precise
+        ("rce", "CWE-94"),                    # NEW: was CWE-78, now broader parent
         ("command-injection", "CWE-78"),
-        ("open-redirect", "CWE-601"),
-        ("idor", "CWE-639"),
+        ("shell-injection", "CWE-78"),
+        ("deserialization", "CWE-502"),       # NEW
+        ("rce-deserialization", "CWE-502"),   # NEW
+        ("log4shell", "CWE-94"),              # NEW
+        ("prototype-pollution", "CWE-1321"),  # NEW
+        # Auth / access / business logic
         ("auth-bypass", "CWE-287"),
+        ("broken-auth", "CWE-287"),
         ("csrf", "CWE-352"),
+        ("idor", "CWE-639"),
+        ("mass-assignment", "CWE-915"),       # NEW
+        ("race-condition", "CWE-362"),        # NEW
         ("path-traversal", "CWE-22"),
-        ("xxe", "CWE-611"),
+        ("open-redirect", "CWE-601"),
+        ("cors-misconfig", "CWE-942"),        # NEW
+        ("subdomain-takeover", "CWE-1357"),   # NEW
+        ("graphql-introspection", "CWE-200"), # NEW
+        # Smuggling / poisoning
+        ("request-smuggling", "CWE-444"),     # NEW
+        ("cache-poisoning", "CWE-444"),       # NEW
+        ("host-header-injection", "CWE-444"), # NEW
     ],
 )
 def test_known_slug_mappings(slug: str, expected: str) -> None:
@@ -73,11 +96,23 @@ def test_case_insensitive_slug() -> None:
 @pytest.mark.parametrize(
     "slug,expected",
     [
+        # Full OWASP LLM Top 10 (2025) coverage. Mappings adjusted from
+        # the v0.1 set per audit reviewer 3:
+        #   - LLM06 was CWE-269 (Improper Privilege Mgmt); now CWE-250
+        #     (Execution with Unnecessary Privileges) — closer fit.
+        #   - LLM07 was CWE-200 generic; now CWE-209 (Generation of
+        #     Error Message Containing Sensitive Information) — fits
+        #     system-prompt-leak more precisely.
+        #   - LLM03 / 04 / 05 / 08 were missing entirely.
         ("llm01-prompt-injection", "CWE-1426"),
-        ("llm09-misinformation", "CWE-1426"),
         ("llm02-data-leakage", "CWE-200"),
-        ("llm07-system-prompt-leak", "CWE-200"),
-        ("llm06-excessive-agency", "CWE-269"),
+        ("llm03-supply-chain", "CWE-1357"),
+        ("llm04-data-poisoning", "CWE-1390"),
+        ("llm05-improper-output-handling", "CWE-79"),
+        ("llm06-excessive-agency", "CWE-250"),
+        ("llm07-system-prompt-leak", "CWE-209"),
+        ("llm08-vector-embedding-weakness", "CWE-1426"),
+        ("llm09-misinformation", "CWE-1426"),
         ("llm10-unbounded-consumption", "CWE-400"),
     ],
 )

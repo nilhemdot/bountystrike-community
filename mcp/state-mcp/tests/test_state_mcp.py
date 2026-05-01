@@ -222,3 +222,66 @@ async def test_update_status_rejects_unknown_expected() -> None:
         await _update_finding_status_impl(
             store, "fid-1", "validated", "not-a-status"
         )
+
+
+# ---------------------------------------------------------------------------
+# Audit-fix coverage — query_experience_kb LIKE-metacharacter escaping
+# (audit reviewer 3, MEDIUM).
+# ---------------------------------------------------------------------------
+
+
+def test_escape_like_handles_percent() -> None:
+    from state_mcp.store import _escape_like
+
+    assert _escape_like("foo%bar") == "foo\\%bar"
+
+
+def test_escape_like_handles_underscore() -> None:
+    from state_mcp.store import _escape_like
+
+    assert _escape_like("foo_bar") == "foo\\_bar"
+
+
+def test_escape_like_handles_backslash() -> None:
+    from state_mcp.store import _escape_like
+
+    assert _escape_like("foo\\bar") == "foo\\\\bar"
+
+
+def test_escape_like_chains_substitutions() -> None:
+    """Backslash must be escaped FIRST so it doesn't double-escape the
+    backslash from a later substitution (e.g. the ``%`` → ``\\%``
+    output)."""
+    from state_mcp.store import _escape_like
+
+    assert _escape_like("a%b_c") == "a\\%b\\_c"
+
+
+async def test_kb_query_escapes_caller_supplied_metacharacters(conn: AsyncMock) -> None:
+    """Caller passing ``product='_'`` must NOT match every URL — the
+    metacharacter is escaped before the ILIKE pattern is built."""
+    conn.fetch.return_value = []
+    store = make_store_with_mock_conn(conn)
+    await _query_experience_kb_impl(store, "CWE-89", "_", None, 5)
+    sent_args = conn.fetch.call_args.args
+    pattern = next((a for a in sent_args if isinstance(a, str) and a.startswith("%")), None)
+    assert pattern is not None
+    assert pattern == "%\\_%"
+
+
+async def test_kb_query_includes_escape_clause(conn: AsyncMock) -> None:
+    conn.fetch.return_value = []
+    store = make_store_with_mock_conn(conn)
+    await _query_experience_kb_impl(store, "CWE-89", "wordpress", "6.4", 5)
+    sql = conn.fetch.call_args.args[0]
+    # Source string ``ESCAPE '\\'`` parses as ``ESCAPE '\'`` at runtime.
+    assert "ESCAPE '\\'" in sql
+
+
+async def test_kb_query_escapes_both_product_and_version(conn: AsyncMock) -> None:
+    conn.fetch.return_value = []
+    store = make_store_with_mock_conn(conn)
+    await _query_experience_kb_impl(store, "CWE-89", "p%a", "v_b", 5)
+    sent_args = conn.fetch.call_args.args
+    pattern = next((a for a in sent_args if isinstance(a, str) and a.startswith("%")), None)
+    assert pattern == "%p\\%a%v\\_b%"

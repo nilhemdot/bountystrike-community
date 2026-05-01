@@ -19,6 +19,7 @@ the staging environment).
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
@@ -51,6 +52,7 @@ async def _submit_report_impl(
     cvss_vector: str,
     description: str,
     exploit_information: str,
+    extra: dict[str, Any] | None = None,
 ) -> dict:
     try:
         return {
@@ -64,6 +66,7 @@ async def _submit_report_impl(
                 cvss_vector=cvss_vector,
                 description=description,
                 exploit_information=exploit_information,
+                extra=extra,
             ),
         }
     except YesWeHackError as exc:
@@ -85,6 +88,7 @@ async def submit_report(
     cvss_vector: str,
     description: str,
     exploit_information: str,
+    extra: dict[str, Any] | None = None,
 ) -> dict:
     """Submit a finding to YesWeHack.
 
@@ -101,6 +105,11 @@ async def submit_report(
         description: Full markdown report body. Anti-slop hook will have
             already rejected non-compliant content upstream.
         exploit_information: Reproduction-steps section.
+        extra: Programme-specific fields appended to the body. Will not
+            overwrite the contract fields above. YesWeHack's body shape
+            is unverified against context7 (the library is not indexed),
+            so this escape hatch lets callers add fields a programme
+            requires without forking the client.
 
     Returns:
         ``{ok: True, submission_id, title, state, raw}`` on success.
@@ -118,6 +127,7 @@ async def submit_report(
         cvss_vector=cvss_vector,
         description=description,
         exploit_information=exploit_information,
+        extra=extra,
     )
 
 
