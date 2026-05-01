@@ -178,6 +178,71 @@ async def test_scan_persistence_mark_complete_writes_counts():
     assert args == [job_id, 12, 87]
 
 
+async def test_scan_persistence_insert_recon_assets_zero_on_empty():
+    conn = AsyncMock()
+    persistence = ScanPersistence()
+    n = await persistence.insert_recon_assets(conn, uuid.uuid4(), [])
+    assert n == 0
+    conn.executemany.assert_not_called()
+
+
+async def test_scan_persistence_insert_recon_assets_calls_executemany():
+    conn = AsyncMock()
+    persistence = ScanPersistence()
+    probes = [
+        HttpxProbe(
+            url="https://www.acme.com",
+            host="www.acme.com",
+            status_code=200,
+            title="Acme",
+            tech=("nginx", "react"),
+            raw={"k": "v"},
+        ),
+        HttpxProbe(
+            url="https://api.acme.com",
+            host="api.acme.com",
+            status_code=403,
+            title="",
+            tech=(),
+            raw={},
+        ),
+    ]
+    n = await persistence.insert_recon_assets(conn, uuid.uuid4(), probes)
+    assert n == 2
+    sql, rows = conn.executemany.call_args.args
+    assert "INSERT INTO recon_assets" in sql
+    assert "ON CONFLICT (job_id, host, url) DO NOTHING" in sql
+    assert len(rows) == 2
+    # 7 placeholders: id, job_id, host, url, tech, status_code, raw
+    assert all(len(r) == 7 for r in rows)
+    # tech column comma-joins the tuple; empty tuple → None.
+    assert rows[0][4] == "nginx,react"
+    assert rows[1][4] is None
+    # status_code preserved as int.
+    assert rows[0][5] == 200
+    assert rows[1][5] == 403
+
+
+async def test_scan_persistence_insert_recon_assets_skips_hostless_probes():
+    conn = AsyncMock()
+    persistence = ScanPersistence()
+    probes = [
+        HttpxProbe(url="", host="", status_code=0, title="", tech=(), raw={}),
+        HttpxProbe(
+            url="https://x.acme.com",
+            host="x.acme.com",
+            status_code=200,
+            title="",
+            tech=(),
+            raw={},
+        ),
+    ]
+    n = await persistence.insert_recon_assets(conn, uuid.uuid4(), probes)
+    assert n == 1
+    rows = conn.executemany.call_args.args[1]
+    assert rows[0][2] == "x.acme.com"  # only the real host survived
+
+
 async def test_scan_persistence_insert_findings_zero_on_empty():
     conn = AsyncMock()
     persistence = ScanPersistence()

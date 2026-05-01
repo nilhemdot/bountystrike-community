@@ -883,3 +883,85 @@ candidate.
 W9-10 code-side closeout is now in place: F2 (Round 8) and dedup-prod
 real-PG (Round 9) both shipped. Two infrastructure deploys
 (1.1e-deploy, 1.1f-deploy) still non-blocking.
+
+---
+
+## Round 10 — recon-assets emit (closes Round 8 follow-up `1.1e-recon-assets-emit`)
+
+Migration 06 created `recon_assets` to satisfy scanner-agent's
+``SELECT host, url, tech, status_code FROM recon_assets WHERE
+job_id = :scan_job_id`` (`.claude/agents/scanner-agent.md` fence #0)
+but the recon harness in
+`control-plane/src/control_plane/domains/recon/` never INSERTed
+into it — leaving the recon→scanner contract half-open. Round 10
+closes that gap.
+
+### 26. `ScanPersistence.insert_recon_assets`
+
+**Files:**
+- `control-plane/src/control_plane/domains/recon/persistence.py`
+- `control-plane/src/control_plane/domains/recon/service.py`
+
+New `ScanPersistence.insert_recon_assets(conn, job_id, probes)`
+batch-inserts `HttpxProbe` rows into `recon_assets` with `ON
+CONFLICT (job_id, host, url) DO NOTHING` for re-run idempotency.
+Maps:
+
+* ``host`` → probe.host (NOT NULL — hostless probes are skipped)
+* ``url`` → probe.url (NULL when empty so `UNIQUE` treats it as
+  distinct rather than a string collision)
+* ``tech`` → comma-joined `,`.join(probe.tech) — single TEXT column
+  the scanner-agent's `GROUP BY tech` cluster pivots on
+* ``status_code`` → INT
+* ``raw`` → ``json.dumps(probe.raw)`` cast to JSONB
+
+`ReconService.run` calls `insert_recon_assets` immediately after the
+httpx fingerprint phase, so the assets land before katana endpoint
+discovery starts. No new external dependencies. No spec edits.
+
+### 27. Test coverage
+
+**Unit (extends `control-plane/tests/test_recon.py`):**
+
+* ``test_scan_persistence_insert_recon_assets_zero_on_empty`` — empty
+  iterable returns 0 and emits no SQL.
+* ``test_scan_persistence_insert_recon_assets_calls_executemany`` —
+  asserts SQL contains ``INSERT INTO recon_assets`` and
+  ``ON CONFLICT (job_id, host, url) DO NOTHING``; tech tuple
+  comma-joins (`"nginx,react"`); empty tuple → None; status_code
+  preserved as int; row tuple has 7 placeholders.
+* ``test_scan_persistence_insert_recon_assets_skips_hostless_probes``
+  — empty `host` filtered out before insert.
+
+**Integration (`tests/integration/test_recon_assets_postgres.py`,
+4 tests, gated on `BS5_PG_TEST_DSN`):**
+
+* ``test_insert_recon_assets_persists_rows_visible_to_spec_select`` —
+  uses the *exact* SELECT from scanner-agent.md to read back the
+  rows we wrote. Catches column-name drift between code and spec.
+* ``test_insert_recon_assets_idempotent_on_rerun`` — three back-to-
+  back inserts with the same probe land exactly one row.
+* ``test_insert_recon_assets_isolates_by_job_id`` — same host probed
+  under two jobs produces two distinct rows.
+* ``test_insert_recon_assets_zero_when_no_probes`` — empty input is
+  a no-op.
+
+### Round 10 status delta
+
+| Item | After Round 9 | After Round 10 |
+|---|---|---|
+| Recon-agent → scanner-agent contract | half-open (table existed, no writes) | **CLOSED** (`insert_recon_assets` wired) |
+| Control-plane test count | 415 | **418** (+3 unit) |
+| Integration test count | 57 | **61** (+4 real-PG) |
+
+### Open follow-ups
+
+* **`1.1e-deploy`** — recon container Dockerfile build + registry
+  push still pending. Without it, no production env runs the
+  `subfinder/httpx/katana` chain.
+* **`1.1f-deploy`** — R2 live-credential verification still pending.
+* **Round 9 follow-up: semantic dedup live-PG** — `DedupStore.semantic_search`
+  pgvector path still mock-only.
+* **Round 9 follow-up: validator-spec compliance audit** — assert every
+  `findings.status='validated'` row has a paired `dedup_fingerprints`
+  entry on the next orchestrator dry-run.

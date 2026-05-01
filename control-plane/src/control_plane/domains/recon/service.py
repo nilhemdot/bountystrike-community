@@ -101,6 +101,7 @@ class ReconService:
                 return ReconResult(0, 0, 0)
 
             probes = await self._fingerprint(hosts)
+            await self.persistence.insert_recon_assets(conn, job_id, probes)
             live_urls = [p.url for p in probes if 200 <= p.status_code < 400 and p.url]
 
             endpoints = await self._discover_endpoints(live_urls)

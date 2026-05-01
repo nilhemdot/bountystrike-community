@@ -8,9 +8,12 @@ boundary.
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
+
+from .tool_runner import HttpxProbe
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +68,52 @@ class ScanPersistence:
             """,
             _as_uuid(job_id),
         )
+
+    async def insert_recon_assets(
+        self,
+        conn,
+        job_id: uuid.UUID | str,
+        probes: Iterable[HttpxProbe],
+    ) -> int:
+        """Bulk-insert httpx probe results into ``recon_assets``.
+
+        Each row carries the host, URL, comma-joined tech list, HTTP
+        status, and the original JSONL row as JSONB. Idempotent on
+        re-run via the ``UNIQUE (job_id, host, url)`` constraint from
+        migration 06: re-running a recon job overwrites nothing and
+        inserts no duplicates. Probes without a host are skipped — the
+        column is NOT NULL.
+
+        Returns the number of rows submitted (some may be deduplicated
+        by ``ON CONFLICT DO NOTHING``; this method does not count
+        actual writes — caller should not rely on the return value for
+        invariant checks beyond "submitted ≥ written").
+        """
+        rows = [
+            (
+                uuid.uuid4(),
+                _as_uuid(job_id),
+                p.host,
+                p.url or None,
+                ",".join(p.tech) if p.tech else None,
+                int(p.status_code),
+                json.dumps(p.raw) if p.raw else None,
+            )
+            for p in probes
+            if p.host
+        ]
+        if not rows:
+            return 0
+        await conn.executemany(
+            """
+            INSERT INTO recon_assets (
+                id, job_id, host, url, tech, status_code, raw
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+            ON CONFLICT (job_id, host, url) DO NOTHING
+            """,
+            rows,
+        )
+        return len(rows)
 
     async def insert_findings(
         self,
