@@ -9,8 +9,12 @@ Reference: `docs/research/05-deployment.md`.
 ```
 infra/
   sql/
-    00_extensions.sql      # vector, pg_trgm, pgcrypto
-    01_schema.sql          # 11 core tables + finding_status ENUM + HNSW index
+    00_extensions.sql              # vector, pg_trgm, pgcrypto
+    01_schema.sql                  # 11 core tables + finding_status ENUM + HNSW index
+    02_dedup_fingerprints.sql      # dedup_fingerprints table + scan_jobs.completed_at
+    03_audit_log_realign.sql       # audit_log per-finding hash-chained shape
+    04_approval_queue.sql          # T2/T3 operator approval queue (Phase 2 W7-8)
+    05_findings_raw_finding.sql    # findings.raw_finding JSONB column + chain_steps index
   docker/
     docker-compose.yml     # 5 services + 5 named volumes
     Caddyfile              # local dev reverse proxy (TLS off)

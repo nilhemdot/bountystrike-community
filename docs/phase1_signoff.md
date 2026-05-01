@@ -505,3 +505,69 @@ Phase 1 code-side closeout is complete on **4/6 criteria** (1, 2, 3,
 
 Neither blocks new development; both can land alongside Phase 2
 SaaS/CI workstreams without re-opening Phase 1.
+
+---
+
+## Round 5 — Phase 2 W7-8 sprint (2026-05-01)
+
+Wired scanner-agent + exploit-agent into the orchestrator and stood up
+the T2/T3 operator approval queue. Smoke-verified end-to-end with
+mocked subagents and live-Postgres against a throwaway DB. Two
+pre-existing bugs surfaced during the dry-run and were fixed in the
+same sprint.
+
+### 11. Scanner + exploit phases wired into `scripts/orchestrator.py`
+
+Pipeline shape now: `recon → scanner → exploit → [T2 enqueue+poll+relaunch] → validator → reporter`. Each phase is independently skippable via env (`SKIP_SCANNER`, `SKIP_EXPLOIT`, `SKIP_REPORT`). New helpers:
+
+* `_phase_recon`, `_phase_scanner`, `_exploit_one` — per-phase fan-out factored out of the original `main()` to keep the supervisor loop linear.
+* `_wait_recon` generalised to `_wait_status` accepting an arbitrary terminal-state tuple.
+* `_missing_scanner_binaries()` startup probe — warns and skips scanner phase when nuclei/feroxbuster/ffuf/sqlmap/arjun/kr aren't on `$PATH` (production install picks them up via the still-pending `1.1e-deploy` Dockerfile).
+* `_enqueue_pending_t2()` + `_wait_t2_token()` — reads `findings.raw_finding->'chain_steps'` for the operator-visible PoC text, enqueues to `approval_queue`, blocks on `wait_for_approval` (exponential backoff 5s→60s).
+
+Validator-agent spec extended (`.claude/agents/validator.md` Step 1) to accept `status IN ('hypothesis', 'exploit_pending_validation')` so the exploit handoff actually closes.
+
+### 12. T2/T3 approval queue (closes build-plan §6.3 operator side)
+
+* **Migration** — `infra/sql/04_approval_queue.sql` adds the `approval_queue` table (FK to `findings`, status enum `pending|approved|rejected|expired`, `approver_id` + `approver_id_2` for T3 distinct-actor enforcement, indexed by status/tier/requested_at). Idempotent — `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS`.
+* **Domain module** — `control-plane/src/control_plane/domains/approval_gate/queue.py` with `enqueue / approve / reject / get / list_pending / wait_for_approval`. Backoff schedule: 5s → 10s → 20s → 40s → 60s (capped). T3 first-approver returns `None` and keeps the row pending until a distinct second actor calls `approve`.
+* **Operator CLI** — `scripts/approve.py` with `list / show / approve / reject` subcommands. Talks directly to the `approval_queue` table via asyncpg.
+* **Tests** — 24 unit tests in `control-plane/tests/test_approval_queue.py` (FakeConnection-backed) + 7 real-Postgres integration tests in `tests/integration/test_approval_queue_postgres.py` (gated on `BS5_PG_TEST_DSN`, skip-friendly for CI).
+
+### 13. End-to-end orchestration smoke test
+
+`tests/integration/test_phase2_w7_w8_pipeline.py` — 8 tests with a `FakeOrchestratorDB` modelling the asyncpg subset the orchestrator uses, plus a `SubagentSimulator` flipping `findings.status` deterministically per agent type. Covers:
+
+* Recon-only path (`SKIP_SCANNER` + `SKIP_EXPLOIT` + `SKIP_REPORT`).
+* Exploit success path — hypothesis → `exploit_pending_validation` → validated.
+* T2 approval path — exploit-agent stalls on `approval_pending_t2`, orchestrator enqueues + waits, second exploit-agent invocation receives `APPROVAL_TOKEN` env.
+* `recon_failed` aborts via `sys.exit(1)`.
+* Helper unit tests for `_missing_scanner_binaries`, `_flag`, `_jwt_jti`.
+
+### Bugs found during the dry-run
+
+| # | Severity | Symptom | Fix |
+|---|---|---|---|
+| Bug-1 | High — silently passed all 24 unit tests | T3 `approve()` recorded the first approver inside `async with conn.transaction()`, then **raised** an `ApprovalQueueError` to signal "second actor still required". asyncpg interprets the raise as rollback → write lost. Live Postgres run repeatedly logged `t3_first_approver` for the same actor. | `queue.approve()` now returns `Optional[uuid.UUID]` — `None` for T3 first-approver, token UUID otherwise. CLI updated. Three T3 unit tests rewritten for the new contract. **Regression test added** at `tests/integration/test_approval_queue_postgres.py::test_t3_first_approver_commits_before_returning`. |
+| Bug-2 | Medium — pre-existing schema drift | The exploit-agent, validator-agent, and scanner-agent specs all read/write `findings.raw_finding` (raw scanner output + `chain_steps` after exploit) but `01_schema.sql` never added the column. Orchestrator's `_enqueue_pending_t2` inherited the same assumption. | New migration `infra/sql/05_findings_raw_finding.sql` — `ALTER TABLE findings ADD COLUMN IF NOT EXISTS raw_finding JSONB DEFAULT '{}'::jsonb` + expression index on `chain_steps`. Idempotent + non-destructive (existing rows backfill `{}`). Applied to live `bs_postgres.bountystrike` DB. |
+
+### Round 5 status delta
+
+| # | Item | After Round 4 | After Round 5 |
+|---|---|---|---|
+| 11 | Scanner + exploit wired in orchestrator | NOT WIRED | **WIRED** (skippable via env) |
+| 12 | T2/T3 approval queue + CLI | NOT BUILT | **SHIPPED** (1 migration, 1 domain module, 1 CLI, 31 tests) |
+| 13 | End-to-end smoke test | NOT BUILT | **SHIPPED** (8 mocked + 7 live-Postgres tests) |
+| Bug-1 | T3 transaction rollback | n/a | **CLOSED** (regression test in place) |
+| Bug-2 | `findings.raw_finding` missing | n/a | **CLOSED** (migration 05 applied) |
+
+**Test totals:** Round 5 adds **39 new tests** (24 queue unit + 8 orchestration smoke + 7 Postgres integration). One pre-existing timestamp-flake test (`test_f_ops_1h_near_one`) remains deselected.
+
+### Open follow-ups (Phase 2 W9-10 backlog)
+
+* **F2 — schema-vs-spec contract test.** Bug-2 only surfaced because the dry-run hit live DB. A test that loads `infra/sql/*.sql` into an ephemeral Postgres and verifies every SQL statement in `.claude/agents/*.md` parses against it would catch this drift class. Deferred — ~60-90 min, not on the W9-10 critical path.
+* **Firecracker driver in `sandbox-mcp`.** The local + docker drivers shipped in Phase 1 are fine for sprint smoke tests; production exploit-agent runs need the Firecracker microVM driver from build-plan §3.2.
+* **T3 plumbing in orchestrator.** Queue + CLI handle T3 correctly, but `_enqueue_pending_t2` only opens T2 requests. When the exploit-agent (or a future tier-classifier hook) flips a finding to `approval_pending_t3`, the orchestrator needs a parallel `_enqueue_pending_t3` path.
+* **`1.1e-deploy` and `1.1f-deploy`** still open from Round 4; non-blocking.
+
+Phase 2 Week 9-10 sprint will pick up dedup-prod + T3 wiring + remaining oracle field-validation fixtures (SQLi/SSTI/IDOR/Open-Redirect/RCE) + kill-switch <5s SLA test. Phase 2 exit criteria from build-plan §10.4 lines 3748-3754 remain the gate.

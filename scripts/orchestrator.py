@@ -2,10 +2,17 @@
 """BountyStrike v5 pipeline orchestrator.
 
 Runs one full scan cycle for a single program:
+
   1. Create scan_jobs row (status=queued)
   2. Launch recon-agent subprocess; wait for recon_complete
-  3. Fan out validator-agent per hypothesis finding (MAX_VALIDATORS concurrency)
-  4. Print summary
+  3. Launch scanner-agent subprocess (skippable); wait for scan_complete
+  4. Fan out exploit-agent per hypothesis finding (MAX_EXPLOITS concurrency).
+     - On `approval_pending_t2` rows, enqueue + poll the approval queue, then
+       re-launch the exploit-agent once with APPROVAL_TOKEN set.
+  5. Fan out validator-agent per hypothesis / exploit_pending_validation
+     finding (MAX_VALIDATORS concurrency)
+  6. Fan out reporter-agent per validated finding (skippable)
+  7. Print summary
 
 Required environment variables:
     PROGRAM_HANDLE    — e.g. "acme-corp"
@@ -17,8 +24,19 @@ Optional:
     ORACLE_MCP_URL    — path/command for oracle-mcp (default: oracle-mcp)
     EVIDENCE_MCP_URL  — path/command for evidence-mcp (default: evidence-mcp)
     DEDUP_MCP_URL     — path/command for dedup-mcp (default: dedup-mcp)
+    SANDBOX_MCP_URL   — path/command for sandbox-mcp (default: sandbox-mcp)
+    OPENROUTER_API_KEY — for Venice / Hermes routing in exploit-agent
     MAX_VALIDATORS    — parallel validator limit (default: 5)
+    MAX_EXPLOITS      — parallel exploit limit (default: 3)
+    MAX_REPORTERS     — parallel reporter limit (default: 3)
     RECON_TIMEOUT     — seconds to wait for recon (default: 3600)
+    SCAN_TIMEOUT      — seconds to wait for scanner (default: 7200)
+    APPROVAL_TIMEOUT  — seconds to wait for T2 approval (default: 86400)
+    SKIP_SCANNER      — set 1/true/yes to skip scanner phase
+    SKIP_EXPLOIT      — set 1/true/yes to skip exploit phase
+    SKIP_REPORT       — set 1/true/yes to skip reporter phase
+    NUCLEI_TEMPLATE_DIR — passed through to scanner-agent
+    TIME_BUDGET_MIN   — passed through to scanner-agent
     CLAUDE_CMD        — claude CLI binary (default: claude)
 """
 
@@ -28,12 +46,22 @@ import asyncio
 import base64
 import json
 import os
+import shutil
 import sys
 import uuid
 from datetime import UTC, datetime
 
 import asyncpg
 
+# Hot-path import of the approval queue helpers — keeps the orchestrator the
+# single owner of ``approval_queue`` writes; agents don't need DB access.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "control-plane", "src"))
+from control_plane.domains.approval_gate import (  # noqa: E402
+    ApprovalQueueError,
+    ApprovalTier,
+    queue_enqueue,
+    queue_wait_for_approval,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,6 +73,10 @@ def _get_required(key: str) -> str:
         print(f"[orchestrator] ERROR: {key} is not set", file=sys.stderr)
         sys.exit(1)
     return val
+
+
+def _flag(key: str) -> bool:
+    return os.environ.get(key, "").lower() in ("1", "true", "yes")
 
 
 def _jwt_jti(scope_jwt: str) -> str:
@@ -60,6 +92,15 @@ def _jwt_jti(scope_jwt: str) -> str:
 def _log(msg: str) -> None:
     ts = datetime.now(UTC).isoformat(timespec="seconds")
     print(f"[orchestrator {ts}] {msg}", flush=True)
+
+
+# Scanner-agent shells out to these binaries; orchestrator probes once at
+# startup and warns rather than crashing the run.
+_SCANNER_BINARIES = ("nuclei", "feroxbuster", "ffuf", "sqlmap", "arjun", "kr")
+
+
+def _missing_scanner_binaries() -> list[str]:
+    return [b for b in _SCANNER_BINARIES if shutil.which(b) is None]
 
 
 # ---------------------------------------------------------------------------
@@ -83,17 +124,19 @@ async def _create_scan_job(
     return job_id
 
 
-async def _wait_recon(
+async def _wait_status(
     conn: asyncpg.Connection,
     job_id: str,
+    terminal_states: tuple[str, ...],
     timeout_seconds: int,
 ) -> str:
+    """Poll ``scan_jobs.status`` until it hits one of ``terminal_states``."""
     deadline = asyncio.get_event_loop().time() + timeout_seconds
     while asyncio.get_event_loop().time() < deadline:
         status: str | None = await conn.fetchval(
             "SELECT status FROM scan_jobs WHERE id = $1", job_id
         )
-        if status in ("recon_complete", "recon_failed"):
+        if status in terminal_states:
             return status
         await asyncio.sleep(10)
     return "timeout"
@@ -102,6 +145,27 @@ async def _wait_recon(
 async def _hypothesis_finding_ids(conn: asyncpg.Connection, job_id: str) -> list[str]:
     rows = await conn.fetch(
         "SELECT id FROM findings WHERE job_id = $1 AND status = 'hypothesis'",
+        job_id,
+    )
+    return [str(r["id"]) for r in rows]
+
+
+async def _validatable_finding_ids(conn: asyncpg.Connection, job_id: str) -> list[str]:
+    """Findings the validator-agent can claim: hypothesis + exploit_pending_validation."""
+    rows = await conn.fetch(
+        """
+        SELECT id FROM findings
+        WHERE job_id = $1
+          AND status IN ('hypothesis', 'exploit_pending_validation')
+        """,
+        job_id,
+    )
+    return [str(r["id"]) for r in rows]
+
+
+async def _t2_pending_finding_ids(conn: asyncpg.Connection, job_id: str) -> list[str]:
+    rows = await conn.fetch(
+        "SELECT id FROM findings WHERE job_id = $1 AND status = 'approval_pending_t2'",
         job_id,
     )
     return [str(r["id"]) for r in rows]
@@ -143,10 +207,197 @@ async def _run_agent(
 
 
 # ---------------------------------------------------------------------------
+# Phases
+# ---------------------------------------------------------------------------
+
+
+async def _phase_recon(
+    conn: asyncpg.Connection,
+    *,
+    job_id: str,
+    program_handle: str,
+    platform: str,
+    scope_jwt: str,
+    database_url: str,
+    claude_cmd: str,
+    timeout_seconds: int,
+) -> None:
+    await conn.execute(
+        "UPDATE scan_jobs SET status = 'running' WHERE id = $1", job_id
+    )
+    _log("launching recon-agent")
+    rc = await _run_agent(
+        "recon",
+        {
+            "SCOPE_JWT":      scope_jwt,
+            "PROGRAM_HANDLE": program_handle,
+            "PLATFORM":       platform,
+            "DATABASE_URL":   database_url,
+            "SCAN_JOB_ID":    job_id,
+            "TASK_STATUS":    "recon_complete",
+        },
+        claude_cmd,
+    )
+    if rc != 0:
+        _log(f"WARNING: recon-agent exited {rc} — polling DB anyway")
+
+    status = await _wait_status(
+        conn, job_id, ("recon_complete", "recon_failed"), timeout_seconds
+    )
+    _log(f"recon finished: status={status}")
+    if status != "recon_complete":
+        _log(f"aborting — recon status={status}")
+        sys.exit(1)
+
+
+async def _phase_scanner(
+    conn: asyncpg.Connection,
+    *,
+    job_id: str,
+    program_handle: str,
+    platform: str,
+    scope_jwt: str,
+    database_url: str,
+    claude_cmd: str,
+    timeout_seconds: int,
+) -> None:
+    if _flag("SKIP_SCANNER"):
+        _log("SKIP_SCANNER set — skipping scanner-agent phase")
+        return
+
+    missing = _missing_scanner_binaries()
+    if missing:
+        _log(
+            f"WARNING: scanner binaries not on PATH ({', '.join(missing)}); "
+            f"skipping scanner phase. Install them or set SKIP_SCANNER=1 to silence."
+        )
+        return
+
+    await conn.execute(
+        "UPDATE scan_jobs SET status = 'running_scan' WHERE id = $1", job_id
+    )
+    _log("launching scanner-agent")
+    env_extras = {
+        "SCOPE_JWT":      scope_jwt,
+        "PROGRAM_HANDLE": program_handle,
+        "PLATFORM":       platform,
+        "DATABASE_URL":   database_url,
+        "SCAN_JOB_ID":    job_id,
+    }
+    for passthrough in ("NUCLEI_TEMPLATE_DIR", "TIME_BUDGET_MIN"):
+        if passthrough in os.environ:
+            env_extras[passthrough] = os.environ[passthrough]
+
+    rc = await _run_agent("scanner-agent", env_extras, claude_cmd)
+    if rc != 0:
+        _log(f"WARNING: scanner-agent exited {rc} — polling DB anyway")
+
+    status = await _wait_status(
+        conn,
+        job_id,
+        ("scan_complete", "scan_partial", "scan_failed"),
+        timeout_seconds,
+    )
+    if status == "scan_failed":
+        _log(f"aborting — scanner status={status}")
+        sys.exit(1)
+    if status == "scan_partial":
+        _log("scanner returned scan_partial — continuing with partial findings")
+    else:
+        _log(f"scanner finished: status={status}")
+
+    n = await conn.fetchval(
+        "SELECT COUNT(*) FROM findings WHERE job_id = $1 AND status = 'hypothesis'",
+        job_id,
+    )
+    _log(f"scanner emitted (cumulative hypothesis count) {n} finding(s)")
+
+
+async def _exploit_one(
+    conn: asyncpg.Connection,
+    *,
+    finding_id: str,
+    job_id: str,
+    program_handle: str,
+    platform: str,
+    scope_jwt: str,
+    database_url: str,
+    evidence_mcp_url: str,
+    dedup_mcp_url: str,
+    sandbox_mcp_url: str,
+    approval_token: str | None,
+    semaphore: asyncio.Semaphore,
+    claude_cmd: str,
+) -> int:
+    async with semaphore:
+        env_extras: dict[str, str] = {
+            "SCOPE_JWT":         scope_jwt,
+            "PROGRAM_HANDLE":    program_handle,
+            "PLATFORM":          platform,
+            "DATABASE_URL":      database_url,
+            "FINDING_ID":        finding_id,
+            "SCAN_JOB_ID":       job_id,
+            "EVIDENCE_MCP_URL":  evidence_mcp_url,
+            "DEDUP_MCP_URL":     dedup_mcp_url,
+            "SANDBOX_MCP_URL":   sandbox_mcp_url,
+        }
+        if approval_token:
+            env_extras["APPROVAL_TOKEN"] = approval_token
+        for passthrough in ("OPENROUTER_API_KEY",):
+            if passthrough in os.environ:
+                env_extras[passthrough] = os.environ[passthrough]
+
+        rc = await _run_agent("exploit-agent", env_extras, claude_cmd)
+        _log(f"exploit-agent finding={finding_id} rc={rc}")
+        return rc
+
+
+async def _enqueue_pending_t2(
+    conn: asyncpg.Connection,
+    finding_ids: list[str],
+) -> list[str]:
+    """Enqueue any rows the exploit-agent flipped to approval_pending_t2.
+
+    Returns the list of finding_ids that now have a pending entry in
+    ``approval_queue``. Idempotent: an already-enqueued finding is a no-op.
+    """
+    enqueued: list[str] = []
+    for fid_str in finding_ids:
+        fid = uuid.UUID(fid_str)
+        row = await conn.fetchrow(
+            """
+            SELECT raw_finding->'chain_steps' AS chain_steps
+            FROM findings WHERE id = $1
+            """,
+            fid,
+        )
+        poc_text = (
+            json.dumps(row["chain_steps"]) if row and row["chain_steps"] else None
+        )
+        try:
+            await queue_enqueue(conn, fid, ApprovalTier.T2, poc_text=poc_text)
+            enqueued.append(fid_str)
+        except ApprovalQueueError as exc:
+            _log(f"  enqueue skipped finding={fid_str}: {exc}")
+    return enqueued
+
+
+async def _wait_t2_token(
+    conn: asyncpg.Connection,
+    finding_id: str,
+    timeout_seconds: float,
+) -> str | None:
+    """Block until the operator approves the finding via scripts/approve.py."""
+    fid = uuid.UUID(finding_id)
+    token = await queue_wait_for_approval(conn, fid, timeout_seconds=timeout_seconds)
+    return str(token) if token else None
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-async def main() -> None:
+async def main() -> None:  # noqa: PLR0912, PLR0915
     program_handle = _get_required("PROGRAM_HANDLE")
     platform       = os.environ.get("PLATFORM", "hackerone")
     scope_jwt      = _get_required("SCOPE_JWT")
@@ -155,11 +406,18 @@ async def main() -> None:
     oracle_mcp_url   = os.environ.get("ORACLE_MCP_URL",   "oracle-mcp")
     evidence_mcp_url = os.environ.get("EVIDENCE_MCP_URL", "evidence-mcp")
     dedup_mcp_url    = os.environ.get("DEDUP_MCP_URL",    "dedup-mcp")
+    sandbox_mcp_url  = os.environ.get("SANDBOX_MCP_URL",  "sandbox-mcp")
+
     max_validators   = int(os.environ.get("MAX_VALIDATORS", "5"))
+    max_exploits     = int(os.environ.get("MAX_EXPLOITS",   "3"))
     max_reporters    = int(os.environ.get("MAX_REPORTERS",  "3"))
-    recon_timeout    = int(os.environ.get("RECON_TIMEOUT", "3600"))
+    recon_timeout    = int(os.environ.get("RECON_TIMEOUT",  "3600"))
+    scan_timeout     = int(os.environ.get("SCAN_TIMEOUT",   "7200"))
+    approval_timeout = int(os.environ.get("APPROVAL_TIMEOUT", str(24 * 3600)))
     claude_cmd       = os.environ.get("CLAUDE_CMD", "claude")
-    skip_report      = os.environ.get("SKIP_REPORT", "").lower() in ("1", "true", "yes")
+
+    skip_exploit = _flag("SKIP_EXPLOIT")
+    skip_report  = _flag("SKIP_REPORT")
 
     dsn = database_url.replace("+asyncpg", "")
     conn: asyncpg.Connection = await asyncpg.connect(dsn)
@@ -170,34 +428,91 @@ async def main() -> None:
         _log(f"scan_job={job_id} program={program_handle} platform={platform}")
 
         # ── Recon ──────────────────────────────────────────────────────────
-        await conn.execute(
-            "UPDATE scan_jobs SET status = 'running' WHERE id = $1", job_id
+        await _phase_recon(
+            conn,
+            job_id=job_id,
+            program_handle=program_handle,
+            platform=platform,
+            scope_jwt=scope_jwt,
+            database_url=database_url,
+            claude_cmd=claude_cmd,
+            timeout_seconds=recon_timeout,
         )
-        _log("launching recon-agent")
-        recon_rc = await _run_agent(
-            "recon",
-            {
-                "SCOPE_JWT":       scope_jwt,
-                "PROGRAM_HANDLE":  program_handle,
-                "PLATFORM":        platform,
-                "DATABASE_URL":    database_url,
-                "SCAN_JOB_ID":     job_id,
-                "TASK_STATUS":     "recon_complete",
-            },
-            claude_cmd,
-        )
-        if recon_rc != 0:
-            _log(f"WARNING: recon-agent exited {recon_rc} — polling DB anyway")
 
-        recon_status = await _wait_recon(conn, job_id, recon_timeout)
-        _log(f"recon finished: status={recon_status}")
-        if recon_status != "recon_complete":
-            _log(f"aborting — recon status={recon_status}")
-            sys.exit(1)
+        # ── Scanner ────────────────────────────────────────────────────────
+        await _phase_scanner(
+            conn,
+            job_id=job_id,
+            program_handle=program_handle,
+            platform=platform,
+            scope_jwt=scope_jwt,
+            database_url=database_url,
+            claude_cmd=claude_cmd,
+            timeout_seconds=scan_timeout,
+        )
+
+        # ── Exploit ────────────────────────────────────────────────────────
+        if skip_exploit:
+            _log("SKIP_EXPLOIT set — skipping exploit-agent phase")
+        else:
+            hypo_ids = await _hypothesis_finding_ids(conn, job_id)
+            _log(f"{len(hypo_ids)} hypothesis findings for exploit phase")
+
+            if hypo_ids:
+                exp_sem = asyncio.Semaphore(max_exploits)
+                await asyncio.gather(*[
+                    _exploit_one(
+                        conn,
+                        finding_id=fid,
+                        job_id=job_id,
+                        program_handle=program_handle,
+                        platform=platform,
+                        scope_jwt=scope_jwt,
+                        database_url=database_url,
+                        evidence_mcp_url=evidence_mcp_url,
+                        dedup_mcp_url=dedup_mcp_url,
+                        sandbox_mcp_url=sandbox_mcp_url,
+                        approval_token=None,
+                        semaphore=exp_sem,
+                        claude_cmd=claude_cmd,
+                    )
+                    for fid in hypo_ids
+                ])
+
+                # ── T2 approval ────────────────────────────────────────────
+                pending_t2 = await _t2_pending_finding_ids(conn, job_id)
+                if pending_t2:
+                    _log(
+                        f"{len(pending_t2)} finding(s) require T2 approval — "
+                        f"enqueueing and waiting (timeout={approval_timeout}s). "
+                        f"Run `scripts/approve.py list` in another shell."
+                    )
+                    enqueued = await _enqueue_pending_t2(conn, pending_t2)
+                    for fid in enqueued:
+                        token = await _wait_t2_token(conn, fid, approval_timeout)
+                        if token is None:
+                            _log(f"  T2 approval denied/expired for finding={fid}")
+                            continue
+                        _log(f"  T2 approved finding={fid} — relaunching exploit-agent")
+                        await _exploit_one(
+                            conn,
+                            finding_id=fid,
+                            job_id=job_id,
+                            program_handle=program_handle,
+                            platform=platform,
+                            scope_jwt=scope_jwt,
+                            database_url=database_url,
+                            evidence_mcp_url=evidence_mcp_url,
+                            dedup_mcp_url=dedup_mcp_url,
+                            sandbox_mcp_url=sandbox_mcp_url,
+                            approval_token=token,
+                            semaphore=asyncio.Semaphore(1),
+                            claude_cmd=claude_cmd,
+                        )
 
         # ── Validate ───────────────────────────────────────────────────────
-        finding_ids = await _hypothesis_finding_ids(conn, job_id)
-        _log(f"{len(finding_ids)} hypothesis findings")
+        finding_ids = await _validatable_finding_ids(conn, job_id)
+        _log(f"{len(finding_ids)} finding(s) ready for validation")
 
         if not finding_ids:
             _log("nothing to validate — done")
@@ -237,11 +552,11 @@ async def main() -> None:
         if skip_report:
             _log("SKIP_REPORT set — skipping reporter-agent phase")
         else:
-            validated_ids = await conn.fetch(
+            validated_rows = await conn.fetch(
                 "SELECT id FROM findings WHERE job_id = $1 AND status = 'validated'",
                 job_id,
             )
-            validated_ids = [str(r["id"]) for r in validated_ids]
+            validated_ids = [str(r["id"]) for r in validated_rows]
             _log(f"{len(validated_ids)} validated findings to report")
 
             if validated_ids:
@@ -259,13 +574,14 @@ async def main() -> None:
                             "FINDING_ID":       finding_id,
                             "EVIDENCE_MCP_URL": evidence_mcp_url,
                         }
-                        # Forward platform API tokens if set
-                        for tok_var in ("H1_API_TOKEN", "BUGCROWD_API_TOKEN", "IMMUNEFI_API_TOKEN", "REPORTER_MODEL"):
+                        for tok_var in (
+                            "H1_API_TOKEN", "BUGCROWD_API_TOKEN",
+                            "IMMUNEFI_API_TOKEN", "REPORTER_MODEL",
+                        ):
                             if tok_var in os.environ:
                                 reporter_env[tok_var] = os.environ[tok_var]
                         rc = await _run_agent("reporter", reporter_env, claude_cmd)
                         if rc != 0:
-                            nonlocal rep_failed  # type: ignore[misc]
                             rep_failed += 1
                         _log(f"reporter finding={finding_id} rc={rc}")
 
@@ -279,6 +595,8 @@ async def main() -> None:
             f"duplicate={counts.get('duplicate', 0)} "
             f"archived={counts.get('archived', 0)} "
             f"pending={counts.get('validation_pending', 0)} "
+            f"approval_pending_t2={counts.get('approval_pending_t2', 0)} "
+            f"exploit_pending_validation={counts.get('exploit_pending_validation', 0)} "
             f"validator_errors={failed}"
         )
 

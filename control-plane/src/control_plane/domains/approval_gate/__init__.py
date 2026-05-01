@@ -23,6 +23,16 @@ from .finding_status_cache import (
     InMemoryFindingStatusCache,
     RedisFindingStatusCache,
 )
+from .queue import (
+    ApprovalQueueError,
+    QueueEntry,
+    approve as queue_approve,
+    enqueue as queue_enqueue,
+    get as queue_get,
+    list_pending as queue_list_pending,
+    reject as queue_reject,
+    wait_for_approval as queue_wait_for_approval,
+)
 from .repositories import ApprovalRequestStore, InMemoryApprovalRequestStore
 from .services import (
     ApprovalGateService,
@@ -40,6 +50,7 @@ __all__ = [
     "ApprovalContext",
     "ApprovalDecision",
     "ApprovalGateService",
+    "ApprovalQueueError",
     "ApprovalRequest",
     "ApprovalRequestStatus",
     "ApprovalRequestStore",
@@ -49,6 +60,13 @@ __all__ = [
     "InMemoryApprovalRequestStore",
     "InMemoryFindingStatusCache",
     "NotApprovableError",
+    "QueueEntry",
     "RedisFindingStatusCache",
     "classify_tier",
+    "queue_approve",
+    "queue_enqueue",
+    "queue_get",
+    "queue_list_pending",
+    "queue_reject",
+    "queue_wait_for_approval",
 ]

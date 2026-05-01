@@ -72,11 +72,26 @@ and match the prefix (e.g. `ssrf-imds-candidate` → `verify_ssrf_imds`).
 ```sql
 UPDATE findings
 SET status = 'exploit_attempt'
-WHERE id = :finding_id AND status = 'hypothesis'
-RETURNING id, job_id, program_handle, platform, cwe, url, parameter;
+WHERE id = :finding_id
+  AND status IN ('hypothesis', 'exploit_pending_validation')
+RETURNING id, job_id, program_handle, platform, cwe, url, parameter,
+          raw_finding, oracle_method;
 ```
 
-If 0 rows returned → another agent claimed it. Exit 0 (not an error).
+The validator accepts two input states:
+
+* `hypothesis` — no exploit-agent involvement; oracle runs on the raw
+  finding only.
+* `exploit_pending_validation` — exploit-agent has already produced a PoC
+  and stored evidence. The row's `raw_finding.chain_steps` carries the
+  PoC chain that was executed in the sandbox; if present, use those
+  steps as oracle parameterisation hints (e.g. SSRF: `interactsh_url`
+  from the chain, XSS: the trigger URL the exploit-agent used).
+  When `chain_steps` is absent, fall back to plain-finding oracle
+  dispatch as if the row were `hypothesis`.
+
+If 0 rows returned → another agent claimed it, or the row's status is no
+longer one of the two input states. Exit 0 (not an error).
 
 ### Step 2 — Dedup check (pre-oracle)
 
