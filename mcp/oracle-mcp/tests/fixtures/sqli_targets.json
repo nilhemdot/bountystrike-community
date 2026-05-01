@@ -1,0 +1,162 @@
+[
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v1?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "naive HTML body — string-concat SQL",
+    "tags": ["html", "string-concat"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v2?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "JSON endpoint — string-concat SQL",
+    "tags": ["json", "string-concat"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v3?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "plaintext endpoint — string-concat SQL",
+    "tags": ["plaintext", "string-concat"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v4?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "redirect after SQL exec",
+    "tags": ["redirect", "string-concat"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v5?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "empty-200 after SQL exec",
+    "tags": ["empty-body", "string-concat"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v6?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "fail-open numeric coercion",
+    "tags": ["numeric-coercion-fallback"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v7?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "long-body response — timing only",
+    "tags": ["plaintext", "long-body"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v8?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "permissive header bypass — vulnerable default path",
+    "tags": ["json", "header-gate"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v9?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "quoted reflection — payload echoes back",
+    "tags": ["html", "echo"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v10?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "cookie-setting endpoint after SQL exec",
+    "tags": ["cookie", "json"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c1?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "numeric-only allowlist",
+    "tags": ["allowlist", "numeric"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c2?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "parameterised query",
+    "tags": ["parameterised"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c3?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "static response",
+    "tags": ["no-db"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c4?q=abc",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "regex allowlist [a-z0-9-]{1,32}",
+    "tags": ["allowlist", "regex"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c5?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "input hashed before lookup",
+    "tags": ["hash"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c6?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "html-escape + parameterised",
+    "tags": ["html-escape", "parameterised"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c7?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "length cap rejects long payloads",
+    "tags": ["length-gate"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c8?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "WAF-style keyword denylist",
+    "tags": ["denylist"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c9?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "cached parameterised endpoint",
+    "tags": ["parameterised", "cached"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/c10?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "404 on every input — DB never queried",
+    "tags": ["no-db", "404"]
+  }
+]

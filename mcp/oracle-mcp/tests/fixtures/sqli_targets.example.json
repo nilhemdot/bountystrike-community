@@ -1,0 +1,10 @@
+[
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/v1?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "EXAMPLE — replace before running",
+    "tags": ["example", "do-not-run"]
+  }
+]

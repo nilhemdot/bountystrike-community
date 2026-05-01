@@ -40,3 +40,16 @@ services:
       timeout: 1s
       retries: 30
     restart: "no"
+
+  sqli-lab:
+    build: ./sqli_lab
+    image: bs5/sqli-lab:0.1.0
+    container_name: bs5-sqli-lab
+    ports:
+      - "5096:5096"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5096/healthz"]
+      interval: 2s
+      timeout: 1s
+      retries: 30
+    restart: "no"
