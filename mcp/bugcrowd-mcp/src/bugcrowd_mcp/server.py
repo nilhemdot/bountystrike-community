@@ -1,12 +1,14 @@
 """FastMCP server for bugcrowd-mcp.
 
-Exposes one MCP tool: submit_report — POST /submissions.
+Exposes one MCP tool: submit_report — POST /submissions (JSON:API).
 
 Required env:
   - BUGCROWD_API_TOKEN — Bugcrowd Researcher API token
 Optional:
   - BUGCROWD_BASE_URL    — default https://api.bugcrowd.com
-  - BUGCROWD_API_VERSION — default 2024-01-11; pin to a verified date
+  - BUGCROWD_AUTH_SCHEME — default ``Token`` (the documented scheme);
+                            override to ``Bearer`` if your token works
+                            only with that.
 """
 
 from __future__ import annotations
@@ -36,21 +38,23 @@ async def _get_client() -> BugcrowdClient:
 async def _submit_report_impl(
     client: BugcrowdClient,
     *,
-    target: str,
+    program_id: str,
     title: str,
     description: str,
     severity: str,
     vrt_id: str | None = None,
+    target_id: str | None = None,
 ) -> dict:
     try:
         return {
             "ok": True,
             **await client.submit_report(
-                target=target,
+                program_id=program_id,
                 title=title,
                 description=description,
                 severity=severity,
                 vrt_id=vrt_id,
+                target_id=target_id,
             ),
         }
     except BugcrowdError as exc:
@@ -64,39 +68,46 @@ async def _submit_report_impl(
 
 @mcp.tool()
 async def submit_report(
-    target: str,
+    program_id: str,
     title: str,
     description: str,
     severity: str,
     vrt_id: str | None = None,
+    target_id: str | None = None,
 ) -> dict:
-    """Submit a finding to Bugcrowd.
+    """Submit a finding to Bugcrowd via the JSON:API ``/submissions`` endpoint.
 
     Call only AFTER T3 approval — the approval-gate hook blocks
     unapproved invocations.
 
     Args:
-        target: Asset URL the finding concerns.
+        program_id: Bugcrowd programme UUID (NOT the slug). Required by
+            JSON:API as ``relationships.program.data.id``.
         title: Report title (1..200 chars).
         description: Full markdown report body. Anti-slop hook will
             have rejected non-compliant content upstream.
         severity: ``critical|high|medium|low|informational``. The
             client maps this to Bugcrowd's P1..P5 integer.
-        vrt_id: Optional Bugcrowd VRT taxonomy id (Vulnerability
-            Rating Taxonomy). Not all programs require it.
+        vrt_id: Optional Bugcrowd VRT taxonomy id (dot-separated, e.g.
+            ``cross_site_scripting_xss.reflected``). Not all programs
+            require it.
+        target_id: Optional Bugcrowd target UUID — JSON:API
+            ``relationships.target.data.id``. If unspecified, the
+            program's default target receives the submission.
 
     Returns:
-        ``{ok, submission_id, status, title, raw}`` on success;
-        ``{ok: False, error, status_code, body}`` on failure.
+        ``{ok, submission_id, status, title, severity, created_at, raw}``
+        on success; ``{ok: False, error, status_code, body}`` on failure.
     """
     client = await _get_client()
     return await _submit_report_impl(
         client,
-        target=target,
+        program_id=program_id,
         title=title,
         description=description,
         severity=severity,
         vrt_id=vrt_id,
+        target_id=target_id,
     )
 
 

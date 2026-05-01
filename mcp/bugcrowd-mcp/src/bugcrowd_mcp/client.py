@@ -1,43 +1,70 @@
 """Bugcrowd submission client.
 
-API surface used (per build-plan §reporter-agent + Bugcrowd Researcher API):
+API surface (verified against https://docs.bugcrowd.com/api/latest):
 
   POST {base_url}/submissions
-    Authorization: Token <api_token>          (Bugcrowd uses ``Token``, not ``Bearer``)
-    X-BUGCROWD-API-VERSION: <pinned date>
+    Authorization: Token <api_token>          (Bugcrowd's documented Basic-Auth-like
+                                              "Token" scheme; some accounts use
+                                              ``Bearer`` — override via the
+                                              ``auth_scheme`` arg if your token
+                                              works only with one)
     Content-Type: application/json
-    Body:
+    Body (JSON:API):
       {
-        "submission": {
-          "target":      "<asset URL>",
-          "title":       "<= 200 chars",
-          "description": "<full markdown report>",
-          "severity":    1..5,                  (P1=1 critical … P5=5 informational)
-          "vrt_id":      "<vrt taxonomy id>"     (optional)
+        "data": {
+          "type": "submission",
+          "attributes": {
+            "title":       "<= ~200 chars>",
+            "description": "<full markdown report (POC inline)>",
+            "severity":    1..5,                       (P1=1 critical … P5=5 informational)
+            "vrt_id":      "<dot.path.id>"             (optional; e.g. cross_site_scripting_xss)
+          },
+          "relationships": {
+            "program": {
+              "data": {
+                "type": "program",
+                "id":   "<program_uuid>"               (REQUIRED — UUID, not slug)
+              }
+            },
+            "target": {                                (OPTIONAL)
+              "data": {
+                "type": "target",
+                "id":   "<target_uuid>"
+              }
+            }
+          }
         }
       }
 
-Returns 201 with::
+Returns 201 with the new submission as a JSON:API resource::
 
   {
-    "submission_id":  "<uuid>",
-    "status":         "needs_review" | "in_progress" | ...,
-    "title":          "...",
-    ...
+    "data": {
+      "type": "submission",
+      "id":   "<submission_uuid>",
+      "attributes": {
+        "title":      "...",
+        "state":      "new",
+        "severity":   2,
+        "created_at": "2026-05-01T..."
+      },
+      "relationships": {...}
+    },
+    "included": []                                     (may carry a ClaimTicket)
   }
 
-Severity mapping (build-plan §reporter):
+Severity mapping (Bugcrowd P1..P5):
   critical / P1 → 1
   high / P2     → 2
   medium / P3   → 3
   low / P4      → 4
   informational / P5 → 5
 
-NOTE: Bugcrowd's Researcher API has had multiple shape revisions; pin
-``X-BUGCROWD-API-VERSION`` to a date you've verified against. The default
-``2024-01-11`` matches build-plan §reporter; bump via ``BUGCROWD_API_VERSION``
-env when Bugcrowd publishes a newer stable version. Tests lock the
-contract — any drift surfaces as test failures, not silent prod errors.
+The previous version of this module shipped against a build-plan-derived
+``{"submission": {...}}`` body shape and a ``target`` URL field; both
+were wrong per the live JSON:API spec. The fix is intentionally
+breaking: the function signature now takes ``program_id`` (UUID) and an
+optional ``target_id`` (UUID), and the body is the JSON:API resource.
 """
 
 from __future__ import annotations
@@ -48,8 +75,8 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = os.environ.get("BUGCROWD_BASE_URL", "https://api.bugcrowd.com")
-DEFAULT_API_VERSION = os.environ.get("BUGCROWD_API_VERSION", "2024-01-11")
 DEFAULT_TIMEOUT_S = 30.0
+DEFAULT_AUTH_SCHEME = os.environ.get("BUGCROWD_AUTH_SCHEME", "Token")
 
 # Severity name → Bugcrowd integer (P1..P5).
 SEVERITY_TO_INT: dict[str, int] = {
@@ -81,7 +108,7 @@ class BugcrowdClient:
         self,
         api_token: str | None = None,
         base_url: str = DEFAULT_BASE_URL,
-        api_version: str = DEFAULT_API_VERSION,
+        auth_scheme: str = DEFAULT_AUTH_SCHEME,
         timeout_s: float = DEFAULT_TIMEOUT_S,
         client: httpx.AsyncClient | None = None,
     ) -> None:
@@ -89,7 +116,7 @@ class BugcrowdClient:
         if not self._token:
             raise RuntimeError("BUGCROWD_API_TOKEN is not set")
         self._base_url = base_url.rstrip("/")
-        self._api_version = api_version
+        self._auth_scheme = auth_scheme
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
 
@@ -105,23 +132,54 @@ class BugcrowdClient:
 
     def _headers(self) -> dict[str, str]:
         return {
-            "Authorization": f"Token {self._token}",
-            "X-BUGCROWD-API-VERSION": self._api_version,
+            "Authorization": f"{self._auth_scheme} {self._token}",
             "Content-Type": "application/json",
             "Accept": "application/json",
             "User-Agent": "bountystrike-bugcrowd-mcp/0.1",
         }
 
+    @staticmethod
+    def _build_body(
+        program_id: str,
+        title: str,
+        description: str,
+        severity_int: int,
+        vrt_id: str | None,
+        target_id: str | None,
+    ) -> dict[str, Any]:
+        attributes: dict[str, Any] = {
+            "title": title,
+            "description": description,
+            "severity": severity_int,
+        }
+        if vrt_id:
+            attributes["vrt_id"] = vrt_id
+        relationships: dict[str, Any] = {
+            "program": {"data": {"type": "program", "id": program_id}}
+        }
+        if target_id:
+            relationships["target"] = {
+                "data": {"type": "target", "id": target_id}
+            }
+        return {
+            "data": {
+                "type": "submission",
+                "attributes": attributes,
+                "relationships": relationships,
+            }
+        }
+
     async def submit_report(
         self,
-        target: str,
+        program_id: str,
         title: str,
         description: str,
         severity: str,
         vrt_id: str | None = None,
+        target_id: str | None = None,
     ) -> dict[str, Any]:
-        if not target:
-            raise ValueError("target is required")
+        if not program_id:
+            raise ValueError("program_id is required (Bugcrowd program UUID)")
         if not title or len(title) > 200:
             raise ValueError("title must be 1..200 chars")
         sev = severity.lower()
@@ -129,17 +187,10 @@ class BugcrowdClient:
             raise ValueError(
                 f"severity {severity!r} not in {sorted(SEVERITY_TO_INT)}"
             )
-        body: dict[str, Any] = {
-            "submission": {
-                "target": target,
-                "title": title,
-                "description": description,
-                "severity": SEVERITY_TO_INT[sev],
-            }
-        }
-        if vrt_id:
-            body["submission"]["vrt_id"] = vrt_id
 
+        body = self._build_body(
+            program_id, title, description, SEVERITY_TO_INT[sev], vrt_id, target_id,
+        )
         url = f"{self._base_url}/submissions"
 
         last_exc: Exception | None = None
@@ -158,30 +209,20 @@ class BugcrowdClient:
 
             if 200 <= resp.status_code < 300:
                 payload = resp.json()
-                if not isinstance(payload, dict):
+                if not isinstance(payload, dict) or "data" not in payload:
                     raise BugcrowdError(
-                        "unexpected response shape (not an object)",
+                        "unexpected response shape (missing 'data')",
                         status_code=resp.status_code,
                         body=payload,
                     )
-                # Bugcrowd has used both top-level ``submission_id`` and
-                # nested ``submission.id``; tolerate both.
-                sid = (
-                    payload.get("submission_id")
-                    or (payload.get("submission") or {}).get("id")
-                )
-                state = (
-                    payload.get("status")
-                    or (payload.get("submission") or {}).get("status")
-                )
-                title_out = (
-                    payload.get("title")
-                    or (payload.get("submission") or {}).get("title")
-                )
+                data = payload["data"]
+                attrs = data.get("attributes", {}) if isinstance(data, dict) else {}
                 return {
-                    "submission_id": sid,
-                    "status": state,
-                    "title": title_out,
+                    "submission_id": data.get("id"),
+                    "status": attrs.get("state"),
+                    "title": attrs.get("title"),
+                    "severity": attrs.get("severity"),
+                    "created_at": attrs.get("created_at"),
                     "raw": payload,
                 }
 
@@ -220,7 +261,7 @@ class BugcrowdClient:
 
 
 __all__ = [
-    "DEFAULT_API_VERSION",
+    "DEFAULT_AUTH_SCHEME",
     "DEFAULT_BASE_URL",
     "MAX_RETRIES",
     "RETRY_BACKOFF_S",

@@ -1,4 +1,4 @@
-"""Tests for bugcrowd-mcp — client + server."""
+"""Tests for bugcrowd-mcp — JSON:API submission shape."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import pytest
 import respx
 
 from bugcrowd_mcp.client import (
-    DEFAULT_API_VERSION,
     DEFAULT_BASE_URL,
     SEVERITY_TO_INT,
     BugcrowdClient,
@@ -19,10 +18,15 @@ from bugcrowd_mcp.client import (
 from bugcrowd_mcp.server import _submit_report_impl
 
 
+_PROGRAM_UUID = "11111111-2222-3333-4444-555555555555"
+_TARGET_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+_SUBMISSION_UUID = "99999999-9999-9999-9999-999999999999"
+
+
 @pytest.fixture
 def base_kwargs() -> dict:
     return {
-        "target": "https://acme.com/login",
+        "program_id": _PROGRAM_UUID,
         "title": "Reflected XSS",
         "description": "## Summary\n\nReflected XSS via q.",
         "severity": "medium",
@@ -35,25 +39,28 @@ def client(monkeypatch: pytest.MonkeyPatch) -> BugcrowdClient:
     return BugcrowdClient()
 
 
-def _success_top_level() -> dict:
+def _success_jsonapi(severity_int: int = 3) -> dict:
     return {
-        "submission_id": "uuid-aaa",
-        "status": "needs_review",
-        "title": "Reflected XSS",
-    }
-
-
-def _success_nested() -> dict:
-    return {
-        "submission": {
-            "id": "uuid-bbb",
-            "status": "needs_review",
-            "title": "Reflected XSS",
-        }
+        "data": {
+            "type": "submission",
+            "id": _SUBMISSION_UUID,
+            "attributes": {
+                "title": "Reflected XSS",
+                "description": "...",
+                "state": "new",
+                "severity": severity_int,
+                "created_at": "2026-05-01T00:00:00Z",
+            },
+            "relationships": {
+                "program": {"data": {"type": "program", "id": _PROGRAM_UUID}}
+            },
+        },
+        "included": [],
     }
 
 
 # -- construction --
+
 
 def test_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("BUGCROWD_API_TOKEN", raising=False)
@@ -61,7 +68,18 @@ def test_requires_token(monkeypatch: pytest.MonkeyPatch) -> None:
         BugcrowdClient()
 
 
+def test_auth_scheme_default(client: BugcrowdClient) -> None:
+    assert client._headers()["Authorization"] == "Token tok-secret"
+
+
+def test_auth_scheme_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BUGCROWD_API_TOKEN", "tok-secret")
+    c = BugcrowdClient(auth_scheme="Bearer")
+    assert c._headers()["Authorization"] == "Bearer tok-secret"
+
+
 # -- severity map --
+
 
 @pytest.mark.parametrize(
     "name,expected",
@@ -79,10 +97,11 @@ def test_severity_mapping(name: str, expected: int) -> None:
 
 # -- validation --
 
+
 @respx.mock
-async def test_rejects_missing_target(client, base_kwargs) -> None:
-    base_kwargs["target"] = ""
-    with pytest.raises(ValueError, match="target"):
+async def test_rejects_missing_program_id(client, base_kwargs) -> None:
+    base_kwargs["program_id"] = ""
+    with pytest.raises(ValueError, match="program_id"):
         await client.submit_report(**base_kwargs)
 
 
@@ -100,75 +119,101 @@ async def test_rejects_unknown_severity(client, base_kwargs) -> None:
         await client.submit_report(**base_kwargs)
 
 
-# -- 201 happy paths --
+# -- 201 happy path --
+
 
 @respx.mock
-async def test_submit_201_top_level_response(client, base_kwargs) -> None:
+async def test_submit_201_returns_jsonapi_id(client, base_kwargs) -> None:
     route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_top_level()
+        201, json=_success_jsonapi(severity_int=3)
     )
     out = await client.submit_report(**base_kwargs)
     assert route.called
-    assert out["submission_id"] == "uuid-aaa"
-    assert out["status"] == "needs_review"
+    assert out["submission_id"] == _SUBMISSION_UUID
+    assert out["status"] == "new"
+    assert out["severity"] == 3
 
 
 @respx.mock
-async def test_submit_201_nested_response(client, base_kwargs) -> None:
-    respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_nested()
-    )
-    out = await client.submit_report(**base_kwargs)
-    assert out["submission_id"] == "uuid-bbb"
-
-
-@respx.mock
-async def test_submit_sends_token_auth_and_api_version(client, base_kwargs) -> None:
+async def test_submit_sends_token_auth(client, base_kwargs) -> None:
     route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_top_level()
+        201, json=_success_jsonapi()
     )
     await client.submit_report(**base_kwargs)
     sent = route.calls[0].request
     assert sent.headers["authorization"] == "Token tok-secret"
-    assert sent.headers["x-bugcrowd-api-version"] == DEFAULT_API_VERSION
     assert sent.headers["content-type"] == "application/json"
 
 
 @respx.mock
-async def test_submit_body_shape_severity_int(client, base_kwargs) -> None:
+async def test_submit_body_is_jsonapi_with_severity_int(client, base_kwargs) -> None:
     route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_top_level()
+        201, json=_success_jsonapi(severity_int=2)
     )
     base_kwargs["severity"] = "high"
     await client.submit_report(**base_kwargs)
     body = json.loads(route.calls[0].request.content)
     assert body == {
-        "submission": {
-            "target": base_kwargs["target"],
-            "title": base_kwargs["title"],
-            "description": base_kwargs["description"],
-            "severity": 2,  # high → P2 → 2
+        "data": {
+            "type": "submission",
+            "attributes": {
+                "title": base_kwargs["title"],
+                "description": base_kwargs["description"],
+                "severity": 2,
+            },
+            "relationships": {
+                "program": {
+                    "data": {"type": "program", "id": _PROGRAM_UUID}
+                }
+            },
         }
     }
 
 
 @respx.mock
-async def test_submit_includes_vrt_id_when_set(client, base_kwargs) -> None:
+async def test_submit_includes_vrt_id(client, base_kwargs) -> None:
     route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_top_level()
+        201, json=_success_jsonapi()
     )
-    base_kwargs["vrt_id"] = "server_security_misconfiguration.web_socket_misconfiguration"
+    base_kwargs["vrt_id"] = "cross_site_scripting_xss.reflected"
     await client.submit_report(**base_kwargs)
     body = json.loads(route.calls[0].request.content)
-    assert body["submission"]["vrt_id"] == base_kwargs["vrt_id"]
+    assert (
+        body["data"]["attributes"]["vrt_id"]
+        == "cross_site_scripting_xss.reflected"
+    )
+
+
+@respx.mock
+async def test_submit_includes_target_relationship(client, base_kwargs) -> None:
+    route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+        201, json=_success_jsonapi()
+    )
+    base_kwargs["target_id"] = _TARGET_UUID
+    await client.submit_report(**base_kwargs)
+    body = json.loads(route.calls[0].request.content)
+    assert body["data"]["relationships"]["target"] == {
+        "data": {"type": "target", "id": _TARGET_UUID}
+    }
+
+
+@respx.mock
+async def test_submit_omits_target_when_unset(client, base_kwargs) -> None:
+    route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+        201, json=_success_jsonapi()
+    )
+    await client.submit_report(**base_kwargs)
+    body = json.loads(route.calls[0].request.content)
+    assert "target" not in body["data"]["relationships"]
 
 
 # -- 4xx no retry --
 
+
 @respx.mock
 async def test_submit_400_no_retry(client, base_kwargs) -> None:
     route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        400, json={"error": "missing target"}
+        400, json={"errors": [{"status": "400", "title": "bad request"}]}
     )
     with pytest.raises(BugcrowdError) as info:
         await client.submit_report(**base_kwargs)
@@ -176,7 +221,19 @@ async def test_submit_400_no_retry(client, base_kwargs) -> None:
     assert route.call_count == 1
 
 
+@respx.mock
+async def test_submit_422_validation_no_retry(client, base_kwargs) -> None:
+    route = respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+        422, json={"errors": [{"status": "422", "title": "validation"}]}
+    )
+    with pytest.raises(BugcrowdError) as info:
+        await client.submit_report(**base_kwargs)
+    assert info.value.status_code == 422
+    assert route.call_count == 1
+
+
 # -- 5xx retry --
+
 
 @respx.mock
 async def test_submit_5xx_then_succeeds(client, base_kwargs) -> None:
@@ -184,11 +241,11 @@ async def test_submit_5xx_then_succeeds(client, base_kwargs) -> None:
         route = respx.post(f"{DEFAULT_BASE_URL}/submissions").mock(
             side_effect=[
                 httpx.Response(503),
-                httpx.Response(201, json=_success_top_level()),
+                httpx.Response(201, json=_success_jsonapi()),
             ]
         )
         out = await client.submit_report(**base_kwargs)
-    assert out["submission_id"] == "uuid-aaa"
+    assert out["submission_id"] == _SUBMISSION_UUID
     assert route.call_count == 2
 
 
@@ -214,22 +271,35 @@ async def test_submit_network_error_retries(client, base_kwargs) -> None:
     assert info.value.status_code is None
 
 
+# -- malformed success payload --
+
+
+@respx.mock
+async def test_submit_rejects_payload_missing_data(client, base_kwargs) -> None:
+    respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
+        201, json={"unexpected": "shape"}
+    )
+    with pytest.raises(BugcrowdError, match="missing 'data'"):
+        await client.submit_report(**base_kwargs)
+
+
 # -- server impl --
+
 
 @respx.mock
 async def test_server_impl_ok_true(client, base_kwargs) -> None:
     respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        201, json=_success_top_level()
+        201, json=_success_jsonapi()
     )
     out = await _submit_report_impl(client, **base_kwargs)
     assert out["ok"] is True
-    assert out["submission_id"] == "uuid-aaa"
+    assert out["submission_id"] == _SUBMISSION_UUID
 
 
 @respx.mock
 async def test_server_impl_ok_false_on_4xx(client, base_kwargs) -> None:
     respx.post(f"{DEFAULT_BASE_URL}/submissions").respond(
-        422, json={"error": "validation"}
+        422, json={"errors": [{"status": "422"}]}
     )
     out = await _submit_report_impl(client, **base_kwargs)
     assert out["ok"] is False

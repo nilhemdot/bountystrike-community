@@ -1,42 +1,46 @@
 """Intigriti submission client.
 
-Endpoint base (build-plan §4.3): https://api.intigriti.com/core/researcher/v1.
-The scope-fetch path is documented at::
+**IMPORTANT — Intigriti has no public researcher submission API.**
 
-  GET /core/researcher/v1/programs/{company}/{program}/scopes
-      Authorization: Bearer <PAT>
+Verified against the official Intigriti OpenAPI specs (researcher API at
+``https://api.intigriti.com/external/researcher`` and company API at
+``https://api.intigriti.com/external/company``):
 
-The submission path follows the same versioned base. The exact body
-shape is programme-driven; this client ships the documented common
-fields and forwards an optional ``extra`` blob the caller can populate
-per-programme without bumping the client.
+  - The researcher API exposes GET endpoints only — programme listing,
+    programme detail, scope, rules of engagement. There is no
+    documented POST /submissions endpoint for researchers to create new
+    submissions.
+  - The company API exposes write endpoints for tasks the researcher
+    cannot perform (POSTing internal/external comments to existing
+    submissions, adding payouts, etc.).
 
-  POST {base_url}/core/researcher/v1/submissions
-    Authorization: Bearer <PAT>
-    Content-Type: application/json
-    Body:
-      {
-        "programId":         "<uuid>",
-        "title":             "<= 200 chars",
-        "endpointUrl":       "<asset URL>",
-        "severity":          "low|medium|high|critical|exceptional",
-        "type":              "CWE-NN" | "<intigriti category>",
-        "description":       "<markdown>",
-        "proofOfConcept":    "<markdown>",
-        "impact":            "<markdown>",
-        ...                  "<extra fields>"
-      }
+Researchers create new submissions via the Intigriti **web UI**, not
+the API. This is the platform's documented model.
 
-NOTE: Intigriti's researcher submission API has been less publicly
-documented than HackerOne / Bugcrowd; verify the body shape against
-your live programme before first prod use. Tests lock the contract,
-so any drift surfaces as test failures, not silent prod errors.
-``extra`` lets you bolt programme-specific fields onto the body
-without forking the client.
+This module therefore ships ``submit_report`` as a **best-effort
+placeholder** that POSTs to a configurable URL with a sensible body
+shape. The default URL is ``{base_url}/v1/submissions`` (which Intigriti
+will 404), explicitly so a caller cannot accidentally fire it against
+the real platform thinking it works. To make ``submit_report``
+functional, the caller MUST either:
 
-Severity name pass-through:
-  Intigriti accepts the lower-case string verbatim. ``exceptional``
-  is the Intigriti-only highest tier (above ``critical``).
+  - point it at a custom relay endpoint they operate (set
+    ``INTIGRITI_SUBMIT_URL`` env), or
+  - know the body shape Intigriti accepts on a private/closed-beta
+    submission API and pass that via the ``extra`` parameter.
+
+The reporter-agent should treat Intigriti submissions as a manual
+gate and route via the web UI for now. Calling this MCP without
+override yields ``{ok: False, status_code: 404}``.
+
+Verified base URL (Intigriti researcher API):
+  https://api.intigriti.com/external/researcher
+
+Auth: Bearer ``INTIGRITI_API_TOKEN`` (researcher PAT).
+
+Severity vocabulary used by ``submit_report`` for compatibility with
+the cross-platform reporter contract:
+  informational | low | medium | high | critical | exceptional
 """
 
 from __future__ import annotations
@@ -47,8 +51,12 @@ from typing import Any
 import httpx
 
 DEFAULT_BASE_URL = os.environ.get(
-    "INTIGRITI_BASE_URL", "https://api.intigriti.com"
+    "INTIGRITI_BASE_URL", "https://api.intigriti.com/external/researcher"
 )
+# Optional override: if set, ``submit_report`` POSTs here instead of the
+# (non-existent) Intigriti submission endpoint. Intended for callers
+# who run their own relay or have closed-beta submission API access.
+SUBMIT_URL_OVERRIDE = os.environ.get("INTIGRITI_SUBMIT_URL", "")
 DEFAULT_TIMEOUT_S = 30.0
 
 VALID_SEVERITIES: frozenset[str] = frozenset(
@@ -141,7 +149,11 @@ class IntigritiClient:
                 if k not in body:  # never let extra silently overwrite contract fields
                     body[k] = v
 
-        url = f"{self._base_url}/core/researcher/v1/submissions"
+        # Intigriti has no documented researcher POST /submissions
+        # endpoint — see the module docstring. The default below WILL
+        # 404 on the live platform; a real submission requires
+        # INTIGRITI_SUBMIT_URL to point at a relay you control.
+        url = SUBMIT_URL_OVERRIDE or f"{self._base_url}/v1/submissions"
 
         last_exc: Exception | None = None
         for attempt in range(MAX_RETRIES + 1):

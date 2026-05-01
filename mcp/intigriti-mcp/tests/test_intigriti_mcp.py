@@ -83,7 +83,7 @@ async def test_rejects_unknown_severity(client, base_kwargs) -> None:
 @respx.mock
 async def test_submit_201(client, base_kwargs) -> None:
     route = respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     out = await client.submit_report(**base_kwargs)
     assert route.called
@@ -94,7 +94,7 @@ async def test_submit_201(client, base_kwargs) -> None:
 @respx.mock
 async def test_submit_sends_bearer(client, base_kwargs) -> None:
     route = respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     await client.submit_report(**base_kwargs)
     sent = route.calls[0].request
@@ -104,7 +104,7 @@ async def test_submit_sends_bearer(client, base_kwargs) -> None:
 @respx.mock
 async def test_submit_body_shape_includes_required_fields(client, base_kwargs) -> None:
     route = respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     await client.submit_report(**base_kwargs)
     body = json.loads(route.calls[0].request.content)
@@ -124,7 +124,7 @@ async def test_submit_body_shape_includes_required_fields(client, base_kwargs) -
 @respx.mock
 async def test_extra_appended_no_contract_overwrite(client, base_kwargs) -> None:
     route = respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     base_kwargs["extra"] = {
         "title": "OVERWRITE-ATTEMPT",  # should be ignored
@@ -141,7 +141,7 @@ async def test_extra_appended_no_contract_overwrite(client, base_kwargs) -> None
 @respx.mock
 async def test_submit_400_no_retry(client, base_kwargs) -> None:
     route = respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(400, json={"error": "invalid"})
     with pytest.raises(IntigritiError) as info:
         await client.submit_report(**base_kwargs)
@@ -155,7 +155,7 @@ async def test_submit_400_no_retry(client, base_kwargs) -> None:
 async def test_submit_5xx_then_succeeds(client, base_kwargs) -> None:
     with patch("intigriti_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
         route = respx.post(
-            f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+            f"{DEFAULT_BASE_URL}/v1/submissions"
         ).mock(
             side_effect=[
                 httpx.Response(503),
@@ -171,7 +171,7 @@ async def test_submit_5xx_then_succeeds(client, base_kwargs) -> None:
 async def test_submit_5xx_gives_up(client, base_kwargs) -> None:
     with patch("intigriti_mcp.client.RETRY_BACKOFF_S", (0.0, 0.0)):
         route = respx.post(
-            f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+            f"{DEFAULT_BASE_URL}/v1/submissions"
         ).respond(503, json={"error": "down"})
         with pytest.raises(IntigritiError):
             await client.submit_report(**base_kwargs)
@@ -183,7 +183,7 @@ async def test_submit_5xx_gives_up(client, base_kwargs) -> None:
 @respx.mock
 async def test_server_impl_ok_true(client, base_kwargs) -> None:
     respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(201, json=_success())
     out = await _submit_report_impl(client, **base_kwargs)
     assert out["ok"] is True
@@ -192,8 +192,46 @@ async def test_server_impl_ok_true(client, base_kwargs) -> None:
 @respx.mock
 async def test_server_impl_ok_false_on_4xx(client, base_kwargs) -> None:
     respx.post(
-        f"{DEFAULT_BASE_URL}/core/researcher/v1/submissions"
+        f"{DEFAULT_BASE_URL}/v1/submissions"
     ).respond(403, json={"error": "forbidden"})
     out = await _submit_report_impl(client, **base_kwargs)
     assert out["ok"] is False
     assert out["status_code"] == 403
+
+
+# ---------------------------------------------------------------------------
+# Submit-URL override — Intigriti has no public researcher submission API,
+# so callers must point INTIGRITI_SUBMIT_URL at a relay they operate.
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_default_url_is_documented_dead_endpoint(client, base_kwargs) -> None:
+    """Default ``submit_report`` POSTs to a path that Intigriti will 404.
+
+    The module docstring explains why: Intigriti has no documented
+    POST /submissions endpoint for researchers; submissions go through
+    the web UI. The test pins this contract so a future maintainer who
+    "fixes" the URL surfaces the platform-level limitation in CI.
+    """
+    route = respx.post(f"{DEFAULT_BASE_URL}/v1/submissions").respond(
+        404, json={"error": "Not Found"}
+    )
+    with pytest.raises(IntigritiError) as info:
+        await client.submit_report(**base_kwargs)
+    assert info.value.status_code == 404
+    assert route.call_count == 1
+
+
+@respx.mock
+async def test_submit_url_override_routes_to_relay(
+    client, base_kwargs, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    relay = "https://relay.example.com/intigriti-submit"
+    monkeypatch.setattr("intigriti_mcp.client.SUBMIT_URL_OVERRIDE", relay)
+    route = respx.post(relay).respond(
+        201, json={"id": "relay-uuid", "state": "received"}
+    )
+    out = await client.submit_report(**base_kwargs)
+    assert route.called
+    assert out["submission_id"] == "relay-uuid"
