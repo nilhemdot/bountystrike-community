@@ -1,0 +1,62 @@
+name: r2-smoke
+
+# Live Cloudflare R2 round-trip smoke for 1.1f-deploy.
+#
+# Trigger: workflow_dispatch only — manual fire from the Actions UI.
+#   Auto-on-push was rejected for this round because the smoke costs a
+#   real R2 PUT/GET/DELETE on every fire and proves nothing dev cannot
+#   already prove via mocked tests; manual fire is enough to detect
+#   credential rot or endpoint drift on demand.
+#
+# Secrets required (configure at repo Settings → Secrets → Actions):
+#     R2_ACCOUNT_ID, R2_BUCKET, R2_ENDPOINT_URL, R2_REGION,
+#     R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
+#
+# Per GH Actions docs, secrets cannot be referenced in `if:` conditions
+# directly — they must be promoted to env first. The bail-early step
+# below uses that pattern to fail loudly if the user fires the workflow
+# without configuring secrets.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r2-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: R2 round-trip smoke
+    runs-on: ubuntu-latest
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_REGION: ${{ secrets.R2_REGION }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Bail early if R2 secrets unset
+        if: ${{ env.R2_BUCKET == '' || env.R2_ACCESS_KEY_ID == '' || env.R2_SECRET_ACCESS_KEY == '' }}
+        run: |
+          echo "::error::R2 secrets not configured on this repo. Add R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY at Settings → Secrets → Actions." >&2
+          exit 1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            control-plane/pyproject.toml
+            control-plane/uv.lock
+
+      - name: R2 round-trip smoke
+        working-directory: control-plane
+        run: uv run --frozen python ../scripts/r2_smoke.py

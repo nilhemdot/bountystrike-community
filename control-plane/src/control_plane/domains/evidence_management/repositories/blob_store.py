@@ -166,5 +166,15 @@ class R2BlobStore:
                 raise
             return True
 
+    async def delete(self, r2_key: R2Key) -> None:
+        """Delete the object at ``r2_key``. Idempotent (S3 DeleteObject semantics).
+
+        Used by smoke / integration tests to keep buckets clean. Not part of
+        the :class:`BlobStore` Protocol — production code never deletes
+        evidence artifacts.
+        """
+        async with self._client() as client:
+            await client.delete_object(Bucket=self._bucket, Key=r2_key.key)
+
 
 __all__ = ["BlobStore", "LocalFsBlobStore", "R2BlobStore"]

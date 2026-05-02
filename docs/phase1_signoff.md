@@ -1210,3 +1210,151 @@ GitHub Actions before this round — this is the first workflow.
   the new package. Not a code change.
 * **`1.1f-deploy`** — R2 live-credential verification still needs
   Cloudflare creds; remains the only Phase-1 follow-up open.
+
+## Round 15 — `1.1f-deploy` live R2 round-trip (closes 1.1f code-side)
+
+`R2BlobStore`
+(`control-plane/src/control_plane/domains/evidence_management/repositories/blob_store.py`)
+has been complete since Round 8 with full unit-test coverage via a
+hand-rolled in-memory fake S3 client (moto + aioboto3 are
+incompatible — see Round 8 notes). What the mocks could not prove was
+that the user-provided credentials work, that the
+`f"https://{ACCOUNT_ID}.r2.cloudflarestorage.com"` endpoint derivation
+matches what Cloudflare actually serves, or that the
+`head_object` 404 / `NoSuchKey` branch fires against R2's real error
+envelope. Round 15 closes that gap.
+
+### 35. `R2BlobStore.delete()`
+
+**File:** `control-plane/src/control_plane/domains/evidence_management/repositories/blob_store.py` (+11 LOC).
+
+* Mirrors the `put` / `get` shape: opens a fresh aioboto3 client per
+  call, invokes `client.delete_object(Bucket=…, Key=r2_key.key)`.
+* Idempotent (S3 DeleteObject semantics — succeeds whether the key
+  existed). The smoke and integration tests rely on this for
+  unconditional cleanup.
+* **Deliberately NOT added to the `BlobStore` Protocol.** Production
+  evidence code never deletes artifacts; promoting `delete` to the
+  Protocol would force `LocalFsBlobStore` to also implement it,
+  which would be speculative surface. Smoke / integration callers
+  invoke the concrete class.
+* Test coverage in `control-plane/tests/test_evidence_chain.py`:
+  `test_r2_blob_store_delete_removes_key` (put → exists=True →
+  delete → exists=False), `test_r2_blob_store_delete_missing_is_idempotent`
+  (delete on never-uploaded key must not raise). Fake `_FakeS3Client`
+  extended with `delete_object` (4 LOC) to support both.
+
+### 36. `scripts/r2_smoke.py`
+
+**File:** `scripts/r2_smoke.py` (NEW, ~100 LOC).
+
+* Standalone async script. Reads `R2_*` env (no `dotenv` — caller
+  sources `.env` or CI sets job-level env from secrets).
+* Pre-flight check: emits `smoke.env.missing` and exits 1 if any of
+  `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` are unset.
+  Reasoning: `R2BlobStore.from_env()` itself does not validate
+  emptiness — it would happily build a store with empty creds and
+  surface an opaque `SignatureDoesNotMatch` botocore error on the
+  first PUT. Explicit early-exit gives a clean error.
+* Round-trip: `R2BlobStore.from_env()` → 32-byte payload with
+  `os.urandom(16)` suffix → `R2Key.compute(platform="hackerone",
+  program_handle="smoke-test", finding_id=uuid4(), content_hash=
+  ContentHash.from_bytes(payload))` → put → exists → get →
+  byte-equality assertion → delete (in `try/finally` so cleanup
+  fires even on assertion failure).
+* Output: structured JSON event log per step
+  (`smoke.start`/`put.ok`/`exists.ok`/`get.ok`/`delete.ok`) for
+  log-parsing in CI.
+* Exit codes: 0 OK, 1 missing env, 2 round-trip failed.
+
+### 37. `tests/integration/test_r2_blob_store_live.py`
+
+**File:** `tests/integration/test_r2_blob_store_live.py` (NEW, 4 tests).
+
+* Mirrors the `BS5_PG_TEST_DSN` skipif idiom verbatim — only the env
+  var changes:
+
+  ```python
+  _R2_BUCKET = os.environ.get("R2_BUCKET", "")
+  _skip_if_no_r2 = pytest.mark.skipif(
+      not _R2_BUCKET,
+      reason="R2_BUCKET not set; skipping live-R2 tests",
+  )
+  ```
+
+  Re-uses `R2_BUCKET` rather than inventing `BS5_R2_TEST_BUCKET`:
+  unlike Postgres where dev and test DSNs differ, the user's R2
+  bucket is purpose-set for non-prod use. Karpathy "no speculative
+  configurability."
+
+* **Tests (all `@_skip_if_no_r2`):**
+  1. `test_put_get_round_trip_returns_identical_bytes` — happy path.
+  2. `test_exists_returns_false_for_missing_key` — verifies the
+     404 / `NoSuchKey` branch in `R2BlobStore.exists` against live R2.
+  3. `test_get_raises_on_missing_key` — verifies `get` does NOT
+     silently return empty bytes when the key is absent (would
+     surface a 1.1f bug-class).
+  4. `test_delete_then_exists_returns_false` — verifies `delete`
+     actually removes the key from the live bucket.
+
+* `cleanup_keys` fixture appends keys put by tests and unconditionally
+  deletes them on teardown — bucket stays clean even on assertion
+  failure.
+
+### 38. `.github/workflows/r2-smoke.yml`
+
+**File:** `.github/workflows/r2-smoke.yml` (NEW, ~50 LOC).
+
+* **Trigger:** `workflow_dispatch: {}` only — manual fire from the
+  Actions UI. Auto-on-push was rejected: the smoke costs a real
+  R2 PUT/GET/DELETE on every fire and proves nothing dev cannot
+  already prove via mocked tests; manual fire is enough to detect
+  credential rot or endpoint drift on demand.
+* **Permissions:** `contents: read` only. No `id-token` / `packages`
+  — pure read + run, no registry interaction.
+* **Concurrency:** `r2-smoke-${{ github.ref }}` with
+  `cancel-in-progress: true` so accidental double-fires don't
+  duplicate-PUT.
+* **Secrets gating:** all six `R2_*` secrets promoted to job-level
+  env (per GH Actions docs, `secrets.X` cannot be referenced
+  directly in `if:` — must be promoted to env first). A `Bail
+  early if R2 secrets unset` step uses
+  `if: ${{ env.R2_BUCKET == '' || env.R2_ACCESS_KEY_ID == '' ||
+  env.R2_SECRET_ACCESS_KEY == '' }}` to fail loudly before the
+  smoke step ever runs.
+* **Steps:** checkout → bail-early gate → `astral-sh/setup-uv@v8`
+  with cache + `cache-dependency-glob: control-plane/{pyproject.toml,uv.lock}`
+  → `uv run --frozen python ../scripts/r2_smoke.py` from
+  `control-plane/`. `--frozen` aborts on lockfile drift; the
+  smoke deliberately does not have its own dependency surface.
+
+### Round 15 status delta
+
+| Item | After Round 14 | After Round 15 |
+|---|---|---|
+| `1.1f-deploy` R2 live verification | OPEN (mocked tests only; no live proof) | **CLOSED code-side** (`scripts/r2_smoke.py` + 4 live integration tests + `r2-smoke.yml` workflow) |
+| `R2BlobStore` public surface | put / get / exists | put / get / exists / **delete** (delete NOT in `BlobStore` Protocol) |
+| Live R2 round-trip evidence | none | `bountystrike` bucket round-trip green (smoke exits 0; 4/4 integration tests pass against real Cloudflare endpoint) |
+| Integration test count (live) | 72 | **76** (+4 R2 round-trip / exists / get-raises / delete) |
+| Repo workflow count | 1 (`recon-image.yml`) | 2 (`recon-image.yml`, `r2-smoke.yml`) |
+
+### Open follow-ups (not in this round)
+
+* **GitHub repo secrets one-time setup** — user must add the six
+  `R2_*` values at Settings → Secrets → Actions → New repository
+  secret before the workflow can produce a green run. Not a code
+  change.
+* **First fire of `r2-smoke.yml`** — workflow exists but has not
+  been run on real GitHub runners yet; first manual fire from the
+  Actions UI will exercise the OIDC-less auth path and the
+  setup-uv cache cold-start.
+* **Schedule trigger (cron-driven liveness check)** — deferred
+  until manual smoke is proven. A daily cron would catch token
+  rotation or bucket-permission drift early but adds runner cost
+  for a probe that mostly succeeds.
+* **Promoting `delete()` to `BlobStore` Protocol** — explicitly
+  rejected in this round. Reconsider if any production code path
+  ever needs to delete evidence (compliance / right-to-erasure).
+* **All Phase-1 code-side gaps now closed.** Phase 1's outstanding
+  work is documentation / fixture-suite (XSS 20-target, SSRF
+  5-endpoint, etc.) — see top-level §Outstanding Work.

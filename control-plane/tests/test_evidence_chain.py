@@ -362,6 +362,11 @@ class _FakeS3Client:
             raise _FakeClientError("404")
         return {}
 
+    async def delete_object(self, *, Bucket: str, Key: str) -> dict:
+        # S3 DeleteObject is idempotent — succeeds whether the key existed.
+        self._storage.pop((Bucket, Key), None)
+        return {}
+
 
 @pytest.fixture
 def fake_r2_store(monkeypatch: pytest.MonkeyPatch):
@@ -416,3 +421,19 @@ async def test_r2_blob_store_get_missing_propagates_client_error(fake_r2_store):
     key = _r2_key(uuid.uuid4(), b"nope")
     with pytest.raises(_FakeClientError):
         await fake_r2_store.get(key)
+
+
+async def test_r2_blob_store_delete_removes_key(fake_r2_store):
+    raw = b"delete-me"
+    key = _r2_key(uuid.uuid4(), raw)
+    await fake_r2_store.put(key, raw)
+    assert await fake_r2_store.exists(key) is True
+
+    await fake_r2_store.delete(key)
+    assert await fake_r2_store.exists(key) is False
+
+
+async def test_r2_blob_store_delete_missing_is_idempotent(fake_r2_store):
+    """S3 DeleteObject is idempotent; deleting a missing key must not raise."""
+    key = _r2_key(uuid.uuid4(), b"never-uploaded")
+    await fake_r2_store.delete(key)  # must not raise
