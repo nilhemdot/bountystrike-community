@@ -26,25 +26,51 @@
 FROM golang:1.23-alpine AS toolchain
 
 # git is needed by `go install` to clone tagged source.
-RUN apk add --no-cache git
+# gcc + musl-dev are only needed for katana (see below) — included
+# unconditionally because the layer cost is negligible.
+RUN apk add --no-cache git gcc musl-dev
 
 ENV GOBIN=/out \
-    CGO_ENABLED=0 \
     GOFLAGS="-trimpath"
 
 RUN mkdir -p /out
 
 # Pinned versions match `.claude/agents/recon.md`. Bumping any of these is
 # a deliberate, reviewed change — never floating tags.
-RUN go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
-    go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.9         && \
-    go install github.com/projectdiscovery/katana/cmd/katana@v1.1.2
+#
+# subfinder + httpx don't need cgo. CGO_ENABLED=0 produces fully static
+# Go binaries (Go's pure-Go net resolver replaces libc), which the
+# glibc-based runtime stage can consume without libc shims.
+RUN CGO_ENABLED=0 go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
+    CGO_ENABLED=0 go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.9
+
+# katana@v1.1.2 transitively pulls `smacker/go-tree-sitter`, a cgo
+# wrapper around libtree-sitter — with CGO_ENABLED=0 the cgo-tagged
+# source files get excluded by build constraints and the package fails
+# to compile (`undefined: Node`). We therefore build katana with cgo
+# enabled, but link statically against musl
+# (`-linkmode external -extldflags -static`) so the output binary is
+# still copyable into the glibc runtime stage as a self-contained
+# executable with no shared-library deps.
+RUN CGO_ENABLED=1 go install \
+    -ldflags '-linkmode external -extldflags "-static"' \
+    github.com/projectdiscovery/katana/cmd/katana@v1.1.2
 
 # Smoke-check inside the build: if any binary is broken we want to know
 # now, not at first scan-job dispatch.
-RUN /out/subfinder -version 2>&1 | grep -F "v2.6.6" && \
+#
+# We assert BOTH the version string AND the static-link mode. Round 16
+# fixed a regression where an upstream cgo dep silently produced a
+# dynamically-linked katana binary that passed `-version` but would
+# fail at runtime in the glibc runtime stage. The `file` check guards
+# against that whole regression class.
+RUN apk add --no-cache file && \
+    /out/subfinder -version 2>&1 | grep -F "v2.6.6" && \
     /out/httpx     -version 2>&1 | grep -F "v1.6.9" && \
-    /out/katana    -version 2>&1 | grep -F "v1.1.2"
+    /out/katana    -version 2>&1 | grep -F "v1.1.2" && \
+    file /out/subfinder | grep -q "statically linked" && \
+    file /out/httpx     | grep -q "statically linked" && \
+    file /out/katana    | grep -q "statically linked"
 
 
 # ============================================================================
@@ -64,7 +90,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Pull the three Go binaries from the toolchain stage. They are static
-# (CGO_ENABLED=0) so the slim base needs no libc shims.
+# (subfinder + httpx via CGO_ENABLED=0; katana via cgo +
+# `-linkmode external -extldflags "-static"` against alpine musl) so
+# the slim base needs no libc shims.
 COPY --from=toolchain /out/subfinder /usr/local/bin/subfinder
 COPY --from=toolchain /out/httpx     /usr/local/bin/httpx
 COPY --from=toolchain /out/katana    /usr/local/bin/katana

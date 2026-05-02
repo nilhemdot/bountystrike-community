@@ -1358,3 +1358,96 @@ envelope. Round 15 closes that gap.
 * **All Phase-1 code-side gaps now closed.** Phase 1's outstanding
   work is documentation / fixture-suite (XSS 20-target, SSRF
   5-endpoint, etc.) — see top-level §Outstanding Work.
+
+## Round 16 — `recon-image` CI fix: cgo dep in katana@v1.1.2
+
+The first ever fire of `recon-image.yml` (triggered automatically by
+the Round 15 push touching `control-plane/**`) failed at the
+`go install ... katana` step with::
+
+    pkg/mod/github.com/smacker/go-tree-sitter@.../iter.go:17:18: undefined: Node
+    github.com/smacker/go-tree-sitter/javascript: build constraints
+        exclude all Go files in /go/pkg/mod/.../javascript
+
+`smacker/go-tree-sitter` is a transitive dep of katana@v1.1.2 (via
+`jsluice`) and is a cgo wrapper around the C `libtree-sitter`
+library. With `CGO_ENABLED=0`, all cgo-tagged source files in the
+package are excluded by Go's build constraints, leaving the rest of
+the package referencing types (`Node`) that exist only in the
+excluded files. Compile fails.
+
+This was always going to break the moment CI ran the Dockerfile —
+the local `docker build` smoke noted in Round 14 had been against
+an older katana that did not pull the cgo dep, and the Round 14
+plan never re-tested with the pinned version.
+
+### 39. Per-binary CGO settings + static link
+
+**File:** `infra/docker/Dockerfile.recon` (modified, +23 / -6 LOC).
+
+* **`subfinder` and `httpx`** stay on `CGO_ENABLED=0` — neither
+  package requires cgo and Go's pure-Go net resolver replaces libc.
+  Result: fully static Go binaries.
+* **`katana`** now builds with `CGO_ENABLED=1` plus
+  `-ldflags '-linkmode external -extldflags "-static"'`. The
+  alpine `musl-dev` package ships static archives (`libc.a`,
+  `libpthread.a`, …) so the C linker can embed everything; the
+  resulting katana binary remains self-contained and copyable into
+  the glibc-based `python:3.12-slim` runtime stage.
+* **Toolchain stage** picks up `gcc` + `musl-dev` alongside `git`.
+  Bytes don't matter — the toolchain stage is intermediate and
+  dropped from the final image.
+
+### 40. Build-time static-link assertion
+
+**File:** `infra/docker/Dockerfile.recon` (smoke step, modified).
+
+The Round 14 smoke verified each binary's `-version` string but
+NOT its link mode. The Round 16 root cause was a binary that
+silently became dynamically-linked while still passing the version
+check; the same regression class would survive the existing smoke.
+
+The smoke step now installs `apk add file` and asserts::
+
+    file /out/<binary> | grep -q "statically linked"
+
+for all three binaries in addition to the version checks. Catches
+any future cgo-enablement regression at build time, not at first
+runtime in production where it would surface as a `not found`
+ld-musl error.
+
+### 41. Doc consistency
+
+**File:** `infra/docker/Dockerfile.recon` (Stage 2 comment near
+line 80, modified).
+
+The runtime-stage comment used to read "static (`CGO_ENABLED=0`)";
+that's no longer accurate (katana takes a different path). Updated
+to spell out the per-binary mode so a future reader doesn't
+"simplify" the toolchain stage by setting one global `CGO_ENABLED`.
+
+### Round 16 status delta
+
+| Item | After Round 15 | After Round 16 |
+|---|---|---|
+| `recon-image.yml` first CI run | FAILED (`undefined: Node` in katana cgo dep) | **GREEN locally** — Dockerfile rebuild verified; needs first GHA fire to confirm |
+| Toolchain CGO posture | `CGO_ENABLED=0` for all three | per-binary: subfinder/httpx static-Go, katana cgo + static-musl link |
+| Smoke surface in toolchain | version strings only | version strings **+ static-link mode** for all three |
+| Local `docker build --target toolchain` | unverified for katana@v1.1.2 | confirmed green on this commit |
+
+### Open follow-ups (not in this round)
+
+* **First green CI fire** — local build proves the toolchain stage
+  works on the runner-equivalent base image; the full
+  `recon-image.yml` workflow (push + provenance + SBOM) needs a
+  push to actually fire and confirm.
+* **Pinning `smacker/go-tree-sitter`** — long-term, if upstream
+  katana keeps churning its cgo deps we may need a `replace`
+  directive in a vendored go.mod. Out of scope for now; a later
+  round can vendor if churn becomes painful.
+* **Upstream-pinned binary releases** — `go install`-from-source
+  is reproducible but slow and brittle to upstream Go version
+  bumps. Future option: download the official ProjectDiscovery
+  release tarballs (`subfinder_v2.6.6_linux_amd64.zip` etc.) and
+  unzip them into `/out/`. Cuts ~150s off the cold cache build,
+  removes the gcc/musl-dev dependency. Defer until anyone cares.
