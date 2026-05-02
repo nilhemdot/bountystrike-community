@@ -50,7 +50,9 @@ jobs:
           exit 1
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v8
+        # setup-uv ships rolling `v7` but no rolling `v8` major tag yet —
+        # pin to a specific point release until they publish one.
+        uses: astral-sh/setup-uv@v8.1.0
         with:
           enable-cache: true
           cache-dependency-glob: |
