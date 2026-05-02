@@ -450,10 +450,17 @@ async def run_recall_measurement(
         fraction.
     """
     # Step 1 — embed every finding (precompute, then cosine in-memory).
-    embeddings: list[list[float]] = []
-    for f in corpus.findings:
-        text = build_finding_text(f.title, f.description, f.parameter)
-        embeddings.append(await embedder.embed(text))
+    # Prefer ``embed_many`` when the embedder offers it (production
+    # OpenAIEmbedder does — single-shot ``embed`` would hit rate limits
+    # at 1000 findings); fall back to per-text loop otherwise.
+    texts = [
+        build_finding_text(f.title, f.description, f.parameter)
+        for f in corpus.findings
+    ]
+    if hasattr(embedder, "embed_many"):
+        embeddings = await embedder.embed_many(texts)
+    else:
+        embeddings = [await embedder.embed(t) for t in texts]
 
     # Step 2 — pairwise cosine, predict pairs above threshold.
     predicted: set[frozenset[str]] = set()

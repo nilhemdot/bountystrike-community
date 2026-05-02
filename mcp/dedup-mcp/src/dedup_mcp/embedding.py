@@ -61,6 +61,56 @@ class OpenAIEmbedder:
             )
         return vec
 
+    async def embed_many(self, texts: list[str]) -> list[list[float]]:
+        """Batch-embed via OpenAI's array-input API.
+
+        OpenAI embeddings accept up to 2048 inputs per call. Sending
+        them one-by-one (as ``embed`` does) hits per-minute request
+        limits at 1000+ findings; the recall fixture runner uses this
+        method instead. Production ``register_embedding`` stays on the
+        single-input ``embed`` path because it processes one finding
+        at a time.
+        """
+        if not texts:
+            return []
+        for t in texts:
+            if not t:
+                raise ValueError("embed input must be non-empty")
+        out: list[list[float]] = []
+        # 256 keeps each request's payload + response well under the
+        # 32 MB OpenAI ceiling and the SDK's typical timeouts.
+        batch_size = 256
+        # Use a longer timeout than the single-shot path because each
+        # batched request returns up to 256 × 1536 floats.
+        async with httpx.AsyncClient(timeout=max(self._timeout_s * 6, 60.0)) as client:
+            for start in range(0, len(texts), batch_size):
+                chunk = texts[start:start + batch_size]
+                resp = await client.post(
+                    _OPENAI_URL,
+                    headers={
+                        "Authorization": f"Bearer {self._api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self._model,
+                        "input": chunk,
+                        "dimensions": EMBEDDING_DIM,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # OpenAI guarantees response order matches input order
+                # via the per-item ``index`` field — sort defensively.
+                for item in sorted(data["data"], key=lambda d: d["index"]):
+                    vec = item["embedding"]
+                    if len(vec) != EMBEDDING_DIM:
+                        raise RuntimeError(
+                            f"embedding dim mismatch: got {len(vec)}, "
+                            f"expected {EMBEDDING_DIM}"
+                        )
+                    out.append(vec)
+        return out
+
 
 def build_finding_text(title: str, description: str, parameter: str | None) -> str:
     """Assemble the text the embedder sees for a finding.
