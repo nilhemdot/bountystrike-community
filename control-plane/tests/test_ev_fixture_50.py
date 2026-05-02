@@ -12,7 +12,7 @@ Tests in this file verify structural properties of the EV formula:
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -30,6 +30,19 @@ from control_plane.domains.program_ranking import (
 
 FIXTURES = Path(__file__).parent / "fixtures" / "programs_50.json"
 
+# Freshness fixture handles encode an intended age (e.g. "freshness-1h"
+# = "modified ~1 hour ago"). The static JSON timestamps drift as the
+# fixture file ages, breaking the f_ops decay assertions. We rebuild
+# `last_modified_at` relative to `datetime.now(UTC)` at load time so
+# the relative ordering and absolute thresholds stay stable forever.
+_FRESHNESS_DELTAS = {
+    "freshness-1h": timedelta(hours=1),
+    "freshness-48h": timedelta(hours=48),
+    "freshness-30d": timedelta(days=30),
+    "freshness-180d": timedelta(days=180),
+    "freshness-365d": timedelta(days=365),
+}
+
 _PROGRAMS: list[ProgramFeatures] | None = None
 
 
@@ -37,9 +50,13 @@ def _load() -> list[ProgramFeatures]:
     global _PROGRAMS
     if _PROGRAMS is None:
         raw = json.loads(FIXTURES.read_text())
+        now = datetime.now(UTC)
         out: list[ProgramFeatures] = []
         for entry in raw:
-            if entry.get("last_modified_at"):
+            delta = _FRESHNESS_DELTAS.get(entry.get("handle"))
+            if delta is not None:
+                entry["last_modified_at"] = now - delta
+            elif entry.get("last_modified_at"):
                 entry["last_modified_at"] = datetime.fromisoformat(entry["last_modified_at"])
             out.append(ProgramFeatures(**entry))
         _PROGRAMS = out
