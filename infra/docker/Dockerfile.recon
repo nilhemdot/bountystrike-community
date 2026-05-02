@@ -103,15 +103,26 @@ RUN useradd --create-home --shell /usr/sbin/nologin recon
 USER recon
 WORKDIR /home/recon/app
 
-# Copy control-plane source. The recon harness lives under
-# `control_plane.domains.recon` and is consumed via `python -m`.
-COPY --chown=recon:recon control-plane /home/recon/app/control-plane
-COPY --chown=recon:recon uv.lock pyproject.toml* /home/recon/app/
+# --- Layer A: dep-manifest-only copy + sync ---
+# The third-party dep set rarely changes; copying just the lock + the
+# pyproject manifests (without source) lets Docker cache the heavy
+# `uv sync` step across iterations where only Python source moves.
+# `--no-install-workspace` skips the local workspace members
+# (control-plane, mcp/*) — they're installed in Layer B once their
+# source is present.
+COPY --chown=recon:recon uv.lock pyproject.toml /home/recon/app/
+COPY --chown=recon:recon control-plane/pyproject.toml /home/recon/app/control-plane/pyproject.toml
+RUN cd /home/recon/app/control-plane && \
+    uv sync --frozen --no-dev --no-install-workspace
 
-# Resolve + install python deps. `uv sync --frozen` refuses to update
-# uv.lock — fail loud if the lock is out of date instead of silently
-# drifting between dev and prod.
-RUN cd control-plane && uv sync --frozen --no-dev
+# --- Layer B: full control-plane source + workspace install ---
+# Source COPY invalidates only this layer + below on .py edits;
+# Layer A's third-party install stays cached. The second `uv sync`
+# only needs to (re-)editable-install the local workspace member,
+# which is fast because every wheel it would otherwise re-download
+# is already in Layer A's `.venv`.
+COPY --chown=recon:recon control-plane /home/recon/app/control-plane
+RUN cd /home/recon/app/control-plane && uv sync --frozen --no-dev
 
 # Sanity check: the harness module must be importable in the final image.
 RUN cd control-plane && uv run python -c \
