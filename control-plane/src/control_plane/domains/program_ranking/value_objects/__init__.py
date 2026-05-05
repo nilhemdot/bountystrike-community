@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .hunt_outcome import HuntOutcome
 from .operator import OperatorProfile
 from .program_features import ProgramFeatures
 from .score import ScoreBreakdown
@@ -21,6 +22,7 @@ __all__ = [
     "PAYOUT_NORM_CAP_USD",
     "WEIGHTS_V2",
     "WEIGHTS_VERSION",
+    "HuntOutcome",
     "OperatorProfile",
     "ProgramFeatures",
     "ScoreBreakdown",
