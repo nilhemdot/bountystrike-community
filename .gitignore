@@ -16,6 +16,7 @@ build/
 *.egg-info/
 .coverage
 htmlcov/
+tests/reports/
 
 # Claude Code runtime state
 **/.claude-flow/
