@@ -1,0 +1,256 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "BountyStrike v5 Phase 3 exit-criteria dashboard. Mirrors the four SQL-backed gates from build-plan §10.5; ρ and dedup recall are read separately via scripts/metrics.py.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "uid": "bs-phase3-exit",
+  "title": "BountyStrike — Phase 3 Exit Criteria",
+  "tags": ["bountystrike", "phase3"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Confirmed-rate (weekly) — target ≥ 70%",
+      "description": "Phase 3 §10.5 #1. Rolling weekly bucket from v_confirmed_rate_weekly. Red zone below 0.70.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "BountyStrike-PG"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 0.7}
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "thresholdsStyle": {"mode": "line"}
+          }
+        }
+      },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT week AS time, confirmed_rate FROM v_confirmed_rate_weekly ORDER BY week",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Avg scan cost — target ≤ $0.20",
+      "description": "Phase 3 §10.5 #2. Average total_cost_usd across scan_jobs in selected window.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "BountyStrike-PG"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 0.2}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT AVG(total_cost_usd)::float AS avg_cost FROM v_scan_cost_by_job WHERE started_at >= $__timeFrom() AND started_at <= $__timeTo()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Scan-cost breaches — target = 0",
+      "description": "Number of scan_jobs whose total_cost_usd exceeded $0.20 inside the window.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "BountyStrike-PG"
+      },
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*)::int AS breaches FROM v_scan_cost_by_job WHERE exceeds_budget AND started_at >= $__timeFrom() AND started_at <= $__timeTo()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Time-to-validate (P1/P2) — target P90 < 4h",
+      "description": "Phase 3 §10.5 #3. P90 TTV by severity. sla_breach_count is the number of P1/P2 findings whose validated_at - created_at exceeded 4h.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "BountyStrike-PG"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "p90_ttv_hours"},
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "red", "value": 4}
+                  ]
+                }
+              },
+              {"id": "custom.cellOptions", "value": {"type": "color-background"}},
+              {"id": "unit", "value": "h"},
+              {"id": "decimals", "value": 2}
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT severity, p90_ttv_hours, sla_breach_count, total FROM v_ttv_stats ORDER BY severity",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Oracle FP rate (rolling 7d) — kill-switch threshold 2%",
+      "description": "Phase 3 §10.5 #4. From v_oracle_fp_rate. exceeds_threshold = TRUE means scripts/kill_switch_watch.py will trip Layer-3 HALT_SUBMISSIONS for this oracle on its next poll.",
+      "datasource": {
+        "type": "postgres",
+        "uid": "BountyStrike-PG"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"}
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{"color": "green", "value": null}]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "fp_rate"},
+            "properties": [
+              {"id": "unit", "value": "percentunit"},
+              {"id": "decimals", "value": 4},
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "red", "value": 0.02}
+                  ]
+                }
+              },
+              {"id": "custom.cellOptions", "value": {"type": "color-background"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "exceeds_threshold"},
+            "properties": [
+              {"id": "custom.cellOptions", "value": {"type": "color-text"}},
+              {
+                "id": "mappings",
+                "value": [
+                  {"options": {"true": {"color": "red", "text": "BREACH"}}, "type": "value"},
+                  {"options": {"false": {"color": "green", "text": "ok"}}, "type": "value"}
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT cwe, total_submitted, confirmed, rejected, fp_rate, exceeds_threshold FROM v_oracle_fp_rate ORDER BY fp_rate DESC",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

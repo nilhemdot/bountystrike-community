@@ -1,0 +1,31 @@
+apiVersion: 1
+
+# BountyStrike v5 Phase 3 datasource provisioning.
+#
+# Mount this file at /etc/grafana/provisioning/datasources/ inside the
+# Grafana container. Grafana resolves env vars at boot, so credentials
+# stay outside the repo.
+#
+# Required env vars (set on the Grafana container, not the operator
+# shell — Grafana provisioning expansion happens server-side):
+#   BS_PG_HOST       : Postgres host (e.g. "postgres" inside compose)
+#   BS_PG_PORT       : Postgres port (default 5432)
+#   BS_PG_DB         : database name (e.g. "bountystrike")
+#   BS_PG_USER       : read-only user is recommended
+#   BS_PG_PASSWORD   : matching password
+
+datasources:
+  - name: BountyStrike-PG
+    type: postgres
+    access: proxy
+    url: $BS_PG_HOST:$BS_PG_PORT
+    user: $BS_PG_USER
+    secureJsonData:
+      password: $BS_PG_PASSWORD
+    jsonData:
+      database: $BS_PG_DB
+      sslmode: disable
+      postgresVersion: 1700
+      timescaledb: false
+    isDefault: true
+    editable: false

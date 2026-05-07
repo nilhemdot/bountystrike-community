@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# bs — BountyStrike operator CLI dispatcher.
+#
+# Thin wrapper over scripts/*.py so operators get short, discoverable
+# commands without taking on a packaging build target. Subcommand names
+# map 1:1 to script filenames so `git grep` finds either.
+#
+# Usage:
+#   scripts/bs metrics [--weeks 4 --json]
+#   scripts/bs cost-audit
+#   scripts/bs onboard [hunter args]
+#   scripts/bs reconcile
+#   scripts/bs kill-switch-watch [--once --dry-run]
+#
+# uv resolves the env (workspace lock); if uv isn't present we fall
+# back to whichever python is on PATH.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+usage() {
+    cat <<'EOF'
+bs — BountyStrike operator CLI
+
+Subcommands:
+  metrics              Phase 3 exit-criteria dashboard
+  cost-audit           per-job LLM-spend audit
+  onboard              register a hunter in the operators table
+  reconcile            backfill hunt_outcomes from report_submissions
+  kill-switch-watch    poll v_oracle_fp_rate and trip Layer-3 on breach
+
+Pass --help to any subcommand for its full options. Set DATABASE_URL
+(and REDIS_URL for kill-switch-watch) before running.
+EOF
+}
+
+if [[ $# -eq 0 ]]; then
+    usage
+    exit 0
+fi
+
+sub="$1"; shift
+
+case "$sub" in
+    metrics)            target="scripts/metrics.py" ;;
+    cost-audit)         target="scripts/cost_audit.py" ;;
+    onboard)            target="scripts/onboard_hunter.py" ;;
+    reconcile)          target="scripts/reconcile_hunt_outcomes.py" ;;
+    kill-switch-watch)  target="scripts/kill_switch_watch.py" ;;
+    -h|--help|help)     usage; exit 0 ;;
+    *)
+        echo "bs: unknown subcommand '$sub'" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+
+if command -v uv >/dev/null 2>&1; then
+    exec uv run --frozen python "$target" "$@"
+else
+    exec python "$target" "$@"
+fi
