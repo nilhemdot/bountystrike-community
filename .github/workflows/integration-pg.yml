@@ -1,0 +1,130 @@
+name: integration-pg
+
+# Postgres + pgvector integration tests.
+#
+# Trigger: every push to master and every PR that touches Python sources,
+# infra/sql migrations, this workflow, or the workspace lock files.
+#
+# Strategy:
+#   1. unit job runs control-plane/tests/ in isolation - no service deps,
+#      catches the 90% of regressions cheaply (<= 30s).
+#   2. integration job spins a pgvector/pgvector:pg17 service container,
+#      applies infra/sql/*.sql in lex order, then runs tests/integration/
+#      with BS5_PG_TEST_DSN pointing at it. R2 + opt-in dedup recall stay
+#      skipped (they require live secrets that this workflow does not own).
+#
+# The pinned setup-uv version matches r2-smoke.yml so a single bump rolls
+# both forward.
+#
+# Security: no step interpolates user-controlled event payload. Only
+# github.ref (sanitized branch ref) is read, in the concurrency group.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "control-plane/**"
+      - "mcp/**"
+      - "tests/**"
+      - "infra/sql/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/integration-pg.yml"
+  pull_request:
+    paths:
+      - "control-plane/**"
+      - "mcp/**"
+      - "tests/**"
+      - "infra/sql/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/integration-pg.yml"
+
+concurrency:
+  group: integration-pg-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: control-plane unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            control-plane/pyproject.toml
+
+      - name: Run control-plane unit tests
+        working-directory: control-plane
+        run: uv run --frozen pytest -q --no-header
+
+  integration:
+    name: tests/integration on Postgres + pgvector
+    runs-on: ubuntu-latest
+
+    # Service container exposes 5432 on the runner host. Matches the
+    # pgvector/pgvector:pg17 image used by infra/docker/docker-compose.yml
+    # so test-side and prod-side stay on the same Postgres major.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: bs
+          POSTGRES_PASSWORD: bspass
+          POSTGRES_DB: bountystrike_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bs -d bountystrike_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      # Tests sniff this env var; mirror compose creds so a developer
+      # reproducing the failure locally can copy-paste the DSN.
+      BS5_PG_TEST_DSN: postgresql://bs:bspass@127.0.0.1:5432/bountystrike_test
+      PGPASSWORD: bspass
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+            control-plane/pyproject.toml
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -yqq --no-install-recommends postgresql-client
+
+      - name: Apply infra/sql migrations
+        # Service-container volumes can't mount the repo, so we run
+        # migrations through psql instead of /docker-entrypoint-initdb.d.
+        # ON_ERROR_STOP makes drift surface as a workflow failure.
+        run: |
+          for f in infra/sql/*.sql; do
+            echo "=== applying $(basename "$f") ==="
+            psql -h 127.0.0.1 -U bs -d bountystrike_test \
+              -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      - name: Run integration suite
+        run: uv run --frozen pytest tests/integration -q --no-header
