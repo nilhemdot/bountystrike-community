@@ -2,23 +2,25 @@
 
 Generated from `git log --oneline --no-merges`. Grouped by Conventional-Commits-ish prefix (`feat`, `fix`, `fix(security)`, `perf`, `test`, `docs`, `chore`, `refactor`, `ci`). Phase tags from commit subjects.
 
-**Snapshot:** 2026-05-02. 75+ commits in the visible history. Phase 0 → Phase 1 (signed off 2026-05-01) → Phase 2 W7-8 closed → Phase 2 W9-10 in flight → Phase 3 calibration scaffolding landed locally (uncommitted at time of snapshot).
+**Snapshot:** 2026-05-07. 80+ commits in the visible history. Phase 0 → Phase 1 (signed off 2026-05-01) → Phase 2 W7-8 closed → Phase 2 W9-10 closed → Phase 3 calibration scaffolding shipped → Phase 3 first live run captured in [`phase3_lessons.md`](phase3_lessons.md).
 
-For phase-level rollups see [`phase1_signoff.md`](phase1_signoff.md) and [`research/06-roadmap.md`](research/06-roadmap.md).
+For phase-level rollups see [`phase1_signoff.md`](phase1_signoff.md), [`phase3_lessons.md`](phase3_lessons.md), and [`research/06-roadmap.md`](research/06-roadmap.md).
 
-## Phase 3 — Calibration (in-flight, uncommitted as of snapshot)
+## Phase 3 — Calibration (telemetry shipped, first live run captured 2026-05-07)
 
-Working tree contains:
+Operator-side scaffolding now committed (was uncommitted at the 2026-05-02 snapshot):
 
-- New domain repository: `program_ranking/repositories/hunt_outcome_repository.py`
-- New domain VO: `program_ranking/value_objects/hunt_outcome.py`
-- New service: `program_ranking/services/calibration_service.py`
-- Migration `infra/sql/07_phase3_calibration.sql`
-- New scripts: `scripts/cost_audit.py`, `scripts/metrics.py`, `scripts/onboard_hunter.py`, `scripts/reconcile_hunt_outcomes.py`
-- New integration tests: `tests/integration/test_dedup_recall_phase3.py`, `tests/integration/test_migration_07_phase3.py`
-- New unit test: `control-plane/tests/test_calibration_service.py`
+- Domain repository: `program_ranking/repositories/hunt_outcome_repository.py`
+- Domain VO: `program_ranking/value_objects/hunt_outcome.py`
+- Service: `program_ranking/services/calibration_service.py`
+- Migration `infra/sql/07_phase3_calibration.sql`, `infra/sql/08_phase3_oracle_fp.sql`
+- Operator scripts: `scripts/cost_audit.py`, `scripts/metrics.py`, `scripts/onboard_hunter.py`, `scripts/reconcile_hunt_outcomes.py`, `scripts/kill_switch_watch.py`, `scripts/bs`
+- Grafana provisioning bundle: `infra/grafana/`
+- CI: `.github/workflows/integration-pg.yml` (Postgres + pgvector matrix)
+- Integration tests: `tests/integration/test_dedup_recall_phase3.py`, `tests/integration/test_migration_07_phase3.py`, `tests/integration/test_kill_switch_watch.py`
+- Unit test: `control-plane/tests/test_calibration_service.py`
 
-These will be committed in Phase 3 PRs.
+First live run (2026-05-07): one alpha hunter onboarded against three real H1 programs (shopify, hackerone-self, mariadb); recon pipeline persisted 524 assets; nuclei-against-WAF produced no submission-worthy findings. Lessons in [`phase3_lessons.md`](phase3_lessons.md).
 
 ## Phase 2 — W7-W10
 
