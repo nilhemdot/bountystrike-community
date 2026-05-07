@@ -109,6 +109,19 @@ async def _main(args: argparse.Namespace) -> int:
             )
     else:
         for prog in programs:
+            hosts_per_program[prog] = []
+
+    wildcards = [w.strip() for w in args.wildcards.split(",") if w.strip()]
+    # Wildcards apply to every program in this onboarding call — operator
+    # workflows typically run one program at a time with several
+    # wildcards (e.g. `*.shopify.com,*.shopify.io`), so paired-by-index
+    # would be the wrong mental model here.
+
+    # Backstop: if neither --hosts nor --wildcards was supplied for a
+    # program, fall back to the placeholder host so the JWT still
+    # validates structurally without granting any real scope.
+    for prog in programs:
+        if not hosts_per_program[prog] and not wildcards:
             hosts_per_program[prog] = [f"{prog}.example.com"]
 
     skill_vector: dict = {}
@@ -139,7 +152,7 @@ async def _main(args: argparse.Namespace) -> int:
             operator_id=args.id,
             program_handle=prog,
             platform=args.platform,
-            wildcards=[],
+            wildcards=wildcards,
             exact_hosts=hosts_per_program[prog],
             default_rps=args.rps,
             expiry_hours=args.hours,
@@ -176,6 +189,9 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="comma-separated program handles")
     p.add_argument("--hosts", default="",
                    help="comma-separated exact hosts (paired with programs by index)")
+    p.add_argument("--wildcards", default="",
+                   help="comma-separated wildcard targets (e.g. '*.shopify.com'); "
+                        "applied to every program in --programs")
     p.add_argument("--platform", default="hackerone")
     p.add_argument("--hours", type=float, default=168.0,
                    help="JWT expiry (default 168h = 7 days, max 168)")
