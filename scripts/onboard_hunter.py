@@ -101,12 +101,19 @@ async def _main(args: argparse.Namespace) -> int:
     hosts_per_program: dict[str, list[str]] = {}
     if args.hosts:
         host_list = [h.strip() for h in args.hosts.split(",") if h.strip()]
-        # Pair hosts with programs by index; missing hosts default to a
-        # placeholder so the JWT still validates structurally.
-        for idx, prog in enumerate(programs):
-            hosts_per_program[prog] = (
-                [host_list[idx]] if idx < len(host_list) else [f"{prog}.example.com"]
-            )
+        if len(programs) == 1:
+            # Single program: every --host belongs to it. The most common
+            # real case is one program with several in-scope hostnames
+            # (e.g. hackerone.com + api.hackerone.com + www.hackerone.com).
+            hosts_per_program[programs[0]] = host_list
+        else:
+            # Multi-program: pair hosts to programs by index. Missing
+            # entries fall back to a placeholder host so each JWT still
+            # validates structurally.
+            for idx, prog in enumerate(programs):
+                hosts_per_program[prog] = (
+                    [host_list[idx]] if idx < len(host_list) else [f"{prog}.example.com"]
+                )
     else:
         for prog in programs:
             hosts_per_program[prog] = []
