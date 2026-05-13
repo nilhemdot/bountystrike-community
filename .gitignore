@@ -30,3 +30,13 @@ ruvector.db
 
 # ECC /learn skill artifacts (local session-pattern extractions)
 learn/
+
+# Local-only ECC operator config (per-machine hookify rules + skill library)
+.claude/hookify.*.local.md
+.claude/scheduled_tasks.lock
+.claude/skills/
+
+# Runtime evidence + PoC dumps written by exploit-agent / evidence-mcp
+evidence/
+mcp/*/evidence/
+reports/exploit_poc_*.txt
