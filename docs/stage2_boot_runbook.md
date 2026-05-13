@@ -176,6 +176,16 @@ This run answers a single yes/no question:
 
 > Did Stage 2 produce ≥1 hypothesis finding on a WAF-shielded target?
 
+### Pre-status post-scanner reflection filter (Gap 1 mitigation)
+
+The recon-stage reflection probe (`beb85cf`) drops unreflected `xss-candidate` rows at the recon emission path. Scanner-agent emit path has no equivalent probe (see `docs/audits/validator_agent_contract_audit_2026-05-13.md` §Gap 1). Run the post-scanner filter to drop any unreflected `xss-candidate` rows scanner-agent emitted before the status table is interpreted:
+
+```bash
+JOB_ID=$(docker exec bs_postgres psql -U bs -d bountystrike_v5 -At -c \
+  "SELECT id FROM scan_jobs WHERE program_handle='mariadb' ORDER BY created_at DESC LIMIT 1")
+scripts/bs filter-unreflected --job-id "$JOB_ID"
+```
+
 ```bash
 docker exec bs_postgres psql -U bs -d bountystrike_v5 -c "
 SELECT status, COUNT(*)
@@ -195,10 +205,13 @@ terminal statuses for this run are:
 | `hypothesis` | Scanner-agent landed a candidate. Validator's deterministic oracles + reflection-probe class (recon `feat(recon): reflection probe`, commit `beb85cf`) already filtered the bulk of FPs |
 | `duplicate` | dedup-mcp caught a prior submission shape |
 | `rejected` | scope-guard or FP-class memory pre-empt fired |
+| `validation_pending` (`idor-candidate` rows only) | Validator hit Gap 2: recon emitted an `idor-candidate` without session credentials in `oracle_method`. Audit doc `docs/audits/validator_agent_contract_audit_2026-05-13.md` §Gap 2 explicitly whitelists this terminal for IDOR rows |
 
 Any `exploit_attempt`, `approval_pending_t2`, `exploit_failed_*`, or
 `exploit_pending_validation` row in this run is a regression — either
-`MAX_EXPLOITS` was non-zero or the orchestrator ignored the env.
+`MAX_EXPLOITS` was non-zero or the orchestrator ignored the env. A
+`validation_pending` row on a non-IDOR CWE is also a regression (it
+indicates an oracle failure path the audit did not anticipate).
 
 ### Decision branch
 
