@@ -119,15 +119,39 @@ program, and the resulting outcome data feeds back into
 
 ## Outstanding work
 
-| Item | Owner | Blocker |
-|---|---|---|
-| Boot MCP servers (oracle-, evidence-, dedup-, sandbox-, scope-, kev-, ev-) and run orchestrator scanner against `mariadb.org` with `SKIP_REPORT=1` | next session | LLM budget (~$8) and time |
-| Decide whether to pursue source-code-scope programs (`rails`, `django`, `phabricator`, `concretecms`) — bypasses the WAF problem entirely by switching to static analysis on github URLs | next session | Static analysis path is not yet wired into the orchestrator |
-| Stand up Grafana with the bundle from `infra/grafana/` so the panels shipped in `c13b992` actually render | operator | Decision on E1 vs E2 from earlier session |
-| Run `scripts/bs kill-switch-watch` as a systemd unit | operator | systemd unit file not yet committed |
+Status updated 2026-05-13. §3 + §4 closed this session.
+
+| # | Item | Owner | Status / Blocker |
+|---|---|---|---|
+| 1 | Boot MCP servers and run orchestrator against `mariadb.org` with `SKIP_REPORT=1` | next session | Open — ~$8 LLM budget. Now framed as Path B under the Path-C decision below. See `docs/stage2_boot_runbook.md` for the operator-ready checklist. |
+| 2 | Decide whether to pursue source-code-scope programs (`rails`, `django`, `phabricator`, `concretecms`) | next session | **Decided 2026-05-13 — Path C (hybrid).** See "Decision: Path C" below. Static-agent scaffold parked in `docs/static_agent_scaffold.md` and triggered only if Stage 2 returns 0 hypothesis findings. |
+| 3 | Stand up Grafana with the bundle from `infra/grafana/` so panels shipped in `c13b992` render | operator | **Done 2026-05-13.** v4 compose (`/home/nilhem/bountystrike-ai/infra/docker-compose.yml`) now bind-mounts v5 provisioning; grafana relocated to host port 3010 (3000 occupied by hermes-agent WhatsApp bridge). Datasource `BountyStrike-PG → postgres:5432/bountystrike_v5` provisioned; Phase 3 Exit dashboard visible in the "BountyStrike" folder. v4 compose edit lives in v4 working tree — operator commits in v4 repo. |
+| 4 | Run `scripts/bs kill-switch-watch` as a systemd unit | operator | **Done 2026-05-13** — commit `e46c409`. Unit at `infra/systemd/bountystrike-kill-switch-watch.service`; `systemd-analyze verify` exit 0; install instructions inline in the unit header. |
+
+Also committed this session: `6a02349` — `.mcp.json` registers 15 MCP servers + 9 platform/utility `uv.lock` files; unblocks Stage-2 boot.
+
+## Decision: Path C — Hybrid (recorded 2026-05-13)
+
+§1 (dynamic Stage 2) and §2 (static-analysis path) are not independent. §2's answer depends on §1's data. Single hypothesis test with branching follow-up:
+
+**Hypothesis:** LLM-driven recon+exploit agents (Stage 2) bypass the WAF wall that nuclei-template probing could not on the three programs tested 2026-05-07.
+
+**Path B (run first):** `scripts/orchestrator.py SKIP_REPORT=1` against `mariadb.org` with the existing scope JWT. ~$8, ~30–90 min.
+
+**Decision rule:**
+- ≥1 hypothesis finding → continue dynamic; defer static-agent indefinitely
+- 0 findings on a WAF target → commit to Path A; start `static-agent` scaffold next sprint
+
+Either outcome populates `hunt_outcomes` and unblocks ρ measurement.
+
+**Rationale:** Building Path A without Path B's evidence is speculative generality. Path B costs $8 to falsify the cheaper hypothesis first; Path A costs 1–2 sprints of engineering. Cheap evidence before expensive code.
+
+**Reference:** Karpathy guideline §2 (simplicity first) and §4 (verifiable goal per path) drove the framing.
 
 ## See also
 
 * `docs/changelog.md` §Phase 3 — Calibration
 * `docs/research/06-roadmap.md` §Phase 3 — Solo Deploy, Alpha Hunters, Calibration
 * `docs/phase1_signoff.md` for the format precedent
+* `docs/stage2_boot_runbook.md` — operator runbook for Path B
+* `docs/static_agent_scaffold.md` — Path A scaffold (triggered only if Path B yields 0 findings)
