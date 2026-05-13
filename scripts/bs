@@ -11,6 +11,7 @@
 #   scripts/bs onboard [hunter args]
 #   scripts/bs reconcile
 #   scripts/bs kill-switch-watch [--once --dry-run]
+#   scripts/bs filter-unreflected --job-id <UUID> [--dry-run]
 #
 # uv resolves the env (workspace lock); if uv isn't present we fall
 # back to whichever python is on PATH.
@@ -30,6 +31,8 @@ Subcommands:
   onboard              register a hunter in the operators table
   reconcile            backfill hunt_outcomes from report_submissions
   kill-switch-watch    poll v_oracle_fp_rate and trip Layer-3 on breach
+  filter-unreflected   post-scanner: drop xss-candidate findings whose
+                       param does not reflect in the response body
 
 Pass --help to any subcommand for its full options. Set DATABASE_URL
 (and REDIS_URL for kill-switch-watch) before running.
@@ -49,6 +52,7 @@ case "$sub" in
     onboard)            target="scripts/onboard_hunter.py" ;;
     reconcile)          target="scripts/reconcile_hunt_outcomes.py" ;;
     kill-switch-watch)  target="scripts/kill_switch_watch.py" ;;
+    filter-unreflected) target="scripts/filter_unreflected_findings.py" ;;
     -h|--help|help)     usage; exit 0 ;;
     *)
         echo "bs: unknown subcommand '$sub'" >&2
