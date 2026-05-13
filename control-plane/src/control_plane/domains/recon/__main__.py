@@ -37,7 +37,6 @@ from pathlib import Path
 from typing import Any
 
 import asyncpg
-import httpx
 
 from control_plane.domains.recon import (
     RealBinaryRunner,
@@ -45,6 +44,7 @@ from control_plane.domains.recon import (
     ScanPersistence,
     ScopeFilter,
 )
+from control_plane.domains.recon.probers import HttpxReflectionProber
 from control_plane.domains.recon.service import ReflectionProber
 from control_plane.domains.scope_management.services.jwt_issuer import (
     ScopeJWTValidator,
@@ -57,30 +57,6 @@ _REQUIRED_ENV = (
     "DATABASE_URL",
     "SCAN_JOB_ID",
 )
-
-_REFLECTION_PROBE_TIMEOUT_SEC = 8.0
-
-
-class HttpxReflectionProber:
-    """Production reflection prober — single GET, substring match.
-
-    Uses a short timeout so slow targets default to "no reflection" (drop).
-    The exploit-agent's WebFetch probe is the catch-net for borderline cases
-    flagged by validator; this prober's job is to drop the obvious FPs.
-    """
-
-    name = "httpx"
-
-    def __init__(self, timeout_sec: float = _REFLECTION_PROBE_TIMEOUT_SEC) -> None:
-        self._timeout_sec = timeout_sec
-
-    async def probe(self, url: str, parameter: str, sentinel: str) -> bool:
-        del parameter  # only the URL + sentinel matter for the substring check
-        async with httpx.AsyncClient(
-            timeout=self._timeout_sec, follow_redirects=True
-        ) as client:
-            response = await client.get(url)
-            return sentinel in response.text
 
 
 def _require_env(env: dict[str, str]) -> dict[str, str]:
