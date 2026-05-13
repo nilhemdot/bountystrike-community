@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -23,12 +24,12 @@ DEFAULT_BASE_URL = (
 )
 
 # Maps platform -> filename in the upstream repo.
+# Upstream renamed h1 -> hackerone; immunefi feed was removed (404 since 2026).
 FEED_FILES: dict[Platform, str] = {
-    "hackerone": "h1_data.json",
+    "hackerone": "hackerone_data.json",
     "bugcrowd": "bugcrowd_data.json",
     "intigriti": "intigriti_data.json",
     "yeswehack": "yeswehack_data.json",
-    "immunefi": "immunefi_data.json",
 }
 
 DEFAULT_TIMEOUT = httpx.Timeout(10.0, connect=30.0, read=60.0, write=60.0, pool=10.0)
@@ -146,8 +147,21 @@ def _parse_h1(record: dict[str, Any]) -> FederationProgram:
     )
 
 
+def _derive_bugcrowd_handle(record: dict[str, Any]) -> str:
+    """Prefer stable Bugcrowd URL slug over human-readable program name."""
+    url = str(record.get("url") or "").strip()
+    if url:
+        path = urlparse(url).path.strip("/")
+        parts = path.split("/")
+        if len(parts) >= 2 and parts[0] == "engagements" and parts[1]:
+            return parts[1]
+        if parts:
+            return parts[-1]
+    return str(record.get("code") or record.get("name") or "").strip()
+
+
 def _parse_bugcrowd(record: dict[str, Any]) -> FederationProgram:
-    handle = record.get("code") or record.get("name") or ""
+    handle = _derive_bugcrowd_handle(record)
     return FederationProgram(
         platform="bugcrowd",
         handle=handle,

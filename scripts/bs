@@ -36,6 +36,8 @@ Subcommands:
                        param does not reflect in the response body
   check-cwe-mapping    regression check for validator-agent CWE→oracle
                        map; mirrors spec at .claude/agents/validator.md
+  seed-programs        backfill programs+scopes from arkadiyt feeds
+                       (HackerOne, Bugcrowd, Intigriti, YWH)
 
 Pass --help to any subcommand for its full options. Set DATABASE_URL
 (and REDIS_URL for kill-switch-watch) before running.
@@ -57,6 +59,7 @@ case "$sub" in
     kill-switch-watch)  target="scripts/kill_switch_watch.py" ;;
     filter-unreflected) target="scripts/filter_unreflected_findings.py" ;;
     check-cwe-mapping)  target="scripts/check_cwe_mapping.py" ;;
+    seed-programs)      target="scripts/seed_programs.py" ;;
     -h|--help|help)     usage; exit 0 ;;
     *)
         echo "bs: unknown subcommand '$sub'" >&2

@@ -10,11 +10,17 @@
     },
     "dedup": {
       "command": "uv",
-      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/dedup-mcp", "dedup-mcp"]
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/dedup-mcp", "dedup-mcp"],
+      "env": {
+        "DATABASE_URL": "postgresql://bs:bspass@127.0.0.1:5432/bountystrike_v5"
+      }
     },
     "state": {
       "command": "uv",
-      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/state-mcp", "state-mcp"]
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/state-mcp", "state-mcp"],
+      "env": {
+        "DATABASE_URL": "postgresql://bs:bspass@127.0.0.1:5432/bountystrike_v5"
+      }
     },
     "evidence": {
       "command": "uv",
@@ -38,7 +44,10 @@
     },
     "ev": {
       "command": "uv",
-      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/ev-mcp", "ev-mcp"]
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/ev-mcp", "ev-mcp"],
+      "env": {
+        "DATABASE_URL": "postgresql://bs:bspass@127.0.0.1:5432/bountystrike_v5"
+      }
     },
     "h1": {
       "command": "uv",

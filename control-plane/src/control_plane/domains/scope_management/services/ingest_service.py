@@ -370,16 +370,32 @@ def _normalize_federation(
     return out
 
 
+def _unwrap_money(v: Any) -> float | None:
+    """Some feeds wrap payouts as ``{"value": N, "currency": "EUR"}``."""
+    if isinstance(v, dict):
+        v = v.get("value")
+    if v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
 def _extract_payout(platform: Platform, raw: dict[str, Any]) -> tuple[float | None, float | None]:
     if platform == "bugcrowd":
-        return raw.get("min_payout"), raw.get("max_payout")
+        return _unwrap_money(raw.get("min_payout")), _unwrap_money(raw.get("max_payout"))
     if platform == "intigriti":
-        return raw.get("min_bounty"), raw.get("max_bounty")
+        return _unwrap_money(raw.get("min_bounty")), _unwrap_money(raw.get("max_bounty"))
     if platform == "yeswehack":
-        return raw.get("bounty_reward_min"), raw.get("bounty_reward_max")
+        return (
+            _unwrap_money(raw.get("bounty_reward_min")),
+            _unwrap_money(raw.get("bounty_reward_max")),
+        )
     if platform == "immunefi":
-        return raw.get("minBounty") or raw.get("min_bounty"), raw.get("maxBounty") or raw.get(
-            "max_bounty"
+        return (
+            _unwrap_money(raw.get("minBounty") or raw.get("min_bounty")),
+            _unwrap_money(raw.get("maxBounty") or raw.get("max_bounty")),
         )
     return None, None
 
@@ -454,19 +470,34 @@ async def _upsert_scopes(
             }
         )
 
-    insert_stmt = _dialect_insert(session.bind.dialect, Scope, rows)  # type: ignore[arg-type]
-    update_set = {
-        "in_scope": insert_stmt.excluded.in_scope,
-        "exclusion_reason": insert_stmt.excluded.exclusion_reason,
-        "tags": insert_stmt.excluded.tags,
-        "updated_at": insert_stmt.excluded.updated_at,
-        "raw": insert_stmt.excluded.raw,
-    }
-    stmt = insert_stmt.on_conflict_do_update(
-        index_elements=["program_handle", "asset_type", "identifier"],
-        set_=update_set,
-    )
-    await session.execute(stmt)
+    # Dedupe by composite conflict key — feeds occasionally list the same
+    # asset twice (e.g. once in-scope, once excluded). PG's ON CONFLICT
+    # rejects multiple proposed rows that touch the same target row, so
+    # we keep the last-seen entry per key (preserves out-of-scope wins
+    # when both states appear, since feeds list in-scope first).
+    deduped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for r in rows:
+        deduped[(r["program_handle"], r["asset_type"], r["identifier"])] = r
+    rows = list(deduped.values())
+
+    # Chunk to stay under the asyncpg/PG 32767-bind-param-per-statement cap.
+    # Each row has 8 bound columns; 1000 rows = 8000 params, safe margin.
+    _SCOPE_CHUNK = 1000
+    for start in range(0, len(rows), _SCOPE_CHUNK):
+        chunk = rows[start : start + _SCOPE_CHUNK]
+        insert_stmt = _dialect_insert(session.bind.dialect, Scope, chunk)  # type: ignore[arg-type]
+        update_set = {
+            "in_scope": insert_stmt.excluded.in_scope,
+            "exclusion_reason": insert_stmt.excluded.exclusion_reason,
+            "tags": insert_stmt.excluded.tags,
+            "updated_at": insert_stmt.excluded.updated_at,
+            "raw": insert_stmt.excluded.raw,
+        }
+        stmt = insert_stmt.on_conflict_do_update(
+            index_elements=["program_handle", "asset_type", "identifier"],
+            set_=update_set,
+        )
+        await session.execute(stmt)
 
 
 def _dialect_insert(dialect: Dialect, model: type, values: Any) -> Any:
