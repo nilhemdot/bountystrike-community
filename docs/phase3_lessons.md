@@ -130,6 +130,15 @@ Status updated 2026-05-13. §3 + §4 closed this session.
 
 Also committed this session: `6a02349` — `.mcp.json` registers 15 MCP servers + 9 platform/utility `uv.lock` files; unblocks Stage-2 boot.
 
+### 2026-05-13 — Stage-2 prep: FP root-cause fix + runbook gap closed
+
+Two commits land defensive work before the Path B Stage-2 run:
+
+- `beb85cf feat(recon): reflection probe drops unreflected xss-candidate at source` — adds a `ReflectionProber` Protocol injected into `ReconService`. Every `xss-candidate` row gets a single GET with a high-entropy sentinel before INSERT; rows that don't reflect into the response body are dropped. Closes 3 FP classes documented in operator memory (`mariadb /download/`, WordPress `?ver=`, WordPress REST routes) at the recon emission path. 7 new tests, 36/36 + 461/461 green. Scanner-agent's direct INSERT path is unaffected — but its xss-candidate emitters (nuclei CVE templates, arjun) already reflection-check internally, so coverage is high.
+- `0ca68ae docs(phase3): Stage-2 runbook — sandbox driver preflight + MAX_EXPLOITS=0 default` — Stage-2 audit (vs `mcp/sandbox-mcp/` source + Firecracker reference docs) found every production sandbox driver is GAP-deploy: `local` is dev-only, `docker` returns `Verdict.ERROR` without an unimplemented egress-gate sidecar, `firecracker` driver doesn't exist. Runbook now (a) preflights `SANDBOX_DRIVER` explicitly, (b) defaults `MAX_EXPLOITS=0` so the Path B run exercises recon + scanner-agent (the actual Phase-3 differentiator) without burning Venice/Hermes spend on exploit-agent invocations that will crash at step 6, (c) records the expected terminal status distribution so a clean run is distinguishable from a regression.
+
+Net effect: Path B is now safe to fire on operator's schedule — the run won't waste budget on a broken sandbox stack and the dominant FP class (recon fallthrough heuristic) no longer pollutes the findings table.
+
 ## Decision: Path C — Hybrid (recorded 2026-05-13)
 
 §1 (dynamic Stage 2) and §2 (static-analysis path) are not independent. §2's answer depends on §1's data. Single hypothesis test with branching follow-up:
