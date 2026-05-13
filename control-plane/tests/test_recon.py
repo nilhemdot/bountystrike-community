@@ -11,6 +11,7 @@ import json
 import uuid
 from collections.abc import Iterable
 from unittest.mock import AsyncMock
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -22,7 +23,7 @@ from control_plane.domains.recon import (
     ScopeFilter,
 )
 from control_plane.domains.recon.persistence import HypothesisFinding
-from control_plane.domains.recon.service import _classify_parameter
+from control_plane.domains.recon.service import _classify_parameter, _inject_param
 from control_plane.domains.recon.tool_runner import (
     HttpxProbe,
     _to_httpx_probe,
@@ -447,3 +448,203 @@ async def test_recon_service_zero_hosts_completes_cleanly():
 )
 def test_classify_parameter(param: str, expected: str):
     assert _classify_parameter(param) == expected
+
+
+# ---------------------------------------------------------------------------
+# 6. Reflection probe — drops unreflected xss-candidate FPs at recon time
+# ---------------------------------------------------------------------------
+
+
+def test_inject_param_replaces_existing_query_value():
+    out = _inject_param("https://www.acme.com/x?tab=foo&prod=bar", "tab", "SENT")
+    parsed = urlparse(out)
+    qs = parse_qs(parsed.query)
+    assert qs["tab"] == ["SENT"]
+    assert qs["prod"] == ["bar"]
+
+
+def test_inject_param_adds_param_when_absent():
+    out = _inject_param("https://www.acme.com/x", "q", "SENT")
+    parsed = urlparse(out)
+    assert parse_qs(parsed.query) == {"q": ["SENT"]}
+
+
+class _ScriptedProber:
+    """Records probe calls; returns reflection decisions by (url-path, param)."""
+
+    def __init__(self, reflects: dict[tuple[str, str], bool]) -> None:
+        self.reflects = reflects
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def probe(self, url: str, parameter: str, sentinel: str) -> bool:
+        self.calls.append((url, parameter, sentinel))
+        parsed = urlparse(url)
+        return self.reflects.get((parsed.path, parameter), False)
+
+
+async def test_reflection_probe_emits_finding_when_param_reflects():
+    sf = ScopeFilter.from_jwt_claims(_claims())
+    runner = _FakeRunner(
+        subfinder_hosts={"acme.com": ["www.acme.com"]},
+        httpx_probes=[
+            HttpxProbe(
+                url="https://www.acme.com",
+                host="www.acme.com",
+                status_code=200,
+                title="",
+                tech=(),
+                raw={},
+            ),
+        ],
+        katana_endpoints=[
+            KatanaEndpoint(
+                url="https://www.acme.com/search?q=hello",
+                method="GET",
+                parameters=("q",),
+                raw={},
+            ),
+        ],
+    )
+    prober = _ScriptedProber(reflects={("/search", "q"): True})
+    service = ReconService(runner, ScanPersistence(), sf, prober=prober)
+
+    result = await service.run(AsyncMock(), uuid.uuid4(), "acme-corp", "hackerone")
+
+    assert result.findings_inserted == 1
+    assert len(prober.calls) == 1
+    probed_url, probed_param, _ = prober.calls[0]
+    assert "/search" in probed_url
+    assert probed_param == "q"
+
+
+async def test_reflection_probe_drops_unreflected_xss_candidate():
+    sf = ScopeFilter.from_jwt_claims(_claims())
+    runner = _FakeRunner(
+        subfinder_hosts={"acme.com": ["www.acme.com"]},
+        httpx_probes=[
+            HttpxProbe(
+                url="https://www.acme.com",
+                host="www.acme.com",
+                status_code=200,
+                title="",
+                tech=(),
+                raw={},
+            ),
+        ],
+        katana_endpoints=[
+            KatanaEndpoint(
+                url="https://www.acme.com/download?tab=mariadb",
+                method="GET",
+                parameters=("tab",),
+                raw={},
+            ),
+        ],
+    )
+    prober = _ScriptedProber(reflects={})  # default: no reflection
+    service = ReconService(runner, ScanPersistence(), sf, prober=prober)
+
+    result = await service.run(AsyncMock(), uuid.uuid4(), "acme-corp", "hackerone")
+
+    assert result.findings_inserted == 0
+    assert len(prober.calls) == 1  # probe was called once before drop
+
+
+async def test_reflection_probe_skipped_for_non_xss_candidates():
+    sf = ScopeFilter.from_jwt_claims(_claims())
+    runner = _FakeRunner(
+        subfinder_hosts={"acme.com": ["www.acme.com"]},
+        httpx_probes=[
+            HttpxProbe(
+                url="https://www.acme.com",
+                host="www.acme.com",
+                status_code=200,
+                title="",
+                tech=(),
+                raw={},
+            ),
+        ],
+        katana_endpoints=[
+            KatanaEndpoint(
+                url="https://www.acme.com/redirect?next=/home",
+                method="GET",
+                parameters=("next",),
+                raw={},
+            ),
+        ],
+    )
+    prober = _ScriptedProber(reflects={})
+    service = ReconService(runner, ScanPersistence(), sf, prober=prober)
+
+    result = await service.run(AsyncMock(), uuid.uuid4(), "acme-corp", "hackerone")
+
+    # next → open-redirect-candidate, probe must NOT fire
+    assert result.findings_inserted == 1
+    assert prober.calls == []
+
+
+async def test_reflection_probe_treats_error_as_no_reflection():
+    sf = ScopeFilter.from_jwt_claims(_claims())
+    runner = _FakeRunner(
+        subfinder_hosts={"acme.com": ["www.acme.com"]},
+        httpx_probes=[
+            HttpxProbe(
+                url="https://www.acme.com",
+                host="www.acme.com",
+                status_code=200,
+                title="",
+                tech=(),
+                raw={},
+            ),
+        ],
+        katana_endpoints=[
+            KatanaEndpoint(
+                url="https://www.acme.com/search?q=hello",
+                method="GET",
+                parameters=("q",),
+                raw={},
+            ),
+        ],
+    )
+
+    class _BoomProber:
+        async def probe(self, url: str, parameter: str, sentinel: str) -> bool:
+            del url, parameter, sentinel
+            raise RuntimeError("network exploded")
+
+    service = ReconService(runner, ScanPersistence(), sf, prober=_BoomProber())
+
+    result = await service.run(AsyncMock(), uuid.uuid4(), "acme-corp", "hackerone")
+
+    # Failed probe → drop the candidate (safe default).
+    assert result.findings_inserted == 0
+
+
+async def test_reflection_probe_default_is_null_prober_for_back_compat():
+    """Without injecting a prober, all xss-candidates pass through unchanged."""
+    sf = ScopeFilter.from_jwt_claims(_claims())
+    runner = _FakeRunner(
+        subfinder_hosts={"acme.com": ["www.acme.com"]},
+        httpx_probes=[
+            HttpxProbe(
+                url="https://www.acme.com",
+                host="www.acme.com",
+                status_code=200,
+                title="",
+                tech=(),
+                raw={},
+            ),
+        ],
+        katana_endpoints=[
+            KatanaEndpoint(
+                url="https://www.acme.com/download?tab=mariadb",
+                method="GET",
+                parameters=("tab",),
+                raw={},
+            ),
+        ],
+    )
+    service = ReconService(runner, ScanPersistence(), sf)  # no prober
+
+    result = await service.run(AsyncMock(), uuid.uuid4(), "acme-corp", "hackerone")
+
+    assert result.findings_inserted == 1

@@ -18,9 +18,11 @@ so unit tests can swap in a fake without touching subprocesses.
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlparse
+from typing import Protocol
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
 
@@ -29,6 +31,30 @@ from .scope_filter import ScopeFilter
 from .tool_runner import BinaryRunner, KatanaEndpoint
 
 log = structlog.get_logger("recon.service")
+
+
+class ReflectionProber(Protocol):
+    """Async GET probe — substring-checks a sentinel value in response body.
+
+    Returns True if the sentinel appears in the response body (param reflects).
+    Returns False otherwise (no reflection sink — drop xss-candidate).
+    Implementations MUST honour the host's rps budget and timeout on slow hosts.
+    """
+
+    async def probe(self, url: str, parameter: str, sentinel: str) -> bool: ...
+
+
+class _NullProber:
+    """Default prober — passes everything through (preserves prior behaviour).
+
+    Production wiring (__main__.py) injects a real HttpxProber; tests inject
+    a fake controllable prober. The default makes the new check opt-in so
+    existing call sites don't change behaviour unexpectedly.
+    """
+
+    async def probe(self, url: str, parameter: str, sentinel: str) -> bool:
+        del url, parameter, sentinel
+        return True
 
 
 # Heuristic CWE mapping. Validator-agent refines per-finding; this is just
@@ -71,10 +97,12 @@ class ReconService:
         runner: BinaryRunner,
         persistence: ScanPersistence,
         scope_filter: ScopeFilter,
+        prober: ReflectionProber | None = None,
     ) -> None:
         self.runner = runner
         self.persistence = persistence
         self.scope_filter = scope_filter
+        self.prober = prober or _NullProber()
 
     async def run(
         self,
@@ -105,7 +133,7 @@ class ReconService:
             live_urls = [p.url for p in probes if 200 <= p.status_code < 400 and p.url]
 
             endpoints = await self._discover_endpoints(live_urls)
-            findings = self._classify_findings(endpoints)
+            findings = await self._classify_findings(endpoints)
 
             inserted = await self.persistence.insert_findings(
                 conn,
@@ -167,11 +195,12 @@ class ReconService:
         # Defence-in-depth: katana respects -scope but we re-filter just in case.
         return [e for e in endpoints if self.scope_filter.allows_url(e.url)]
 
-    def _classify_findings(
+    async def _classify_findings(
         self, endpoints: list[KatanaEndpoint]
     ) -> list[HypothesisFinding]:
         findings: list[HypothesisFinding] = []
         seen_keys: set[tuple[str, str]] = set()
+        dropped_unreflected = 0
         for endpoint in endpoints:
             params = list(endpoint.parameters)
             # Also harvest URL query params — katana's struct already includes
@@ -185,14 +214,56 @@ class ReconService:
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
+                cwe = _classify_parameter(param)
+                # xss-candidate is the fallthrough default and produces the
+                # bulk of FPs (mariadb /download/ allowlist params, WP `?ver=`
+                # cache-busters, WP REST routes). Pre-probe for reflection
+                # before emitting; drop rows whose param doesn't echo back.
+                if cwe == "xss-candidate":
+                    if not await self._check_reflection(endpoint.url, param):
+                        dropped_unreflected += 1
+                        continue
                 findings.append(
-                    HypothesisFinding(
-                        url=endpoint.url,
-                        parameter=param,
-                        cwe=_classify_parameter(param),
-                    )
+                    HypothesisFinding(url=endpoint.url, parameter=param, cwe=cwe)
                 )
+        if dropped_unreflected:
+            log.info(
+                "recon.fp_filtered.unreflected",
+                count=dropped_unreflected,
+                rationale="xss-candidate dropped because param did not reflect in response body",
+            )
         return findings
 
+    async def _check_reflection(self, url: str, parameter: str) -> bool:
+        """Deterministic reflection probe — single GET, substring match.
 
-__all__ = ["ReconResult", "ReconService"]
+        Sentinel is high-entropy random hex so a substring hit in the response
+        body is statistically guaranteed to be our injection, not pre-existing
+        content. Errors from the probe are treated as "no reflection" — we'd
+        rather drop a borderline candidate than emit an FP that costs an
+        exploit-agent invocation.
+        """
+        sentinel = f"BS5R{secrets.token_hex(8)}"
+        probe_url = _inject_param(url, parameter, sentinel)
+        try:
+            return await self.prober.probe(probe_url, parameter, sentinel)
+        except Exception as exc:
+            log.warning(
+                "recon.reflection_probe.error",
+                url=url,
+                parameter=parameter,
+                error=str(exc),
+            )
+            return False
+
+
+def _inject_param(url: str, parameter: str, value: str) -> str:
+    """Replace (or add) ``parameter=value`` in the URL's query string."""
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    query[parameter] = [value]
+    new_query = urlencode(query, doseq=True)
+    return urlunparse(parsed._replace(query=new_query))
+
+
+__all__ = ["ReconResult", "ReconService", "ReflectionProber"]
