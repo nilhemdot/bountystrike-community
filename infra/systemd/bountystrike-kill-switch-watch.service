@@ -1,0 +1,57 @@
+# BountyStrike v5 — Layer-3 oracle FP guard (build-plan §6.6 / §10.5 #4).
+#
+# Polls v_oracle_fp_rate every DEFAULT_INTERVAL_SECONDS (60s) and trips the
+# global kill switch (HALT_SUBMISSIONS) if any oracle's 7-day FP rate exceeds
+# 2%. Edge-transitions only — silent while already breached.
+#
+# Install (operator):
+#   sudo cp infra/systemd/bountystrike-kill-switch-watch.service \
+#       /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now bountystrike-kill-switch-watch.service
+#   journalctl -u bountystrike-kill-switch-watch -f
+#
+# Stop / reload:
+#   sudo systemctl restart bountystrike-kill-switch-watch.service
+#   sudo systemctl stop    bountystrike-kill-switch-watch.service
+#
+# Requires DATABASE_URL + REDIS_URL in /home/nilhem/bountystrike-ai5/.env.
+# Optional: KILL_SWITCH_WEBHOOK_URL for Slack/Discord alerts.
+
+[Unit]
+Description=BountyStrike kill-switch watcher (oracle FP guard)
+Documentation=file:///home/nilhem/bountystrike-ai5/docs/phase3_lessons.md
+After=network-online.target docker.service
+Wants=network-online.target
+# Cap rapid restart storms if config/env is broken.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=nilhem
+Group=nilhem
+WorkingDirectory=/home/nilhem/bountystrike-ai5
+EnvironmentFile=/home/nilhem/bountystrike-ai5/.env
+Environment=PATH=/home/nilhem/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/nilhem/bountystrike-ai5/scripts/bs kill-switch-watch
+
+# Restart on transient failures (DB hiccup, Redis blip).
+Restart=on-failure
+RestartSec=10s
+
+# Hardening — minimal, conservative. The watcher is read-mostly: it reads
+# v_oracle_fp_rate and writes to Redis via control_plane.safety. uv caches
+# under XDG_CACHE_HOME, which stays writable via ProtectHome=read-only.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/nilhem/.cache/uv
+PrivateTmp=yes
+
+# Log to journal (default). View with: journalctl -u bountystrike-kill-switch-watch
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
