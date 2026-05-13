@@ -1,3 +1,64 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "scope": {
+      "command": "node",
+      "args": ["/home/nilhem/bountystrike-ai5/mcp/scope-mcp/dist/index.js"]
+    },
+    "oracle": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/oracle-mcp", "oracle-mcp"]
+    },
+    "dedup": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/dedup-mcp", "dedup-mcp"]
+    },
+    "state": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/state-mcp", "state-mcp"]
+    },
+    "evidence": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/evidence-mcp", "evidence-mcp"]
+    },
+    "sandbox": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/sandbox-mcp", "sandbox-mcp"]
+    },
+    "politeness": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/politeness-mcp", "politeness-mcp"]
+    },
+    "kev": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/kev-mcp", "kev-mcp"]
+    },
+    "normalize": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/normalize-mcp", "normalize-mcp"]
+    },
+    "ev": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/ev-mcp", "ev-mcp"]
+    },
+    "h1": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/h1-mcp", "h1-mcp"]
+    },
+    "bugcrowd": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/bugcrowd-mcp", "bugcrowd-mcp"]
+    },
+    "intigriti": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/intigriti-mcp", "intigriti-mcp"]
+    },
+    "yeswehack": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/yeswehack-mcp", "yeswehack-mcp"]
+    },
+    "immunefi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/home/nilhem/bountystrike-ai5/mcp/immunefi-mcp", "immunefi-mcp"]
+    }
+  }
 }
