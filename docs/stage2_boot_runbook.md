@@ -90,6 +90,26 @@ Build-plan §3.4 Level-2: orchestrator early-stops at 80% of `cost_budget_usd`.
 
 - [ ] Set `COST_BUDGET_USD=10` (default $8 + 25% headroom) or override per shell
 
+### Sandbox driver selection (GAP-aware)
+
+**State as of 2026-05-13**: every production-grade sandbox driver in
+`mcp/sandbox-mcp` is GAP-deploy. Picking the wrong driver wastes the
+recon + scanner LLM spend on stages that cannot complete.
+
+| Driver | State | When to use |
+|--------|-------|-------------|
+| `local` | dev-only; refuses unless `BS_SANDBOX_DEV_MODE=1` AND scope JWT carries `dev_mode_sandbox=true`. Production JWTs never do | unit-test loops only — NEVER Stage-2 |
+| `docker` | scaffold (`drivers/docker.py`). Returns `Verdict.ERROR` unless `BS_SANDBOX_DOCKER_FORCE=1`. Egress allowlist unenforced even when forced (needs `bs5-egress-gate` sidecar, not implemented) | only if you accept unfiltered egress on real targets — usually no |
+| `firecracker` | not implemented (`server.py:53` raises). `infra/sandbox/firecracker/` dir absent. Tracking: build-plan §6.5 | once driver lands |
+
+- [ ] Decide whether this run **needs sandbox execution at all**:
+   - **NO sandbox needed** (most likely for this run — goal is "≥1 hypothesis
+     finding"): `export MAX_EXPLOITS=0`. Saves Venice/Hermes spend. Exploit-
+     agent + validator-agent fan-out skipped. Recon + scanner-agent still run.
+   - **YES, must exec PoCs**: pick a driver and set `SANDBOX_DRIVER`. Without
+     this env, sandbox-mcp refuses any call and exploit-agent crashes at step 6.
+- [ ] If running with `MAX_EXPLOITS > 0`, also: `echo $SANDBOX_DRIVER` non-empty
+
 ---
 
 ## Fire
@@ -100,7 +120,11 @@ export PROGRAM_HANDLE=mariadb
 export PLATFORM=hackerone
 export SCOPE_JWT="<the unexpired JWT from above>"
 export SKIP_REPORT=1               # do not actually submit anything
-export MAX_EXPLOITS=3
+# MAX_EXPLOITS=0 skips the exploit/validator fan-out — recommended until
+# a production sandbox driver lands (see preflight §"Sandbox driver
+# selection"). Set to 3 (and export SANDBOX_DRIVER) only if you've
+# accepted the GAP-deploy risk.
+export MAX_EXPLOITS=0
 export MAX_VALIDATORS=5
 export COST_BUDGET_USD=10
 
@@ -160,6 +184,21 @@ WHERE job_id = (SELECT id FROM scan_jobs WHERE program_handle='mariadb' ORDER BY
 GROUP BY status;
 "
 ```
+
+### Expected status distribution (MAX_EXPLOITS=0)
+
+With sandbox-stack GAP-deploy and `MAX_EXPLOITS=0`, the only legitimate
+terminal statuses for this run are:
+
+| Status | Meaning |
+|--------|---------|
+| `hypothesis` | Scanner-agent landed a candidate. Validator's deterministic oracles + reflection-probe class (recon `feat(recon): reflection probe`, commit `beb85cf`) already filtered the bulk of FPs |
+| `duplicate` | dedup-mcp caught a prior submission shape |
+| `rejected` | scope-guard or FP-class memory pre-empt fired |
+
+Any `exploit_attempt`, `approval_pending_t2`, `exploit_failed_*`, or
+`exploit_pending_validation` row in this run is a regression — either
+`MAX_EXPLOITS` was non-zero or the orchestrator ignored the env.
 
 ### Decision branch
 
