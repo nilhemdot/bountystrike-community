@@ -43,6 +43,11 @@ _FRESHNESS_DELTAS = {
     "freshness-365d": timedelta(days=365),
 }
 
+# Anchor for fixtures whose intended age is encoded in the JSON timestamp
+# (not the handle). Each timestamp is rebased to `now - (FIXTURE_EPOCH - raw)`
+# so its offset from "now" stays constant regardless of wall-clock drift.
+FIXTURE_EPOCH = datetime(2026, 4, 28, 12, 0, 0, tzinfo=UTC)
+
 _PROGRAMS: list[ProgramFeatures] | None = None
 
 
@@ -57,7 +62,10 @@ def _load() -> list[ProgramFeatures]:
             if delta is not None:
                 entry["last_modified_at"] = now - delta
             elif entry.get("last_modified_at"):
-                entry["last_modified_at"] = datetime.fromisoformat(entry["last_modified_at"])
+                raw = datetime.fromisoformat(entry["last_modified_at"])
+                if raw.tzinfo is None:
+                    raw = raw.replace(tzinfo=UTC)
+                entry["last_modified_at"] = now - (FIXTURE_EPOCH - raw)
             out.append(ProgramFeatures(**entry))
         _PROGRAMS = out
     return _PROGRAMS
