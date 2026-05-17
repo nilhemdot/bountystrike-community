@@ -35,6 +35,7 @@ Optional:
     SKIP_SCANNER      — set 1/true/yes to skip scanner phase
     SKIP_EXPLOIT      — set 1/true/yes to skip exploit phase
     SKIP_REPORT       — set 1/true/yes to skip reporter phase
+    SKIP_IDOR         — set 1/true/yes to drop idor-candidate findings post-recon (Gap-2 mitigation)
     NUCLEI_TEMPLATE_DIR — passed through to scanner-agent
     TIME_BUDGET_MIN   — passed through to scanner-agent
     CLAUDE_CMD        — claude CLI binary (default: claude)
@@ -95,6 +96,19 @@ def _jwt_jti(scope_jwt: str) -> str:
 def _log(msg: str) -> None:
     ts = datetime.now(UTC).isoformat(timespec="seconds")
     print(f"[orchestrator {ts}] {msg}", flush=True)
+
+
+async def _purge_idor_candidates(conn: asyncpg.Connection, job_id: str) -> int:
+    """Delete idor-candidate findings for a job. Returns row count."""
+    n = await conn.fetchval(
+        "WITH d AS ("
+        "  DELETE FROM findings "
+        "  WHERE job_id = $1 AND cwe = 'idor-candidate' "
+        "  RETURNING 1"
+        ") SELECT COUNT(*) FROM d",
+        job_id,
+    )
+    return int(n or 0)
 
 
 # Scanner-agent shells out to these binaries; orchestrator probes once at
@@ -443,6 +457,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
 
     skip_exploit = _flag("SKIP_EXPLOIT")
     skip_report  = _flag("SKIP_REPORT")
+    skip_idor    = _flag("SKIP_IDOR")
 
     dsn = database_url.replace("+asyncpg", "")
     conn: asyncpg.Connection = await asyncpg.connect(dsn)
@@ -463,6 +478,10 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             claude_cmd=claude_cmd,
             timeout_seconds=recon_timeout,
         )
+
+        if skip_idor:
+            dropped = await _purge_idor_candidates(conn, job_id)
+            _log(f"SKIP_IDOR set — dropped {dropped} idor-candidate finding(s) post-recon")
 
         # ── Scanner ────────────────────────────────────────────────────────
         await _phase_scanner(
