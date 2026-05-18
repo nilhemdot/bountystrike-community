@@ -79,8 +79,10 @@ If the prior JWT is still on disk somewhere (operator habit), re-export it inste
 ### Kill switch armed
 
 ```bash
-uv run python scripts/bs kill-switch-watch --once --dry-run
+scripts/bs kill-switch-watch --once --dry-run
 ```
+
+`scripts/bs` is a bash dispatcher (not a Python module); invoke directly, not via `uv run python`.
 
 - [ ] Exits 0 with "no breaches" — confirms `v_oracle_fp_rate` reachable
 - [ ] (Optional) Start the systemd unit if running multi-hour:
