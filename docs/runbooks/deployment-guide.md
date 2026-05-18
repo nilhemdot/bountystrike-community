@@ -1,6 +1,6 @@
 # Deployment Guide — BountyStrike v5
 
-How to bring up a working BountyStrike v5 stack in solo mode and what the SaaS deployment changes from that baseline. Pair this with [`research/05-deployment.md`](research/05-deployment.md) for the full walk-through and rationale; this file is the operational quick reference.
+How to bring up a working BountyStrike v5 stack in solo mode and what the SaaS deployment changes from that baseline. Pair this with [`research/05-deployment.md`](../research/05-deployment.md) for the full walk-through and rationale; this file is the operational quick reference.
 
 **Scope:** solo mode (single host, docker-compose) is the supported deployment today. SaaS multi-tenant (Phase 4) is summarized but not yet operationally complete.
 
@@ -31,7 +31,7 @@ git clone <repo> bountystrike-v5 && cd bountystrike-v5
 uv sync --all-packages    # installs control-plane + 5 registered MCPs
 ```
 
-`uv sync` from root (without `--all-packages`) only installs the workspace control-plane. The 9 unregistered MCPs (h1, bugcrowd, intigriti, yeswehack, immunefi, state, sandbox, normalize, politeness) need explicit `uv sync` per directory until they are registered. See [`code-standards.md`](code-standards.md) §MCP Server Template.
+`uv sync` from root (without `--all-packages`) only installs the workspace control-plane. The 9 unregistered MCPs (h1, bugcrowd, intigriti, yeswehack, immunefi, state, sandbox, normalize, politeness) need explicit `uv sync` per directory until they are registered. See [`code-standards.md`](../code-standards.md) §MCP Server Template.
 
 ### 2. Generate scope-JWT keypair
 
@@ -125,7 +125,7 @@ All ports bind to `127.0.0.1` by default — the stack is local-only until you f
 
 ## Scope-JWT Trust Boundary
 
-The JWT is the legal artifact. Every MCP that touches a target validates it. Phase 2+ adds an iptables egress allowlist inside a Firecracker microVM derived from JWT claims — the prompt cannot override the netfilter table. Diagram: [`system-architecture.md`](system-architecture.md) §Scope-JWT Trust Boundary.
+The JWT is the legal artifact. Every MCP that touches a target validates it. Phase 2+ adds an iptables egress allowlist inside a Firecracker microVM derived from JWT claims — the prompt cannot override the netfilter table. Diagram: [`system-architecture.md`](../system-architecture.md) §Scope-JWT Trust Boundary.
 
 ## Recon container image
 
@@ -142,7 +142,7 @@ ghcr.io/<org>/bountystrike-v5/recon:<sha>
 
 ## Kill Switch
 
-Three layers, independent. See [`system-architecture.md`](system-architecture.md) §Kill-Switch Layers.
+Three layers, independent. See [`system-architecture.md`](../system-architecture.md) §Kill-Switch Layers.
 
 ```bash
 # Layer 1 — Redis flag (instant, ~10 ms)
@@ -206,11 +206,11 @@ Summarized for forward planning. Differences from solo mode:
 | DB | docker-compose Postgres | managed Postgres |
 | Evidence | local FS or R2 | R2 (mandatory) |
 
-Full SaaS plan: [`research/05-deployment.md`](research/05-deployment.md) §SaaS Mode.
+Full SaaS plan: [`research/05-deployment.md`](../research/05-deployment.md) §SaaS Mode.
 
 ## See Also
 
 - [`configuration-guide.md`](configuration-guide.md) — every env var, with default and purpose
 - [`testing-guide.md`](testing-guide.md) — pytest config, fixtures, field-validation harnesses
-- [`research/05-deployment.md`](research/05-deployment.md) — full deployment rationale
-- [`system-architecture.md`](system-architecture.md) — visual flows
+- [`research/05-deployment.md`](../research/05-deployment.md) — full deployment rationale
+- [`system-architecture.md`](../system-architecture.md) — visual flows

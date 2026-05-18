@@ -66,7 +66,7 @@ Total assertions verified by the test suite: 17. Any rewire can target test pari
 ### Docs referencing the hook (8 files)
 
 - `.claude/agents/exploit-agent.md:249` — instruction note about Anthropic refusal
-- `docs/configuration-guide.md:56` (post-PR #11 reframe — "consumed by `pretool_venice_route.py`")
+- `docs/runbooks/configuration-guide.md:56` (post-PR #11 reframe — "consumed by `pretool_venice_route.py`")
 - `docs/codebase-summary.md:104` — test inventory row
 - `docs/api-reference.md`, `docs/code-standards.md`, `docs/architecture/bountystrike_v5_build_plan.md`, `docs/research/06-roadmap.md`, `docs/system-architecture.md` — passing references
 

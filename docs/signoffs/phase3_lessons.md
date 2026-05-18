@@ -123,8 +123,8 @@ Status updated 2026-05-13. §3 + §4 closed this session.
 
 | # | Item | Owner | Status / Blocker |
 |---|---|---|---|
-| 1 | Boot MCP servers and run orchestrator against `mariadb.org` with `SKIP_REPORT=1` | next session | Open — ~$8 LLM budget. Now framed as Path B under the Path-C decision below. See `docs/stage2_boot_runbook.md` for the operator-ready checklist. |
-| 2 | Decide whether to pursue source-code-scope programs (`rails`, `django`, `phabricator`, `concretecms`) | next session | **Decided 2026-05-13 — Path C (hybrid).** See "Decision: Path C" below. Static-agent scaffold parked in `docs/static_agent_scaffold.md` and triggered only if Stage 2 returns 0 hypothesis findings. |
+| 1 | Boot MCP servers and run orchestrator against `mariadb.org` with `SKIP_REPORT=1` | next session | Open — ~$8 LLM budget. Now framed as Path B under the Path-C decision below. See `docs/runbooks/stage2_boot_runbook.md` for the operator-ready checklist. |
+| 2 | Decide whether to pursue source-code-scope programs (`rails`, `django`, `phabricator`, `concretecms`) | next session | **Decided 2026-05-13 — Path C (hybrid).** See "Decision: Path C" below. Static-agent scaffold parked in `docs/spikes/static_agent_scaffold.md` and triggered only if Stage 2 returns 0 hypothesis findings. |
 | 3 | Stand up Grafana with the bundle from `infra/grafana/` so panels shipped in `c13b992` render | operator | **Done 2026-05-13.** v4 compose (`<v4-checkout>/infra/docker-compose.yml`) now bind-mounts v5 provisioning; grafana relocated to host port 3010 (3000 occupied by hermes-agent WhatsApp bridge). Datasource `BountyStrike-PG → postgres:5432/bountystrike_v5` provisioned; Phase 3 Exit dashboard visible in the "BountyStrike" folder. v4 compose edit lives in v4 working tree — operator commits in v4 repo. |
 | 4 | Run `scripts/bs kill-switch-watch` as a systemd unit | operator | **Done 2026-05-13** — commit `e46c409`. Unit at `infra/systemd/bountystrike-kill-switch-watch.service`; `systemd-analyze verify` exit 0; install instructions inline in the unit header. |
 
@@ -190,13 +190,13 @@ Either outcome populates `hunt_outcomes` and unblocks ρ measurement.
 
 1. Patch `MAX_EXPLOITS=0` deadlock; re-run Stage-2 to validate the cleanup path actually runs an LLM exploit attempt
 2. Validate the 100 open-redirect-candidate findings — needs `verify_open_redirect` oracle pass (Gap-1 only covers xss reflection)
-3. Update `docs/stage2_boot_runbook.md` to fix the underscore→dash container-name drift and the `MAX_EXPLOITS=0` recommendation
+3. Update `docs/runbooks/stage2_boot_runbook.md` to fix the underscore→dash container-name drift and the `MAX_EXPLOITS=0` recommendation
 4. Pick a second WAF-shielded program from EV ranking, repeat Stage-2 for ρ-measurement progress (target: 5 submissions)
 
 ## See also
 
 * `docs/changelog.md` §Phase 3 — Calibration
 * `docs/research/06-roadmap.md` §Phase 3 — Solo Deploy, Alpha Hunters, Calibration
-* `docs/phase1_signoff.md` for the format precedent
-* `docs/stage2_boot_runbook.md` — operator runbook for Path B
-* `docs/static_agent_scaffold.md` — Path A scaffold (triggered only if Path B yields 0 findings)
+* `docs/signoffs/phase1_signoff.md` for the format precedent
+* `docs/runbooks/stage2_boot_runbook.md` — operator runbook for Path B
+* `docs/spikes/static_agent_scaffold.md` — Path A scaffold (triggered only if Path B yields 0 findings)

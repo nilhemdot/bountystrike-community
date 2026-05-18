@@ -2,7 +2,7 @@
 
 A Product Definition Reference for BountyStrike v5. Consolidates the vision, success criteria, scope, and constraints that govern every build decision. Use this as the single-page anchor before reading anything else under `docs/`.
 
-**Status (2026-05-01):** Phase 1 signed off (4/6 PASS, 2 GAP-deploy). Phase 2 §10.4 dedup recall fixture (recall=1.0) shipped same day. Phase 2 W7-8 sprint closed: scanner + exploit phases wired into orchestrator, T2/T3 approval queue + CLI shipped, T3 plumbing wired (commit `7001be1`), and 5 new field-validation suites passed at TPR=1.0 / FPR=0.0 — SSRF→IMDS (`e9b4b77`), IDOR (`65fe921`), RCE (`5493eea`), SSTI (`6ef4858`), Open Redirect (`1b6eb64`). Phase 2 W9-10 (dedup-prod, kill-switch <5s SLA, SQLi field-validation suite) is the next gate. See [`phase1_signoff.md`](phase1_signoff.md).
+**Status (2026-05-01):** Phase 1 signed off (4/6 PASS, 2 GAP-deploy). Phase 2 §10.4 dedup recall fixture (recall=1.0) shipped same day. Phase 2 W7-8 sprint closed: scanner + exploit phases wired into orchestrator, T2/T3 approval queue + CLI shipped, T3 plumbing wired (commit `7001be1`), and 5 new field-validation suites passed at TPR=1.0 / FPR=0.0 — SSRF→IMDS (`e9b4b77`), IDOR (`65fe921`), RCE (`5493eea`), SSTI (`6ef4858`), Open Redirect (`1b6eb64`). Phase 2 W9-10 (dedup-prod, kill-switch <5s SLA, SQLi field-validation suite) is the next gate. See [`phase1_signoff.md`](signoffs/phase1_signoff.md).
 
 ## Mission
 
@@ -32,8 +32,8 @@ These are hard constraints. Any code, agent, or workflow that violates them is w
 | Time-to-submit (validated → submitted) | <4 h | TBD | same |
 | Cost per confirmed bug | <$5 USD | TBD | [`research/02-routing-ev.md`](research/02-routing-ev.md) §Cost Guardrails |
 | Scope-violation incidents | 0 | 0 enforced (network layer) | non-negotiable #1 |
-| Oracle accuracy (TPR/FPR) | ≥90% | XSS=1.0/0.0, SSRF=1.0/0.0, SSRF→IMDS=1.0/0.0, IDOR=1.0/0.0, RCE=1.0/0.0, SSTI=1.0/0.0, Open Redirect=1.0/0.0 (7 of 8 oracles validated; SQLi field-validation suite pending Phase 2 W9-10) | [`phase1_signoff.md`](phase1_signoff.md) Rounds 4 + 6 |
-| Dedup recall | >95% | 100% (Phase 2 §10.4 fixture, commit 3d9e915) | [`phase1_signoff.md`](phase1_signoff.md) |
+| Oracle accuracy (TPR/FPR) | ≥90% | XSS=1.0/0.0, SSRF=1.0/0.0, SSRF→IMDS=1.0/0.0, IDOR=1.0/0.0, RCE=1.0/0.0, SSTI=1.0/0.0, Open Redirect=1.0/0.0 (7 of 8 oracles validated; SQLi field-validation suite pending Phase 2 W9-10) | [`phase1_signoff.md`](signoffs/phase1_signoff.md) Rounds 4 + 6 |
+| Dedup recall | >95% | 100% (Phase 2 §10.4 fixture, commit 3d9e915) | [`phase1_signoff.md`](signoffs/phase1_signoff.md) |
 | Service uptime | >99.5% | TBD (Phase 4) | — |
 | Operator NPS | >50 | TBD (Phase 4 alpha) | — |
 

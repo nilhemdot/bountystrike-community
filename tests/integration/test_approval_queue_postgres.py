@@ -5,7 +5,7 @@ Catches transaction-semantic bugs the FakeConnection in
 asyncpg's :class:`Connection.transaction` rolls back partial writes on
 exception — ``test_t3_first_approver_commits_before_returning`` exists to
 guard against the regression that surfaced during the Phase 2 W7-8 dry-run
-(`docs/phase1_signoff.md` Round 5).
+(`docs/signoffs/phase1_signoff.md` Round 5).
 
 Skipped when ``BS5_PG_TEST_DSN`` is unset so CI/dev without a Postgres
 fixture stays green. To run locally::

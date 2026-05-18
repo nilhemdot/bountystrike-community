@@ -17,13 +17,13 @@
 | Gap 3 | `raw_finding` jsonb codec assumption in validator | MEDIUM   | Hypothesis-status rows have `raw_finding = '{}'::jsonb` default; validator's `chain_steps` lookup must `json.loads()` before `.get()` access | Document the parse step in `validator.md` (low-risk doc-only fix), or live with current behaviour (always-fallback path triggers — works but undocumented)? |
 | Gap 4 | CWE normalization lives in agent runtime, not code | MEDIUM   | Validator agent strips `-candidate` suffix per LLM prompt-following; risk grows with model version drift | Add a normalization regression-fixture in `tests/` for `xss-candidate → verify_xss`, or accept drift until first failed-validation observation? |
 
-**Recommended boot posture (informed by table):** Stage-2 is **conditionally Go** with `MAX_EXPLOITS=0` AND `--skip-idor` runbook flag (not yet implemented — Gap 2 below). Defer until Gap-1 / Gap-2 decisions are recorded in `docs/phase3_lessons.md`. Cost to record decisions: ~0 (operator typing). Cost to boot without recording: $8 + ambiguous post-run signal.
+**Recommended boot posture (informed by table):** Stage-2 is **conditionally Go** with `MAX_EXPLOITS=0` AND `--skip-idor` runbook flag (not yet implemented — Gap 2 below). Defer until Gap-1 / Gap-2 decisions are recorded in `docs/signoffs/phase3_lessons.md`. Cost to record decisions: ~0 (operator typing). Cost to boot without recording: $8 + ambiguous post-run signal.
 
 ---
 
 ## 2. Scope & Method
 
-**Read** (no edits): `.claude/agents/validator.md` (261 lines), `.claude/agents/scanner-agent.md` (226 lines), `.claude/agents/recon.md` (208 lines), `control-plane/src/control_plane/domains/recon/persistence.py:144-153`, `control-plane/src/control_plane/domains/recon/probers.py` (40 lines), `infra/sql/01_schema.sql:156-187`, `infra/sql/05_findings_raw_finding.sql` (21 lines), `mcp/oracle-mcp/src/oracle_mcp/server.py:216-253`, `docs/stage2_boot_runbook.md` (226 lines), `docs/phase3_lessons.md`.
+**Read** (no edits): `.claude/agents/validator.md` (261 lines), `.claude/agents/scanner-agent.md` (226 lines), `.claude/agents/recon.md` (208 lines), `control-plane/src/control_plane/domains/recon/persistence.py:144-153`, `control-plane/src/control_plane/domains/recon/probers.py` (40 lines), `infra/sql/01_schema.sql:156-187`, `infra/sql/05_findings_raw_finding.sql` (21 lines), `mcp/oracle-mcp/src/oracle_mcp/server.py:216-253`, `docs/runbooks/stage2_boot_runbook.md` (226 lines), `docs/signoffs/phase3_lessons.md`.
 
 **Not touched:** any file under `control-plane/`, `mcp/`, `infra/sql/`, `scripts/`, or `.claude/agents/`. Classifier-blocked surfaces (per session memory: agent-spec edits get auto-denied even with verbal user OK).
 
@@ -47,9 +47,9 @@
 - No scanner-agent Python implementation was discovered in `control-plane/` or `mcp/` during Phase-1 explore. The spec is currently aspirational.
 - Compensating control already shipped: `scripts/filter_unreflected_findings.py` (commit `73f5d60`) + `scripts/bs filter-unreflected` (commit `f8a75e1`) — operator-runnable, imports `HttpxReflectionProber` from the shared `probers.py` module.
 
-**Stage-2 Impact:** With `MAX_EXPLOITS=0`, the validator-agent does not get exercised (per `docs/stage2_boot_runbook.md:188-201`, only `hypothesis`/`duplicate`/`rejected` are legitimate terminals). FP `xss-candidate` rows that leak from scanner-agent would simply land at `hypothesis` and never be validated. Result: a recon-clean run that *looks* good in the status distribution but actually leaks scanner-side FPs. The 2026-05-13 FP memories (mariadb `/download/`, WP `?ver=`, WP REST routes) would not re-appear from recon, but could re-appear if scanner-agent fires arjun/nuclei `xss` templates against the same surface.
+**Stage-2 Impact:** With `MAX_EXPLOITS=0`, the validator-agent does not get exercised (per `docs/runbooks/stage2_boot_runbook.md:188-201`, only `hypothesis`/`duplicate`/`rejected` are legitimate terminals). FP `xss-candidate` rows that leak from scanner-agent would simply land at `hypothesis` and never be validated. Result: a recon-clean run that *looks* good in the status distribution but actually leaks scanner-side FPs. The 2026-05-13 FP memories (mariadb `/download/`, WP `?ver=`, WP REST routes) would not re-appear from recon, but could re-appear if scanner-agent fires arjun/nuclei `xss` templates against the same surface.
 
-**Fix Proposal (NOT applied):** Until scanner-agent Python lands, wire `scripts/bs filter-unreflected --job-id <id>` as a mandatory pre-validator step in `docs/stage2_boot_runbook.md` between Step "scan" and "expected status distribution". Two-line addition to the runbook, zero code change. When scanner-agent Python lands, embed `HttpxReflectionProber` into its emit path (mirroring `service.py:222-225`).
+**Fix Proposal (NOT applied):** Until scanner-agent Python lands, wire `scripts/bs filter-unreflected --job-id <id>` as a mandatory pre-validator step in `docs/runbooks/stage2_boot_runbook.md` between Step "scan" and "expected status distribution". Two-line addition to the runbook, zero code change. When scanner-agent Python lands, embed `HttpxReflectionProber` into its emit path (mirroring `service.py:222-225`).
 
 **Cheaper Verification:**
 ```bash
@@ -73,7 +73,7 @@ ls control-plane/src/control_plane/domains/scanner/ 2>&1
 - Recon spec emits `idor-candidate` (`.claude/agents/recon.md:143`) under "Resource access without ownership check" — but there is no documented mechanism for recon to obtain or store session credentials.
 - Validator spec itself acknowledges this with a safe fallback: "If the JSON is absent, update status to `validation_pending` and exit 0 (needs manual session capture)" (`validator.md:131-133`).
 
-**Stage-2 Impact:** Every `idor-candidate` recon emits during the `mariadb.org` run will land at `validation_pending` with no oracle call attempted. If mariadb's recon surface yields 0 IDOR candidates, impact is 0; if it yields N, the post-run status distribution will show N rows at `validation_pending` that need manual triage. Under `MAX_EXPLOITS=0` posture, these would be a *new* terminal state outside the legitimate set in `docs/stage2_boot_runbook.md:193-197`, which would be misread as a regression.
+**Stage-2 Impact:** Every `idor-candidate` recon emits during the `mariadb.org` run will land at `validation_pending` with no oracle call attempted. If mariadb's recon surface yields 0 IDOR candidates, impact is 0; if it yields N, the post-run status distribution will show N rows at `validation_pending` that need manual triage. Under `MAX_EXPLOITS=0` posture, these would be a *new* terminal state outside the legitimate set in `docs/runbooks/stage2_boot_runbook.md:193-197`, which would be misread as a regression.
 
 **Fix Proposal (NOT applied):**
 1. Short-term, runbook-only: amend `stage2_boot_runbook.md` "Expected status distribution" to include `validation_pending` as a legitimate terminal for `idor-candidate` rows specifically. Single table row addition.
@@ -90,7 +90,7 @@ SELECT cwe, status, COUNT(*) FROM findings
 ```
 ```bash
 # Confirm runbook does not currently account for idor-validation_pending
-grep -n "validation_pending\|idor" docs/stage2_boot_runbook.md
+grep -n "validation_pending\|idor" docs/runbooks/stage2_boot_runbook.md
 # expect: only commit-reference matches, NOT a status-table row
 ```
 
@@ -149,7 +149,7 @@ grep -rn "candidate\b" tests/ control-plane/tests/ 2>/dev/null | grep -E "(xss|s
 
 ## 7. Stage-2 Go/No-Go Matrix
 
-Each row maps a gap to a boot-time decision under the existing `docs/stage2_boot_runbook.md:188-209` posture.
+Each row maps a gap to a boot-time decision under the existing `docs/runbooks/stage2_boot_runbook.md:188-209` posture.
 
 | Gap | Verdict | Reason | Pre-boot Action |
 | --- | --- | --- | --- |
@@ -160,7 +160,7 @@ Each row maps a gap to a boot-time decision under the existing `docs/stage2_boot
 
 **Net verdict:** **Go for Stage-2 with `MAX_EXPLOITS=0`** provided the operator records yes/no on the four decisions above and applies the two runbook amendments (Gap 1 and Gap 2 mitigations). Cost of the runbook amendments: ~10 minutes operator-side, $0 spend. Without them, post-run signal is ambiguous and the $8 produces less learning per dollar than it should.
 
-**Hand-off:** the next session should treat this doc as the input to a `docs/phase3_lessons.md` decision entry titled "Stage-2 first run (date) — N findings, decision Path X chosen", per the runbook's existing convention at `docs/stage2_boot_runbook.md:208-209`.
+**Hand-off:** the next session should treat this doc as the input to a `docs/signoffs/phase3_lessons.md` decision entry titled "Stage-2 first run (date) — N findings, decision Path X chosen", per the runbook's existing convention at `docs/runbooks/stage2_boot_runbook.md:208-209`.
 
 ---
 
@@ -174,8 +174,8 @@ Each row maps a gap to a boot-time decision under the existing `docs/stage2_boot
 - `infra/sql/01_schema.sql:156-187` (findings table + indexes)
 - `infra/sql/05_findings_raw_finding.sql:11-21` (raw_finding migration)
 - `mcp/oracle-mcp/src/oracle_mcp/server.py:216-253` (verify_idor signature)
-- `docs/stage2_boot_runbook.md:188-209` (expected status + decision branch)
-- `docs/phase3_lessons.md` (Path C decision context)
+- `docs/runbooks/stage2_boot_runbook.md:188-209` (expected status + decision branch)
+- `docs/signoffs/phase3_lessons.md` (Path C decision context)
 - `scripts/filter_unreflected_findings.py` (commit `73f5d60`)
 - `scripts/bs filter-unreflected` (commit `f8a75e1`)
 - Commits: `beb85cf` (recon reflection probe), `73f5d60` (probers extraction + post-filter), `f8a75e1` (bs CLI wiring)

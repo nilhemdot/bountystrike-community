@@ -2,9 +2,9 @@
 
 Generated from `git log --oneline --no-merges`. Grouped by Conventional-Commits-ish prefix (`feat`, `fix`, `fix(security)`, `perf`, `test`, `docs`, `chore`, `refactor`, `ci`). Phase tags from commit subjects.
 
-**Snapshot:** 2026-05-07. 80+ commits in the visible history. Phase 0 → Phase 1 (signed off 2026-05-01) → Phase 2 W7-8 closed → Phase 2 W9-10 closed → Phase 3 calibration scaffolding shipped → Phase 3 first live run captured in [`phase3_lessons.md`](phase3_lessons.md).
+**Snapshot:** 2026-05-07. 80+ commits in the visible history. Phase 0 → Phase 1 (signed off 2026-05-01) → Phase 2 W7-8 closed → Phase 2 W9-10 closed → Phase 3 calibration scaffolding shipped → Phase 3 first live run captured in [`phase3_lessons.md`](signoffs/phase3_lessons.md).
 
-For phase-level rollups see [`phase1_signoff.md`](phase1_signoff.md), [`phase3_lessons.md`](phase3_lessons.md), and [`research/06-roadmap.md`](research/06-roadmap.md).
+For phase-level rollups see [`phase1_signoff.md`](signoffs/phase1_signoff.md), [`phase3_lessons.md`](signoffs/phase3_lessons.md), and [`research/06-roadmap.md`](research/06-roadmap.md).
 
 ## Phase 3 — Calibration (telemetry shipped, first live run captured 2026-05-07)
 
@@ -20,7 +20,7 @@ Operator-side scaffolding now committed (was uncommitted at the 2026-05-02 snaps
 - Integration tests: `tests/integration/test_dedup_recall_phase3.py`, `tests/integration/test_migration_07_phase3.py`, `tests/integration/test_kill_switch_watch.py`
 - Unit test: `control-plane/tests/test_calibration_service.py`
 
-First live run (2026-05-07): one alpha hunter onboarded against three real H1 programs (shopify, hackerone-self, mariadb); recon pipeline persisted 524 assets; nuclei-against-WAF produced no submission-worthy findings. Lessons in [`phase3_lessons.md`](phase3_lessons.md).
+First live run (2026-05-07): one alpha hunter onboarded against three real H1 programs (shopify, hackerone-self, mariadb); recon pipeline persisted 524 assets; nuclei-against-WAF produced no submission-worthy findings. Lessons in [`phase3_lessons.md`](signoffs/phase3_lessons.md).
 
 ## Phase 2 — W7-W10
 
@@ -185,5 +185,5 @@ Never `--amend` after pushing. Never `--no-verify`.
 
 ## See Also
 
-- [`phase1_signoff.md`](phase1_signoff.md) — Phase 1 audit + Round 4 closeout
+- [`phase1_signoff.md`](signoffs/phase1_signoff.md) — Phase 1 audit + Round 4 closeout
 - [`research/06-roadmap.md`](research/06-roadmap.md) — phase exit criteria + risk register

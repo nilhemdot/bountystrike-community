@@ -2,7 +2,7 @@
 
 Claude Code-native autonomous bug bounty platform. Recon, exploit hypothesis, deterministic verification, hash-chained evidence, tiered approval, and platform submission — all driven by Claude agents under hard scope-JWT and rate-limit boundaries.
 
-**Status:** Phase 1 signed off 2026-05-01 (4/6 PASS, 2 GAP-deploy). Phase 2 W7-8 sprint closed same day: scanner+exploit wired into orchestrator, T2/T3 approval queue + CLI shipped, T3 plumbing wired (`7001be1`), and 5 new oracle field-validation suites at TPR=1.0/FPR=0.0 — SSRF→IMDS (`e9b4b77`), IDOR (`65fe921`), RCE (`5493eea`), SSTI (`6ef4858`), Open Redirect (`1b6eb64`). 7 of 8 oracles now field-validated; SQLi suite is the W9-10 gate. See [`docs/phase1_signoff.md`](docs/phase1_signoff.md) Rounds 4-6.
+**Status:** Phase 1 signed off 2026-05-01 (4/6 PASS, 2 GAP-deploy). Phase 2 W7-8 sprint closed same day: scanner+exploit wired into orchestrator, T2/T3 approval queue + CLI shipped, T3 plumbing wired (`7001be1`), and 5 new oracle field-validation suites at TPR=1.0/FPR=0.0 — SSRF→IMDS (`e9b4b77`), IDOR (`65fe921`), RCE (`5493eea`), SSTI (`6ef4858`), Open Redirect (`1b6eb64`). 7 of 8 oracles now field-validated; SQLi suite is the W9-10 gate. See [`docs/signoffs/phase1_signoff.md`](docs/signoffs/phase1_signoff.md) Rounds 4-6.
 
 ## Highlights
 
@@ -137,7 +137,7 @@ Result: build passed, typecheck passed, and tests passed (`32/32`).
 - [`docs/code-standards.md`](docs/code-standards.md) — Python style, DDD layout, MCP template, hook authoring
 - [`docs/architecture/bountystrike_v5_build_plan.md`](docs/architecture/bountystrike_v5_build_plan.md) — full 20-week spec
 - [`docs/research/`](docs/research/) — 9 numbered research notes (libraries, routing, oracles, deployment, roadmap)
-- [`docs/phase1_signoff.md`](docs/phase1_signoff.md) — Phase 1 audit + Round 4 closeout
+- [`docs/signoffs/phase1_signoff.md`](docs/signoffs/phase1_signoff.md) — Phase 1 audit + Round 4 closeout
 
 ## Security & Scope Boundary
 

@@ -54,7 +54,7 @@ PreToolUse hook `pretool_killswitch.py` reads this on every tool call. Fail-open
 |---|---|---|
 | `ANTHROPIC_API_KEY` | **REQUIRED** for Claude tasks | All Sonnet/Opus/Haiku calls |
 
-The pre-2026-05-18 design carried an external-LLM routing layer (`pretool_venice_route.py` + OpenRouter MCP, Venice Dolphin / Hermes-3-70B for payload generation). The hook was archived per the A4 verdict in [`spikes/ollama-route-rewire.md`](spikes/ollama-route-rewire.md) — exploit-agent now handles Anthropic refusal in-process. The model-routing matrix in [`research/02-routing-ev.md`](research/02-routing-ev.md) reflects the pre-archival planning state and is held for the post-Stage-2 measurement that gates any future re-introduction.
+The pre-2026-05-18 design carried an external-LLM routing layer (`pretool_venice_route.py` + OpenRouter MCP, Venice Dolphin / Hermes-3-70B for payload generation). The hook was archived per the A4 verdict in [`audits/ollama-route-rewire.md`](../audits/ollama-route-rewire.md) — exploit-agent now handles Anthropic refusal in-process. The model-routing matrix in [`research/02-routing-ev.md`](../research/02-routing-ev.md) reflects the pre-archival planning state and is held for the post-Stage-2 measurement that gates any future re-introduction.
 
 ## Bug Bounty Platform Auth
 
@@ -179,4 +179,4 @@ Do not silence these errors with empty defaults — fix the missing env.
 
 - [`.env.example`](../.env.example) — the template
 - [`deployment-guide.md`](deployment-guide.md) — solo-mode bring-up
-- [`research/02-routing-ev.md`](research/02-routing-ev.md) §Cost Guardrails — model routing cost tiers
+- [`research/02-routing-ev.md`](../research/02-routing-ev.md) §Cost Guardrails — model routing cost tiers

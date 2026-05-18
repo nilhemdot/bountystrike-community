@@ -268,7 +268,7 @@ Per-MCP variations:
 - **Core infra:** `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `HATCHET_COOKIE_SECRET`, `LANGFUSE_SECRET`, `LANGFUSE_SALT`
 - **Redis connection:** `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, `REDIS_DB=0`
 - **Kill switch:** `KILL_SWITCH_BACKEND=redis|memory`, `KILL_SWITCH_KEY=bountystrike:killswitch:global`
-- **LLM providers:** `ANTHROPIC_API_KEY` (external-LLM routing layer archived 2026-05-18 — see `docs/spikes/ollama-route-rewire.md`)
+- **LLM providers:** `ANTHROPIC_API_KEY` (external-LLM routing layer archived 2026-05-18 — see `docs/audits/ollama-route-rewire.md`)
 - **Platform auth:** `H1_API_TOKEN`, `H1_USERNAME`, `BUGCROWD_SESSION_COOKIE`, `INTIGRITI_PAT`, `YESWEHACK_BEARER`
 - **Scope JWT:** `SCOPE_JWT_PRIVATE_KEY_PATH=keys/scope_jwt_private.pem`, `SCOPE_JWT_PUBLIC_KEY_PATH=keys/scope_jwt_public.pem`
 - **Evidence backend:** `EVIDENCE_BACKEND=local|r2`, `EVIDENCE_ROOT=./evidence`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT_URL`
@@ -279,4 +279,4 @@ Per-MCP variations:
 - [`code-standards.md`](code-standards.md) — DDD layout, ruff config, MCP template
 - [`research/05-deployment.md`](research/05-deployment.md) — full deployment walk-through
 - [`research/04-skills-mcps.md`](research/04-skills-mcps.md) — agent / hook / MCP design rationale
-- [`phase1_signoff.md`](phase1_signoff.md) — Phase 1 audit + Round 4 closeout
+- [`phase1_signoff.md`](signoffs/phase1_signoff.md) — Phase 1 audit + Round 4 closeout

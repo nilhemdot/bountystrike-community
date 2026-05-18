@@ -1,7 +1,7 @@
 # `static-agent` Scaffold — Phase 3 Path A (Contingent)
 
 **Status.** Parked. Triggered only if Stage 2 (Path B per
-[Path C decision](phase3_lessons.md#decision-path-c--hybrid-recorded-2026-05-13))
+[Path C decision](../signoffs/phase3_lessons.md#decision-path-c--hybrid-recorded-2026-05-13))
 returns 0 hypothesis findings on a WAF-shielded H1 target.
 
 **Purpose.** Add a source-code-scope path to the orchestrator so the system
@@ -188,7 +188,7 @@ Two sprints, ~10 working days each.
 
 ## References
 
-- `docs/phase3_lessons.md` — Path C decision and trigger conditions
-- `docs/stage2_boot_runbook.md` — what produces the 0-findings signal that activates this scaffold
+- `docs/signoffs/phase3_lessons.md` — Path C decision and trigger conditions
+- `docs/runbooks/stage2_boot_runbook.md` — what produces the 0-findings signal that activates this scaffold
 - `docs/architecture/bountystrike_v5_build_plan.md` line 322 — semgrep/trufflehog listed in toolbelt
 - `docs/research/06-roadmap.md` — phase boundaries

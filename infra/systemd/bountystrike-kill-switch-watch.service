@@ -20,7 +20,7 @@
 
 [Unit]
 Description=BountyStrike kill-switch watcher (oracle FP guard)
-Documentation=file:///home/nilhem/bountystrike-ai5/docs/phase3_lessons.md
+Documentation=file:///home/nilhem/bountystrike-ai5/docs/signoffs/phase3_lessons.md
 After=network-online.target docker.service
 Wants=network-online.target
 # Cap rapid restart storms if config/env is broken.

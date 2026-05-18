@@ -458,4 +458,4 @@ Never use `--amend` after pushing. Never `--no-verify` to skip hooks.
 - [`codebase-summary.md`](codebase-summary.md) — file inventory + dependency table
 - [`system-architecture.md`](system-architecture.md) — visual flows
 - [`research/04-skills-mcps.md`](research/04-skills-mcps.md) — full hook lifecycle (26 events) + MCP catalogue rationale
-- [`phase1_signoff.md`](phase1_signoff.md) — example of a clean signoff doc
+- [`phase1_signoff.md`](signoffs/phase1_signoff.md) — example of a clean signoff doc

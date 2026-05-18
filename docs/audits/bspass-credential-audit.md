@@ -8,11 +8,11 @@
 
 `bspass` is a stale placeholder, not a working credential.
 
-Confirmed via `docs/phase3_lessons.md:184` (operator's own historical note):
+Confirmed via `docs/signoffs/phase3_lessons.md:184` (operator's own historical note):
 
 > `.env` line 10: password `bspass → ${POSTGRES_PASSWORD}` (role password set on volume init to long value, hardcoded `bspass` never worked over TCP)
 
-The real Postgres password is generated per-host via `openssl rand -hex 32` (see `docs/configuration-guide.md:23-26`) and stored in the gitignored `.env`. Postgres' `pg_hba.conf` enforces password auth on TCP, so any connection to `127.0.0.1:5432` using `bspass` would be rejected. The placeholder gives the appearance of a credential without actually being one.
+The real Postgres password is generated per-host via `openssl rand -hex 32` (see `docs/runbooks/configuration-guide.md:23-26`) and stored in the gitignored `.env`. Postgres' `pg_hba.conf` enforces password auth on TCP, so any connection to `127.0.0.1:5432` using `bspass` would be rejected. The placeholder gives the appearance of a credential without actually being one.
 
 ## Containment check
 
@@ -38,7 +38,7 @@ The real Postgres password is generated per-host via `openssl rand -hex 32` (see
 | `tests/integration/test_recon_assets_postgres.py` | 14 | same | NONE |
 | `tests/integration/test_schema_vs_spec_contract.py` | 18 | same | NONE |
 | `tests/integration/test_validator_compliance_postgres.py` | 17 | same | NONE |
-| `docs/phase3_lessons.md` | 184 | Operator's note that `bspass` doesn't work | NONE — the disclosure itself |
+| `docs/signoffs/phase3_lessons.md` | 184 | Operator's note that `bspass` doesn't work | NONE — the disclosure itself |
 
 ## Recommended action
 

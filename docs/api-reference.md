@@ -211,12 +211,12 @@ Don't write directly to `audit_log`, `evidence_artifacts`, or `findings` outside
 {"continue": false, "stopReason": "scope-violation: ..."}
 ```
 
-Currently wired (3): `pretool_killswitch.py`, `pretool_antislop.py`, `pretool_approval_gate.py`. Settings: [`.claude/settings.json`](../.claude/settings.json). The pre-2026-05-18 `pretool_venice_route.py` hook was archived per the A4 verdict in [`spikes/ollama-route-rewire.md`](spikes/ollama-route-rewire.md).
+Currently wired (3): `pretool_killswitch.py`, `pretool_antislop.py`, `pretool_approval_gate.py`. Settings: [`.claude/settings.json`](../.claude/settings.json). The pre-2026-05-18 `pretool_venice_route.py` hook was archived per the A4 verdict in [`audits/ollama-route-rewire.md`](audits/ollama-route-rewire.md).
 
 ## See Also
 
 - [`codebase-summary.md`](codebase-summary.md) §MCP Inventory — full server table with backend/deps
 - [`system-architecture.md`](system-architecture.md) §Component Graph — visual MCP topology
 - [`code-standards.md`](code-standards.md) §MCP Server Template — how to add a new MCP tool
-- [`testing-guide.md`](testing-guide.md) — how to test MCP tools (respx, fixture patterns)
+- [`testing-guide.md`](runbooks/testing-guide.md) — how to test MCP tools (respx, fixture patterns)
 - [`research/04-skills-mcps.md`](research/04-skills-mcps.md) — full hook lifecycle (26 events) + MCP catalogue rationale

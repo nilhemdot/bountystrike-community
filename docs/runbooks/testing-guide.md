@@ -1,6 +1,6 @@
 # Testing Guide — BountyStrike v5
 
-How to run, write, and validate tests in this repo. Pair with [`code-standards.md`](code-standards.md) §Test Conventions for the style rules and [`phase1_signoff.md`](phase1_signoff.md) for the Phase 1 fixture pattern that the Phase 2 W7-8 field-validation suites generalised from.
+How to run, write, and validate tests in this repo. Pair with [`code-standards.md`](../code-standards.md) §Test Conventions for the style rules and [`phase1_signoff.md`](../signoffs/phase1_signoff.md) for the Phase 1 fixture pattern that the Phase 2 W7-8 field-validation suites generalised from.
 
 ## Test Surface
 
@@ -122,7 +122,7 @@ Ruff config: `line-length = 100`, `target-version = "py312"`, rules `E F W I N U
 
 ## Test Style — AAA
 
-Use Arrange-Act-Assert. From [`code-standards.md`](code-standards.md):
+Use Arrange-Act-Assert. From [`code-standards.md`](../code-standards.md):
 
 ```python
 async def test_t3_first_approver_returns_none(approval_queue):
@@ -237,7 +237,7 @@ For oracles, the gate is TPR/FPR on the field-validation fixture, not line cover
 
 ## See Also
 
-- [`code-standards.md`](code-standards.md) §Test Conventions — full style rules
-- [`code-standards.md`](code-standards.md) §Field-Validation Suite Pattern — 4-piece scaffold for new oracles
-- [`phase1_signoff.md`](phase1_signoff.md) — fixture pattern origin
-- [`research/03-verifier-antislop.md`](research/03-verifier-antislop.md) §SLOs — accuracy targets
+- [`code-standards.md`](../code-standards.md) §Test Conventions — full style rules
+- [`code-standards.md`](../code-standards.md) §Field-Validation Suite Pattern — 4-piece scaffold for new oracles
+- [`phase1_signoff.md`](../signoffs/phase1_signoff.md) — fixture pattern origin
+- [`research/03-verifier-antislop.md`](../research/03-verifier-antislop.md) §SLOs — accuracy targets

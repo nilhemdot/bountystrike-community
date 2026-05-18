@@ -1,7 +1,7 @@
 # Stage-2 Boot Runbook — Phase 3 Path B
 
 **Purpose.** Operator-ready checklist for the LLM-augmented orchestrator run
-against `mariadb.org` referenced as Path B of the [Path C decision](phase3_lessons.md#decision-path-c--hybrid-recorded-2026-05-13).
+against `mariadb.org` referenced as Path B of the [Path C decision](../signoffs/phase3_lessons.md#decision-path-c--hybrid-recorded-2026-05-13).
 
 **Why this exists.** First Phase-3 run (2026-05-07) hit a WAF wall on three
 H1 programs using naive nuclei probing. The Stage-2 orchestrator path —
@@ -36,7 +36,7 @@ set -a && source .env && set +a
 
 - [ ] `echo $DATABASE_URL` resolves to `bountystrike`
 - [ ] `echo $REDIS_URL` set
-- [ ] `echo $ANTHROPIC_API_KEY` non-empty (external-LLM routing layer archived 2026-05-18; see `docs/spikes/ollama-route-rewire.md`)
+- [ ] `echo $ANTHROPIC_API_KEY` non-empty (external-LLM routing layer archived 2026-05-18; see `docs/audits/ollama-route-rewire.md`)
 - [ ] `ls keys/scope_jwt_private.pem keys/scope_jwt_public.pem` both exist
 - [ ] `echo $R2_ACCESS_KEY_ID` non-empty (evidence backend)
 
@@ -121,7 +121,7 @@ recon + scanner LLM spend on stages that cannot complete.
 > Pre-PR-#3 orchestrators built `asyncio.Semaphore(max_exploits)` and
 > `gather`'d over the hypothesis findings; with `max_exploits=0` every
 > task blocked on `.acquire()` forever (Stage-2 run on 2026-05-17 hung
-> 128 tasks this way; see `docs/phase3_lessons.md` §Stage-2 first run).
+> 128 tasks this way; see `docs/signoffs/phase3_lessons.md` §Stage-2 first run).
 > PR #3 treats `MAX_EXPLOITS<=0` as equivalent to `SKIP_EXPLOIT=1`, so
 > both now work — `SKIP_EXPLOIT=1` is preferred for semantic clarity and
 > for portability against any operator running a pre-patch checkout.
@@ -234,9 +234,9 @@ path the audit did not anticipate).
 ### Decision branch
 
 - **≥1 hypothesis finding** → continue dynamic. Defer `static-agent`. Next session: pick second target, repeat, build toward 5+ submissions for ρ measurement.
-- **0 findings** → Path C decision rule fires. Open `docs/static_agent_scaffold.md` and commit to Path A next sprint.
+- **0 findings** → Path C decision rule fires. Open `docs/spikes/static_agent_scaffold.md` and commit to Path A next sprint.
 
-Record the outcome in a new section of `docs/phase3_lessons.md`:
+Record the outcome in a new section of `docs/signoffs/phase3_lessons.md`:
 "## Stage-2 first run (date) — N findings, decision Path X chosen."
 
 ---
@@ -253,5 +253,5 @@ Record the outcome in a new section of `docs/phase3_lessons.md`:
 
 - `scripts/orchestrator.py` — pipeline entry
 - `docs/architecture/bountystrike_v5_build_plan.md` §3.4 cost guardrails, §6.6 kill switch
-- `docs/phase3_lessons.md` — Path C decision context
-- `docs/static_agent_scaffold.md` — Path A fallback design
+- `docs/signoffs/phase3_lessons.md` — Path C decision context
+- `docs/spikes/static_agent_scaffold.md` — Path A fallback design

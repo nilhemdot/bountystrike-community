@@ -1,7 +1,7 @@
 """F2 — schema-vs-spec contract test.
 
 Purpose: catch the same drift class that produced Bug-2 in
-`docs/phase1_signoff.md` Round 5 (agent specs referenced
+`docs/signoffs/phase1_signoff.md` Round 5 (agent specs referenced
 ``findings.raw_finding`` before any migration created the column).
 
 Mechanism: extract every ``` ```sql ``` fence from
