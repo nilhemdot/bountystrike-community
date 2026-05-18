@@ -28,8 +28,10 @@ Each box must be ✓ before firing. Anything ✗ → stop, fix, re-check.
 
 ### Env
 
+From the repo root:
+
 ```bash
-cd /home/nilhem/bountystrike-ai5 && set -a && source .env && set +a
+set -a && source .env && set +a
 ```
 
 - [ ] `echo $DATABASE_URL` resolves to `bountystrike_v5`
@@ -126,8 +128,9 @@ recon + scanner LLM spend on stages that cannot complete.
 
 ## Fire
 
+From the repo root:
+
 ```bash
-cd /home/nilhem/bountystrike-ai5
 export PROGRAM_HANDLE=mariadb
 export PLATFORM=hackerone
 export SCOPE_JWT="<the unexpired JWT from above>"
