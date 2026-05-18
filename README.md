@@ -109,6 +109,26 @@ uv run python scripts/approve.py reject <request_id> --reason "..."
 
 Test count: 216 total post-Phase-1; Round 5 added 39 (24 queue unit + 8 orchestration smoke + 7 Postgres integration); Round 6 field-validation suites added per-oracle integration tests on top.
 
+## Node.js Environment Verification
+
+Verified on 2026-05-13 that `mcp/scope-mcp` works with the current local Node toolchain (no `nvm` required for this repo at present).
+
+- `node`: `v22.22.2`
+- `npm`: `10.9.7`
+- `corepack`: `0.34.6`
+- `pnpm`: `10.33.0`
+
+Validation commands run:
+
+```bash
+cd mcp/scope-mcp
+npm ci
+npm run build
+npm test
+```
+
+Result: build passed, typecheck passed, and tests passed (`32/32`).
+
 ## Documentation Map
 
 - [`docs/project-overview-pdr.md`](docs/project-overview-pdr.md) — vision + 5 non-negotiables + scope

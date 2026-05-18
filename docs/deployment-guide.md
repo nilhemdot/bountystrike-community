@@ -17,7 +17,7 @@ How to bring up a working BountyStrike v5 stack in solo mode and what the SaaS d
 Optional but commonly needed:
 
 - **Cloudflare R2 account** if `EVIDENCE_BACKEND=r2` (otherwise local FS).
-- **Anthropic API key** + **OpenRouter API key** for Claude / Venice / DeepSeek routing.
+- **Anthropic API key** + **Ollama Cloud API key** for Claude + non-Anthropic routing.
 - **Per-platform credentials** (HackerOne, Bugcrowd, Intigriti, YesWeHack) for `submit_report` MCPs.
 
 ## Solo Mode — Single Host

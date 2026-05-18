@@ -270,7 +270,7 @@ Per-MCP variations:
 - **Core infra:** `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `HATCHET_COOKIE_SECRET`, `LANGFUSE_SECRET`, `LANGFUSE_SALT`
 - **Redis connection:** `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, `REDIS_DB=0`
 - **Kill switch:** `KILL_SWITCH_BACKEND=redis|memory`, `KILL_SWITCH_KEY=bountystrike:killswitch:global`
-- **LLM providers:** `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`
+- **LLM providers:** `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY` (consumed by `pretool_venice_route.py` for non-Anthropic routing), `OLLAMA_CLOUD_API_KEY` (plumbed forward; not yet consumed)
 - **Platform auth:** `H1_API_TOKEN`, `H1_USERNAME`, `BUGCROWD_SESSION_COOKIE`, `INTIGRITI_PAT`, `YESWEHACK_BEARER`
 - **Scope JWT:** `SCOPE_JWT_PRIVATE_KEY_PATH=keys/scope_jwt_private.pem`, `SCOPE_JWT_PUBLIC_KEY_PATH=keys/scope_jwt_public.pem`
 - **Evidence backend:** `EVIDENCE_BACKEND=local|r2`, `EVIDENCE_ROOT=./evidence`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT_URL`

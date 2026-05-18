@@ -53,7 +53,8 @@ PreToolUse hook `pretool_killswitch.py` reads this on every tool call. Fail-open
 | Variable | Required? | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | **REQUIRED** for Claude tasks | All Sonnet/Opus/Haiku calls |
-| `OPENROUTER_API_KEY` | optional | Venice / DeepSeek / WhiteRabbitNeo / Pentest-R1 routing. Required when `pretool_venice_route.py` is wired. |
+| `OPENROUTER_API_KEY` | optional | Venice / DeepSeek / WhiteRabbitNeo / Pentest-R1 routing. Consumed by `pretool_venice_route.py` for non-Anthropic routing today. |
+| `OLLAMA_CLOUD_API_KEY` | optional (forward-compat) | Plumbed via orchestrator passthrough in anticipation of an Ollama Cloud rewire of `pretool_venice_route.py`. Not consumed by the current routing hook. |
 
 The model-routing matrix (16 task types × 4 cost tiers) is in [`research/02-routing-ev.md`](research/02-routing-ev.md). Bulk triage on DeepSeek (`$0.14/M`); deep reasoning on Opus (`$5/M`); security-specialist tasks on Tier-S (Pentest-R1, WhiteRabbitNeo).
 

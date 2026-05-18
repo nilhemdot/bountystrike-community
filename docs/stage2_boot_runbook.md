@@ -9,7 +9,7 @@ LLM-driven recon + exploit-agent + validator — is the actual differentiator
 and has never been exercised live. This run is the cheap-evidence test that
 unblocks the Phase 3 exit gate or proves we need Path A.
 
-**Cost.** ~$8 in OpenRouter spend. ~30–90 min wall clock.
+**Cost.** ~$8 in non-Anthropic provider spend. ~30–90 min wall clock.
 **Blast radius.** Real outbound traffic to `mariadb.org` scope (visible to
 HackerOne). Scope-JWT-gated egress prevents out-of-scope hits at the network
 layer (build-plan §6.6).
@@ -36,7 +36,7 @@ set -a && source .env && set +a
 
 - [ ] `echo $DATABASE_URL` resolves to `bountystrike_v5`
 - [ ] `echo $REDIS_URL` set
-- [ ] `echo $OPENROUTER_API_KEY` non-empty
+- [ ] `echo $OPENROUTER_API_KEY` non-empty (currently consumed by `pretool_venice_route.py` for non-Anthropic routing)
 - [ ] `ls keys/scope_jwt_private.pem keys/scope_jwt_public.pem` both exist
 - [ ] `echo $R2_ACCESS_KEY_ID` non-empty (evidence backend)
 
