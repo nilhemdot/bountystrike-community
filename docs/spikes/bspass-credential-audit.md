@@ -51,7 +51,7 @@ When the `.mcp.json` homedir-path PR opens (currently held — see PR #11 review
 ```jsonc
 // Current (lines 14-16, 21-23, 48-50)
 "env": {
-  "DATABASE_URL": "postgresql://bs:bspass@127.0.0.1:5432/bountystrike_v5"
+  "DATABASE_URL": "postgresql://bs:bspass@127.0.0.1:5432/bountystrike"
 }
 
 // Proposed

@@ -23,7 +23,7 @@ Each box must be ✓ before firing. Anything ✗ → stop, fix, re-check.
 ### Stack
 
 - [ ] `docker ps` lists `bs_postgres`, `bs_redis` healthy
-- [ ] `docker exec bs_postgres pg_isready -U bs -d bountystrike_v5` returns "accepting connections"
+- [ ] `docker exec bs_postgres pg_isready -U bs -d bountystrike` returns "accepting connections"
 - [ ] `docker exec bs_redis redis-cli PING` returns `PONG`
 
 ### Env
@@ -34,7 +34,7 @@ From the repo root:
 set -a && source .env && set +a
 ```
 
-- [ ] `echo $DATABASE_URL` resolves to `bountystrike_v5`
+- [ ] `echo $DATABASE_URL` resolves to `bountystrike`
 - [ ] `echo $REDIS_URL` set
 - [ ] `echo $ANTHROPIC_API_KEY` non-empty (external-LLM routing layer archived 2026-05-18; see `docs/spikes/ollama-route-rewire.md`)
 - [ ] `ls keys/scope_jwt_private.pem keys/scope_jwt_public.pem` both exist
@@ -163,7 +163,7 @@ Open two extra panes:
 
 **Pane 2 — DB watch:**
 ```bash
-watch -n 5 'docker exec bs_postgres psql -U bs -d bountystrike_v5 -c \
+watch -n 5 'docker exec bs_postgres psql -U bs -d bountystrike -c \
   "SELECT status, COUNT(*) FROM findings WHERE job_id = (SELECT id FROM scan_jobs ORDER BY created_at DESC LIMIT 1) GROUP BY status;"'
 ```
 
@@ -196,13 +196,13 @@ This run answers a single yes/no question:
 The recon-stage reflection probe (`beb85cf`) drops unreflected `xss-candidate` rows at the recon emission path. Scanner-agent emit path has no equivalent probe (see `docs/audits/validator_agent_contract_audit_2026-05-13.md` §Gap 1). Run the post-scanner filter to drop any unreflected `xss-candidate` rows scanner-agent emitted before the status table is interpreted:
 
 ```bash
-JOB_ID=$(docker exec bs_postgres psql -U bs -d bountystrike_v5 -At -c \
+JOB_ID=$(docker exec bs_postgres psql -U bs -d bountystrike -At -c \
   "SELECT id FROM scan_jobs WHERE program_handle='mariadb' ORDER BY created_at DESC LIMIT 1")
 scripts/bs filter-unreflected --job-id "$JOB_ID"
 ```
 
 ```bash
-docker exec bs_postgres psql -U bs -d bountystrike_v5 -c "
+docker exec bs_postgres psql -U bs -d bountystrike -c "
 SELECT status, COUNT(*)
 FROM findings
 WHERE job_id = (SELECT id FROM scan_jobs WHERE program_handle='mariadb' ORDER BY created_at DESC LIMIT 1)
