@@ -104,11 +104,23 @@ recon + scanner LLM spend on stages that cannot complete.
 
 - [ ] Decide whether this run **needs sandbox execution at all**:
    - **NO sandbox needed** (most likely for this run — goal is "≥1 hypothesis
-     finding"): `export MAX_EXPLOITS=0`. Saves Venice/Hermes spend. Exploit-
-     agent + validator-agent fan-out skipped. Recon + scanner-agent still run.
-   - **YES, must exec PoCs**: pick a driver and set `SANDBOX_DRIVER`. Without
-     this env, sandbox-mcp refuses any call and exploit-agent crashes at step 6.
-- [ ] If running with `MAX_EXPLOITS > 0`, also: `echo $SANDBOX_DRIVER` non-empty
+     finding"): `export SKIP_EXPLOIT=1`. Saves Venice/Hermes spend. Exploit-
+     agent fan-out skipped; validator-agent still claims `hypothesis` rows.
+     Recon + scanner-agent still run.
+   - **YES, must exec PoCs**: pick a driver and set `SANDBOX_DRIVER`, leave
+     `SKIP_EXPLOIT` unset. Without `SANDBOX_DRIVER`, sandbox-mcp refuses any
+     call and exploit-agent crashes at step 6.
+- [ ] If `SKIP_EXPLOIT` is unset (exploit phase will fan out), also:
+  `echo $SANDBOX_DRIVER` non-empty
+
+> **Why `SKIP_EXPLOIT=1` and not `MAX_EXPLOITS=0`?**
+> Pre-PR-#3 orchestrators built `asyncio.Semaphore(max_exploits)` and
+> `gather`'d over the hypothesis findings; with `max_exploits=0` every
+> task blocked on `.acquire()` forever (Stage-2 run on 2026-05-17 hung
+> 128 tasks this way; see `docs/phase3_lessons.md` §Stage-2 first run).
+> PR #3 treats `MAX_EXPLOITS<=0` as equivalent to `SKIP_EXPLOIT=1`, so
+> both now work — `SKIP_EXPLOIT=1` is preferred for semantic clarity and
+> for portability against any operator running a pre-patch checkout.
 
 ---
 
@@ -120,11 +132,11 @@ export PROGRAM_HANDLE=mariadb
 export PLATFORM=hackerone
 export SCOPE_JWT="<the unexpired JWT from above>"
 export SKIP_REPORT=1               # do not actually submit anything
-# MAX_EXPLOITS=0 skips the exploit/validator fan-out — recommended until
-# a production sandbox driver lands (see preflight §"Sandbox driver
-# selection"). Set to 3 (and export SANDBOX_DRIVER) only if you've
-# accepted the GAP-deploy risk.
-export MAX_EXPLOITS=0
+# SKIP_EXPLOIT=1 short-circuits the exploit-agent fan-out — recommended
+# until a production sandbox driver lands (see preflight §"Sandbox driver
+# selection"). Drop this and export SANDBOX_DRIVER=<driver>, MAX_EXPLOITS=3
+# only if you've accepted the GAP-deploy risk.
+export SKIP_EXPLOIT=1
 export MAX_VALIDATORS=5
 export COST_BUDGET_USD=10
 
@@ -195,9 +207,9 @@ GROUP BY status;
 "
 ```
 
-### Expected status distribution (MAX_EXPLOITS=0)
+### Expected status distribution (SKIP_EXPLOIT=1)
 
-With sandbox-stack GAP-deploy and `MAX_EXPLOITS=0`, the only legitimate
+With sandbox-stack GAP-deploy and `SKIP_EXPLOIT=1`, the only legitimate
 terminal statuses for this run are:
 
 | Status | Meaning |
@@ -209,9 +221,10 @@ terminal statuses for this run are:
 
 Any `exploit_attempt`, `approval_pending_t2`, `exploit_failed_*`, or
 `exploit_pending_validation` row in this run is a regression — either
-`MAX_EXPLOITS` was non-zero or the orchestrator ignored the env. A
-`validation_pending` row on a non-IDOR CWE is also a regression (it
-indicates an oracle failure path the audit did not anticipate).
+`SKIP_EXPLOIT` was unset (or `MAX_EXPLOITS` non-zero on a pre-PR-#3
+orchestrator), or the orchestrator ignored the env. A `validation_pending`
+row on a non-IDOR CWE is also a regression (it indicates an oracle failure
+path the audit did not anticipate).
 
 ### Decision branch
 
