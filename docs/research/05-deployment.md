@@ -120,7 +120,6 @@ File: `docker-compose.yml` (solo mode), version `3.9`. Five services + three nam
 | `LANGFUSE_SECRET` | NextAuth secret for Langfuse self-hosted |
 | `LANGFUSE_SALT` | Langfuse encryption salt |
 | `ANTHROPIC_API_KEY` | BYOK Claude (1M req/month free tier) for Sonnet 4.6 / Opus 4.7 |
-| `OPENROUTER_API_KEY` | OpenRouter gateway for DeepSeek V4-Flash, Venice, Qwen3-Coder |
 | `H1_API_TOKEN` | HackerOne API token (scope, submission, triage) |
 | `H1_USERNAME` | HackerOne account username (paired with API token) |
 | `BUGCROWD_SESSION_COOKIE` | Bugcrowd session cookie — refresh monthly |

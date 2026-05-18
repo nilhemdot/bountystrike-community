@@ -52,10 +52,9 @@ graph TB
         Normalize[normalize-mcp<br/>CVSS + CWE]
     end
 
-    subgraph Hooks[".claude/hooks (4 PreToolUse + 2 task)"]
+    subgraph Hooks[".claude/hooks (3 PreToolUse + 2 task)"]
         Killswitch[pretool_killswitch.py]
         Antislop[pretool_antislop.py]
-        Route[pretool_venice_route.py]
         Approval[pretool_approval_gate.py]
     end
 
@@ -466,7 +465,6 @@ For each component above, the canonical source location:
 | Kill-switch hook | [`.claude/hooks/pretool_killswitch.py`](../.claude/hooks/pretool_killswitch.py) |
 | Antislop hook | [`.claude/hooks/pretool_antislop.py`](../.claude/hooks/pretool_antislop.py) |
 | Approval-gate hook | [`.claude/hooks/pretool_approval_gate.py`](../.claude/hooks/pretool_approval_gate.py) |
-| OpenRouter routing hook | [`.claude/hooks/pretool_venice_route.py`](../.claude/hooks/pretool_venice_route.py) |
 | Hook wiring | [`.claude/settings.json`](../.claude/settings.json) |
 | Sub-agent specs | [`.claude/agents/`](../.claude/agents/) |
 

@@ -101,7 +101,6 @@ Tests in `control-plane/tests/` (21 files):
 | `test_normalize.py` | CVSS + CWE normalization |
 | `test_recon.py`, `test_recon_main.py` | ReconService + tool_runner + container entry |
 | `test_scope_ingest.py`, `test_scope_jwt.py` | Scope ingestion + RS256 JWT |
-| `test_venice_route_hook.py` | OpenRouter Venice routing |
 
 ## MCP Inventory (15 servers)
 
@@ -213,7 +212,6 @@ All passwords sourced from `.env` via `${VAR:?...}` syntax — fail loud on miss
 ├── hooks/
 │   ├── pretool_killswitch.py    # matcher: * (all) — Layer 2 kill switch
 │   ├── pretool_antislop.py      # matcher: ^(Write|Edit|MultiEdit)$
-│   ├── pretool_venice_route.py  # matcher: ^mcp__openrouter__openrouter_complete$
 │   ├── pretool_approval_gate.py # matcher: ^mcp__[a-z0-9_-]+__submit_
 │   ├── pre-task-scope-check.sh
 │   └── post-task-scan-complete.sh
@@ -270,7 +268,7 @@ Per-MCP variations:
 - **Core infra:** `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `HATCHET_COOKIE_SECRET`, `LANGFUSE_SECRET`, `LANGFUSE_SALT`
 - **Redis connection:** `REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, `REDIS_DB=0`
 - **Kill switch:** `KILL_SWITCH_BACKEND=redis|memory`, `KILL_SWITCH_KEY=bountystrike:killswitch:global`
-- **LLM providers:** `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY` (consumed by `pretool_venice_route.py` for non-Anthropic routing), `OLLAMA_CLOUD_API_KEY` (plumbed forward; not yet consumed)
+- **LLM providers:** `ANTHROPIC_API_KEY` (external-LLM routing layer archived 2026-05-18 — see `docs/spikes/ollama-route-rewire.md`)
 - **Platform auth:** `H1_API_TOKEN`, `H1_USERNAME`, `BUGCROWD_SESSION_COOKIE`, `INTIGRITI_PAT`, `YESWEHACK_BEARER`
 - **Scope JWT:** `SCOPE_JWT_PRIVATE_KEY_PATH=keys/scope_jwt_private.pem`, `SCOPE_JWT_PUBLIC_KEY_PATH=keys/scope_jwt_public.pem`
 - **Evidence backend:** `EVIDENCE_BACKEND=local|r2`, `EVIDENCE_ROOT=./evidence`, `R2_BUCKET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT_URL`

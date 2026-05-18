@@ -25,8 +25,6 @@ Optional:
     EVIDENCE_MCP_URL  — path/command for evidence-mcp (default: evidence-mcp)
     DEDUP_MCP_URL     — path/command for dedup-mcp (default: dedup-mcp)
     SANDBOX_MCP_URL   — path/command for sandbox-mcp (default: sandbox-mcp)
-    OPENROUTER_API_KEY — consumed by .claude/hooks/pretool_venice_route.py for non-Anthropic routing
-    OLLAMA_CLOUD_API_KEY — plumbed forward for an upcoming Ollama Cloud rewire (not yet consumed)
     MAX_VALIDATORS    — parallel validator limit (default: 5)
     MAX_EXPLOITS      — parallel exploit limit (default: 3)
     MAX_REPORTERS     — parallel reporter limit (default: 3)
@@ -385,12 +383,6 @@ async def _exploit_one(
         }
         if approval_token:
             env_extras["APPROVAL_TOKEN"] = approval_token
-        # OPENROUTER_API_KEY is the currently consumed routing key
-        # (.claude/hooks/pretool_venice_route.py). OLLAMA_CLOUD_API_KEY is plumbed
-        # forward in anticipation of the Ollama Cloud rewire.
-        for passthrough in ("OPENROUTER_API_KEY", "OLLAMA_CLOUD_API_KEY"):
-            if passthrough in os.environ:
-                env_extras[passthrough] = os.environ[passthrough]
 
         rc = await _run_agent("exploit-agent", env_extras, claude_cmd)
         _log(f"exploit-agent finding={finding_id} rc={rc}")

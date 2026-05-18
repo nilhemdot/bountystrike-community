@@ -211,7 +211,7 @@ Don't write directly to `audit_log`, `evidence_artifacts`, or `findings` outside
 {"continue": false, "stopReason": "scope-violation: ..."}
 ```
 
-Currently wired (4): `pretool_killswitch.py`, `pretool_antislop.py`, `pretool_venice_route.py`, `pretool_approval_gate.py`. Settings: [`.claude/settings.json`](../.claude/settings.json).
+Currently wired (3): `pretool_killswitch.py`, `pretool_antislop.py`, `pretool_approval_gate.py`. Settings: [`.claude/settings.json`](../.claude/settings.json). The pre-2026-05-18 `pretool_venice_route.py` hook was archived per the A4 verdict in [`spikes/ollama-route-rewire.md`](spikes/ollama-route-rewire.md).
 
 ## See Also
 

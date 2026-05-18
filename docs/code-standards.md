@@ -288,7 +288,6 @@ Without a `matcher`, the hook applies to all tool calls (this is what `pretool_k
 | `pretool_killswitch.py` | **fail-open** if Redis unreachable (L3 supervisor is the backstop) |
 | `pretool_antislop.py` | **fail-closed** — never let unverified report writes through |
 | `pretool_approval_gate.py` | **fail-closed** — submission without approval is the worst case |
-| `pretool_venice_route.py` | **fail-open** — routing is cost optimization, not security |
 
 Document the fail mode in a docstring at the top of every hook.
 

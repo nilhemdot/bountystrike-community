@@ -148,3 +148,52 @@ Operator-side. Not a code change. Pick one:
 ## Recommended next step
 
 Park the rewire pending A1/A2/A3 decision **and** an honest reassessment: since the hook is dormant today, do we actually need this routing layer in v5 at all? If the orchestrator can call Anthropic models directly with a clear refusal-fallback in the agent itself (no external LLM provider), the entire routing hook becomes dead code that can be archived. That's a fourth option worth considering before sinking the ~250 LOC into a rewire that may never run.
+
+---
+
+## Decision record — A4 selected (2026-05-18)
+
+**Verdict: A4 — archive the routing layer.**
+
+Operator picked A4 after this spike landed. Rationale:
+
+- Hook was dormant in v5 (`.mcp.json` had zero OpenRouter MCP entries).
+- Build-plan's "70% Anthropic refusal" claim predates Claude 4.x; the rate has not been measured against current models in v5.
+- Cost-benefit favoured deletion: A1/A2 would have built ~250 LOC of infrastructure to solve an unmeasured problem; A4 archives unused code today and rebuilds only if post-Stage-2 measurement shows the routing layer is needed.
+
+### Archival surface (delivered in this PR)
+
+**Code (Phase 1):**
+- Deleted `.claude/hooks/pretool_venice_route.py` (196 LOC).
+- Deleted `control-plane/tests/test_venice_route_hook.py` (17 tests, 238 LOC).
+- Removed the `mcp__openrouter__openrouter_complete` matcher block from `.claude/settings.json`.
+- Removed the `OPENROUTER_API_KEY` + `OLLAMA_CLOUD_API_KEY` passthrough loop from `scripts/orchestrator.py` and the two docstring entries.
+- Removed both `*_API_KEY=` placeholders from `.env.example`.
+
+**Docs (Phase 2):**
+- 8 operator-facing docs swept (exploit-agent spec, configuration-guide, codebase-summary, api-reference, code-standards, stage2 runbook, system-architecture, research/05-deployment).
+- Build-plan + roadmap intentionally untouched (historical planning snapshots).
+
+**This decision record (Phase 3):**
+- Appended this section to the spike doc so the verdict + rationale are co-located with the analysis that produced them.
+
+### Re-introduction gates
+
+If a future Stage-2 run measures Anthropic refusal rate on payload-generation prompts, use the gates from the body of this spike:
+
+| Observed refusal rate | Action |
+|---|---|
+| < 30% | A4 stays; the routing layer was correctly archived |
+| 30-50% | Open a new PR implementing A2 (dual-route OpenRouter + Ollama Cloud) |
+| > 50% | Open a new PR implementing A1 (Ollama Cloud only) |
+
+Re-introduction is **not** automatic; it requires a fresh measurement, a new spike, and operator authorisation. Archival is the current state of record.
+
+### What was preserved
+
+The `exploit-agent` spec ([`.claude/agents/exploit-agent.md`](../../.claude/agents/exploit-agent.md)) now describes in-process Anthropic-refusal handling:
+
+- Retry once with a reformulated prompt that foregrounds authorisation context and the specific defensive control being tested.
+- On persistent refusal, revert `findings.status` to `hypothesis` so operator review or pipeline iteration can handle it later.
+
+This is the no-external-LLM fallback path that A4 commits to.

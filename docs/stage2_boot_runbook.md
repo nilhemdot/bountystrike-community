@@ -36,7 +36,7 @@ set -a && source .env && set +a
 
 - [ ] `echo $DATABASE_URL` resolves to `bountystrike_v5`
 - [ ] `echo $REDIS_URL` set
-- [ ] `echo $OPENROUTER_API_KEY` non-empty (currently consumed by `pretool_venice_route.py` for non-Anthropic routing)
+- [ ] `echo $ANTHROPIC_API_KEY` non-empty (external-LLM routing layer archived 2026-05-18; see `docs/spikes/ollama-route-rewire.md`)
 - [ ] `ls keys/scope_jwt_private.pem keys/scope_jwt_public.pem` both exist
 - [ ] `echo $R2_ACCESS_KEY_ID` non-empty (evidence backend)
 
