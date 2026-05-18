@@ -56,13 +56,11 @@ When the `.mcp.json` homedir-path PR opens (currently held — see PR #11 review
 
 // Proposed
 "env": {
-  "DATABASE_URL": "${env:DATABASE_URL}"
+  "DATABASE_URL": "${DATABASE_URL}"
 }
 ```
 
-Claude Code's `.mcp.json` supports `${env:VAR}` interpolation (per Anthropic's MCP loader docs). This single change removes all three `bspass` placeholders, sources the real password from the operator-side `.env`, and stops misleading any future reader into thinking the password is `bspass`.
-
-**Caveat to verify before merge:** confirm `${env:DATABASE_URL}` is the syntax the Claude Code MCP loader honors (vs `$DATABASE_URL`, `{{DATABASE_URL}}`, or no interpolation at all). If interpolation isn't supported, alternative is to drop the `env` block entirely and rely on the MCP server reading `DATABASE_URL` from its own process env (which the orchestrator already passes through).
+Claude Code's `.mcp.json` supports `${VAR}` interpolation in `command`, `args`, `env`, and `url` fields (verified 2026-05-18 against `https://code.claude.com/docs/en/mcp` § "Environment variable expansion in `.mcp.json`"). The optional fallback form `${VAR:-default}` is also supported. **Note:** the syntax is `${VAR}`, not `${env:VAR}` — the latter was an earlier mis-spec in this document and was corrected after consulting the loader docs. This single change removes all three `bspass` placeholders, sources the real password from the operator-side `.env`, and stops misleading any future reader into thinking the password is `bspass`.
 
 ### 2. No action for the CI workflow + test docstrings
 
