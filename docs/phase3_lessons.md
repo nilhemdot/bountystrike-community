@@ -157,6 +157,42 @@ Either outcome populates `hunt_outcomes` and unblocks ρ measurement.
 
 **Reference:** Karpathy guideline §2 (simplicity first) and §4 (verifiable goal per path) drove the framing.
 
+## Stage-2 first run (2026-05-17) — 128 hypothesis findings, Path B chosen
+
+- **Job:** `170457c4-e218-4fc4-9128-e49aeeddc917`, program `mariadb`/hackerone, scope `*.mariadb.org`
+- **Wall clock:** 51.7 min (recon 46 min, exploit-phase deadlock detected ~5 min in)
+- **Cost:** $0.00 vs $10 budget (recon used deterministic binaries; LLM exploit-phase never spent)
+- **Status histogram:** hypothesis=128, no validated/rejected (exploit phase aborted before LLM execution)
+- **CWE breakdown:** open-redirect-candidate=100, xss-candidate=28
+- **Hosts (all in-scope):** jira.mariadb.org=89, mariadb.org=37, git.mariadb.org=2
+- **SKIP_IDOR=1** dropped 46 idor-candidate rows post-recon (Gap-2 mitigation worked as designed)
+- **filter-unreflected** ran on 28 xss-candidates → 0 dropped, 28 kept (Gap-1 mitigation, no false positives this run)
+- **Gap-3/Gap-4** status: deferred (MAX_EXPLOITS=0 attempt deadlocked before sandbox-driver gap could surface)
+
+**Decision rule satisfied:** ≥1 hypothesis on a WAF-shielded target → **commit to Path B (dynamic).** Defer static-agent scaffold.
+
+### Bug surfaced — `scripts/orchestrator.py:506` `MAX_EXPLOITS=0` deadlocks
+
+`asyncio.Semaphore(max_exploits)` with `max_exploits=0` produces a semaphore with zero permits; the subsequent `asyncio.gather(*[_exploit_one(...)])` blocks all 128 tasks forever waiting on `.acquire()`. The runbook and Stage-2 plan both recommend `MAX_EXPLOITS=0` as the lever for skipping exploit work; the working lever is `SKIP_EXPLOIT=1`, which short-circuits at line 499 before reaching the semaphore.
+
+**Workaround:** export `SKIP_EXPLOIT=1` instead of `MAX_EXPLOITS=0`.
+**Permanent fix (next sprint):** treat `max_exploits=0` as equivalent to `skip_exploit=True` at line 499, or guard with `if max_exploits == 0 or not hypo_ids: skip exploit-loop`.
+
+### Plan-deviations applied during this run (root-cause fixes, not workarounds)
+
+- `.env` line 10: DB `bountystrike_v5 → bountystrike` (compose + init SQL + code defaults all use `bountystrike`; `_v5` suffix was aspirational and never actualized)
+- `.env` line 10: password `bspass → ${POSTGRES_PASSWORD}` (role password set on volume init to long value, hardcoded `bspass` never worked over TCP)
+- Pre-flight: ran `scripts/bs seed-programs` (860 programs, 49090 scopes) — original plan assumed programs were already seeded
+- Runbook drift: references `bs_postgres` (underscore) container — live v5 container is `bs-postgres` (dash). Underscore name belongs to old `bountystrike-ai` v4 repo.
+- Plan called `uv run python scripts/bs ...`; `scripts/bs` is bash, correct form is direct `scripts/bs ...`
+
+### Next-sprint inputs
+
+1. Patch `MAX_EXPLOITS=0` deadlock; re-run Stage-2 to validate the cleanup path actually runs an LLM exploit attempt
+2. Validate the 100 open-redirect-candidate findings — needs `verify_open_redirect` oracle pass (Gap-1 only covers xss reflection)
+3. Update `docs/stage2_boot_runbook.md` to fix the underscore→dash container-name drift and the `MAX_EXPLOITS=0` recommendation
+4. Pick a second WAF-shielded program from EV ranking, repeat Stage-2 for ρ-measurement progress (target: 5 submissions)
+
 ## See also
 
 * `docs/changelog.md` §Phase 3 — Calibration
