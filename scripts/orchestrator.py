@@ -83,6 +83,21 @@ def _flag(key: str) -> bool:
     return os.environ.get(key, "").lower() in ("1", "true", "yes")
 
 
+def _exploit_phase_skip_reason(skip_exploit: bool, max_exploits: int) -> str | None:
+    """Return human reason to skip the exploit phase, or None to run it.
+
+    ``MAX_EXPLOITS=0`` must short-circuit here: building
+    ``asyncio.Semaphore(0)`` and then ``asyncio.gather`` over the hypothesis
+    findings deadlocks forever, since every ``_exploit_one`` task blocks on
+    ``.acquire()`` waiting for a permit that no other task will ever release.
+    """
+    if skip_exploit:
+        return "SKIP_EXPLOIT set"
+    if max_exploits <= 0:
+        return "MAX_EXPLOITS=0 (use SKIP_EXPLOIT=1 to silence)"
+    return None
+
+
 def _jwt_jti(scope_jwt: str) -> str:
     try:
         segment = scope_jwt.split(".")[1]
@@ -496,8 +511,9 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
         )
 
         # ── Exploit ────────────────────────────────────────────────────────
-        if skip_exploit:
-            _log("SKIP_EXPLOIT set — skipping exploit-agent phase")
+        exploit_skip_reason = _exploit_phase_skip_reason(skip_exploit, max_exploits)
+        if exploit_skip_reason is not None:
+            _log(f"{exploit_skip_reason} — skipping exploit-agent phase")
         else:
             hypo_ids = await _hypothesis_finding_ids(conn, job_id)
             _log(f"{len(hypo_ids)} hypothesis findings for exploit phase")
