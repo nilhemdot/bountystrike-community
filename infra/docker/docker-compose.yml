@@ -9,6 +9,18 @@
 
 name: bountystrike
 
+# ----------------------------------------------------------------------------
+# YAML anchors — shared defaults applied to every service via `<<: *defaults`.
+# Centralizes log rotation (default json-file driver is unbounded; ten 10MB
+# files per container caps disk usage at ~30MB/service on long uptime).
+# ----------------------------------------------------------------------------
+x-defaults: &defaults
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
 
   # --------------------------------------------------------------------------
@@ -16,9 +28,29 @@ services:
   # Mounts ../sql/*.sql via /docker-entrypoint-initdb.d (auto-runs on first boot)
   # --------------------------------------------------------------------------
   postgres:
+    <<: *defaults
     image: pgvector/pgvector:pg17
     container_name: bs-postgres
     restart: unless-stopped
+    # Tuning for pgvector + Hatchet workload on a solo box.
+    # shared_buffers ≈ 25% of container memory limit (512M of 2G);
+    # effective_cache_size hints planner that OS cache covers ~2G;
+    # work_mem 16M supports vector kNN sorts without spilling to disk;
+    # random_page_cost 1.1 reflects SSD (default 4.0 assumes spinning disk).
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=2GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
+      - -c
+      - random_page_cost=1.1
     environment:
       POSTGRES_USER: bs
       POSTGRES_DB: bountystrike
@@ -36,6 +68,10 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2', memory: 2G }
+        reservations: { memory: 512M }
     networks:
       - bountystrike
 
@@ -45,15 +81,23 @@ services:
   # in Phase 0b — upgrade to 8.x in Phase 1 when GA.
   # --------------------------------------------------------------------------
   redis:
+    <<: *defaults
     image: redis:7-alpine
     container_name: bs-redis
     restart: unless-stopped
+    # --maxmemory caps RSS so a runaway producer can't OOM the host;
+    # allkeys-lru evicts cold keys when the cap is hit (kill-switch flag
+    # is the only must-keep key — set per-key TTLs for cache entries).
     command:
       - redis-server
       - --appendonly
       - "yes"
       - --requirepass
       - ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+      - --maxmemory
+      - "200mb"
+      - --maxmemory-policy
+      - "allkeys-lru"
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
@@ -66,6 +110,9 @@ services:
       start_period: 10s
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
     networks:
       - bountystrike
 
@@ -74,7 +121,17 @@ services:
   # Workflows: ScopeIngest, EVRanker, ScanJob, TriageJob, ReportJob
   # --------------------------------------------------------------------------
   hatchet:
-    image: ghcr.io/hatchet-dev/hatchet-engine:latest
+    <<: *defaults
+    # Image path corrected: the published package is
+    # `ghcr.io/hatchet-dev/hatchet/hatchet-engine` (org / repo / package),
+    # not the unsegmented `ghcr.io/hatchet-dev/hatchet-engine` that earlier
+    # versions of this file used (which 404s on pull).
+    #
+    # Pinned to v0.86.18 + multi-arch manifest-list digest for reproducible
+    # pulls. Bump tag + re-resolve digest with:
+    #   docker buildx imagetools inspect \
+    #     ghcr.io/hatchet-dev/hatchet/hatchet-engine:<semver>
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-engine:v0.86.18@sha256:86db3f8ae2e2c2c8843327c33c16bbd39f0e882d4b79db856a7164651cde85c8
     container_name: bs-hatchet
     restart: unless-stopped
     depends_on:
@@ -91,6 +148,19 @@ services:
       - "127.0.0.1:8080:8080"   # HTTP
     volumes:
       - hatchet_data:/var/lib/hatchet
+    # Healthcheck so caddy (and other consumers) wait for Hatchet to be
+    # accepting traffic before routing — avoids 502s during cold start.
+    # Uses /bin/sh + bash-style URL probe via wget (busybox in this image).
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '1.5', memory: 1G }
+        reservations: { memory: 256M }
     networks:
       - bountystrike
 
@@ -98,7 +168,11 @@ services:
   # langfuse — self-hosted LLM observability (Sonnet/Opus traces, cost track)
   # --------------------------------------------------------------------------
   langfuse:
-    image: langfuse/langfuse:latest
+    <<: *defaults
+    # Pinned to 3.174.1 + multi-arch manifest-list digest. Bump tag +
+    # re-resolve digest with:
+    #   docker buildx imagetools inspect langfuse/langfuse:<semver>
+    image: langfuse/langfuse:3.174.1@sha256:e54883f4535a08505e20169d51ed7cd5f8f0505294a6ba982dfa64c78edc5c0a
     container_name: bs-langfuse
     restart: unless-stopped
     depends_on:
@@ -113,6 +187,10 @@ services:
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
     ports:
       - "127.0.0.1:3000:3000"
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 1G }
+        reservations: { memory: 256M }
     networks:
       - bountystrike
 
@@ -120,12 +198,19 @@ services:
   # caddy — reverse proxy (TLS off for solo dev; flip on for SaaS)
   # --------------------------------------------------------------------------
   caddy:
+    <<: *defaults
     image: caddy:2-alpine
     container_name: bs-caddy
     restart: unless-stopped
+    # Gate caddy on hatchet's readiness so cold-boot requests don't
+    # 502 against an upstream that hasn't accepted traffic yet.
+    # langfuse has no built-in healthcheck endpoint we trust here, so
+    # service_started is the conservative gate.
     depends_on:
-      - hatchet
-      - langfuse
+      hatchet:
+        condition: service_healthy
+      langfuse:
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"
@@ -133,6 +218,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
     networks:
       - bountystrike
 

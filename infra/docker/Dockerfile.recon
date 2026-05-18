@@ -25,10 +25,9 @@
 # ============================================================================
 FROM golang:1.23-alpine AS toolchain
 
-# git is needed by `go install` to clone tagged source.
-# gcc + musl-dev are only needed for katana (see below) — included
-# unconditionally because the layer cost is negligible.
-RUN apk add --no-cache git gcc musl-dev
+# git for `go install` cloning; gcc/musl-dev for katana cgo build;
+# file for the smoke-check below. Folded into one apk fetch.
+RUN apk add --no-cache git gcc musl-dev file
 
 ENV GOBIN=/out \
     GOFLAGS="-trimpath"
@@ -41,7 +40,14 @@ RUN mkdir -p /out
 # subfinder + httpx don't need cgo. CGO_ENABLED=0 produces fully static
 # Go binaries (Go's pure-Go net resolver replaces libc), which the
 # glibc-based runtime stage can consume without libc shims.
-RUN CGO_ENABLED=0 go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
+#
+# BuildKit cache mounts on /go/pkg/mod (module download) and
+# /root/.cache/go-build (compile cache) persist across builds. Layer
+# cache misses (version bumps, base image rotates) no longer force a
+# full re-download / re-compile of upstream Go deps.
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
     CGO_ENABLED=0 go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.9
 
 # katana@v1.1.2 transitively pulls `smacker/go-tree-sitter`, a cgo
@@ -52,7 +58,9 @@ RUN CGO_ENABLED=0 go install github.com/projectdiscovery/subfinder/v2/cmd/subfin
 # (`-linkmode external -extldflags -static`) so the output binary is
 # still copyable into the glibc runtime stage as a self-contained
 # executable with no shared-library deps.
-RUN CGO_ENABLED=1 go install \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=1 go install \
     -ldflags '-linkmode external -extldflags "-static"' \
     github.com/projectdiscovery/katana/cmd/katana@v1.1.2
 
@@ -64,8 +72,7 @@ RUN CGO_ENABLED=1 go install \
 # dynamically-linked katana binary that passed `-version` but would
 # fail at runtime in the glibc runtime stage. The `file` check guards
 # against that whole regression class.
-RUN apk add --no-cache file && \
-    /out/subfinder -version 2>&1 | grep -F "v2.6.6" && \
+RUN /out/subfinder -version 2>&1 | grep -F "v2.6.6" && \
     /out/httpx     -version 2>&1 | grep -F "v1.6.9" && \
     /out/katana    -version 2>&1 | grep -F "v1.1.2" && \
     file /out/subfinder | grep -q "statically linked" && \
@@ -99,9 +106,18 @@ COPY --from=toolchain /out/katana    /usr/local/bin/katana
 
 # Non-root user — recon-agent has no business writing outside its scratch
 # directory and the orchestrator mounts state via env, not a volume.
-RUN useradd --create-home --shell /usr/sbin/nologin recon
+# uid pinned to 1000 so the uv cache mount (below) can declare the same
+# uid/gid and stay writable after `USER recon`.
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 1000 recon
 USER recon
 WORKDIR /home/recon/app
+
+# Pre-compile bytecode at install time so the first `import` after
+# container start doesn't pay the JIT-compile cost per module.
+# UV_LINK_MODE=copy avoids hardlink warnings when the cache mount lives
+# on a different filesystem than the venv.
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 # --- Layer A: dep-manifest-only copy + sync ---
 # The third-party dep set rarely changes; copying just the lock + the
@@ -110,9 +126,13 @@ WORKDIR /home/recon/app
 # `--no-install-workspace` skips the local workspace members
 # (control-plane, mcp/*) — they're installed in Layer B once their
 # source is present.
+#
+# Cache mount on uv's wheel cache persists across rebuilds — even when
+# uv.lock changes invalidate this layer, wheel downloads stay cached.
 COPY --chown=recon:recon uv.lock pyproject.toml /home/recon/app/
 COPY --chown=recon:recon control-plane/pyproject.toml /home/recon/app/control-plane/pyproject.toml
-RUN cd /home/recon/app/control-plane && \
+RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000 \
+    cd /home/recon/app/control-plane && \
     uv sync --frozen --no-dev --no-install-workspace
 
 # --- Layer B: full control-plane source + workspace install ---
@@ -122,7 +142,8 @@ RUN cd /home/recon/app/control-plane && \
 # which is fast because every wheel it would otherwise re-download
 # is already in Layer A's `.venv`.
 COPY --chown=recon:recon control-plane /home/recon/app/control-plane
-RUN cd /home/recon/app/control-plane && uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000 \
+    cd /home/recon/app/control-plane && uv sync --frozen --no-dev
 
 # Sanity check: the harness module must be importable in the final image.
 RUN cd control-plane && uv run python -c \
