@@ -21,8 +21,8 @@ import asyncio
 import json
 import sys
 
-from control_plane.infrastructure.database import create_engine, make_session_factory
 from control_plane.domains.scope_management.services import ingest_arkadiyt_all
+from control_plane.infrastructure.database import create_engine, make_session_factory
 
 
 async def _run() -> dict[str, int]:

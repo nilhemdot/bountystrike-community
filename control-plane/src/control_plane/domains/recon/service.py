@@ -219,10 +219,11 @@ class ReconService:
                 # bulk of FPs (mariadb /download/ allowlist params, WP `?ver=`
                 # cache-busters, WP REST routes). Pre-probe for reflection
                 # before emitting; drop rows whose param doesn't echo back.
-                if cwe == "xss-candidate":
-                    if not await self._check_reflection(endpoint.url, param):
-                        dropped_unreflected += 1
-                        continue
+                if cwe == "xss-candidate" and not await self._check_reflection(
+                    endpoint.url, param
+                ):
+                    dropped_unreflected += 1
+                    continue
                 findings.append(
                     HypothesisFinding(url=endpoint.url, parameter=param, cwe=cwe)
                 )

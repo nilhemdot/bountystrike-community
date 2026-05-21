@@ -28,7 +28,7 @@ from __future__ import annotations
 import threading
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask import Flask, Response, jsonify, request
 
@@ -43,7 +43,7 @@ _LOCK = threading.Lock()
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _record(token: str, path: str) -> None:

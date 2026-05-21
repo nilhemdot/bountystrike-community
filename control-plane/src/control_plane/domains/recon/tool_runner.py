@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncIterator, Iterable
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Iterable, Protocol
+from typing import Any, Protocol
 
 
 class SubprocessError(RuntimeError):
@@ -198,7 +199,7 @@ def _to_katana_endpoint(row: dict) -> KatanaEndpoint:
     params: list[str] = []
     body = request.get("body") or {}
     if isinstance(body, dict):
-        params.extend(str(k) for k in body.keys())
+        params.extend(str(k) for k in body)
     # katana also exposes form fields under `form_data` and query params via
     # the URL itself; the URL parsing is the validator-agent's job.
     form_data = request.get("form_data") or request.get("form-data") or []

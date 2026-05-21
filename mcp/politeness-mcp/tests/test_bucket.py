@@ -7,11 +7,7 @@ microseconds while still exercising the actual elapsed-time math.
 
 from __future__ import annotations
 
-import asyncio
-from typing import Any
-
 import pytest
-
 from politeness_mcp.bucket import (
     BACKOFF_SECONDS,
     MAX_RPS_CEILING,
@@ -320,7 +316,6 @@ async def test_concurrent_cross_host_acquires_do_not_serialise() -> None:
     # Drain host A's capacity.
     for _ in range(2):
         await limiter.acquire("a.example.com")
-    t0 = clock.now()
     # Concurrent waiter on A + immediate grant on B. B should NOT wait
     # for A's lock — different host, different lock.
     a_result, b_result = await _asyncio.gather(

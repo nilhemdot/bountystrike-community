@@ -6,7 +6,6 @@ import time
 from unittest.mock import AsyncMock
 
 import pytest
-
 from control_plane.domains.safety import (
     InMemoryKillSwitchStore,
     KillSwitchService,
@@ -15,7 +14,6 @@ from control_plane.domains.safety import (
     RedisKillSwitchStore,
     make_kill_switch_store,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. KillSwitchState — escalation semantics

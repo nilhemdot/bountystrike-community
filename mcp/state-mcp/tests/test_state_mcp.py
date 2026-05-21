@@ -9,7 +9,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from state_mcp.server import (
     _get_finding_impl,
     _query_artifacts_impl,
@@ -17,7 +16,6 @@ from state_mcp.server import (
     _update_finding_status_impl,
 )
 from state_mcp.store import FINDING_STATUSES, StateStore
-
 
 # ---------------------------------------------------------------------------
 # FINDING_STATUSES — sanity check against schema enum

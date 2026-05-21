@@ -7,7 +7,6 @@ from pathlib import Path
 
 import jwt
 import pytest
-
 from control_plane.domains.scope_management import (
     MAX_EXPIRY_SECONDS,
     RateLimits,
@@ -33,9 +32,9 @@ def validator() -> ScopeJWTValidator:
 
 def _sample_targets() -> ScopeTargets:
     return ScopeTargets(
-        wildcards=["*.acme.com"],
-        exact_hosts=["legacy.acme.com"],
-        ips=["1.2.3.0/24"],
+        wildcards=("*.acme.com",),
+        exact_hosts=("legacy.acme.com",),
+        ips=("1.2.3.0/24",),
     )
 
 
@@ -130,13 +129,13 @@ def test_full_claim_set(issuer, validator):
         program_handle="globex",
         platform="bugcrowd",
         targets=ScopeTargets(
-            wildcards=["*.globex.io"],
-            ips=["10.0.0.0/8"],
-            android_packages=["com.globex.mobile"],
+            wildcards=("*.globex.io",),
+            ips=("10.0.0.0/8",),
+            android_packages=("com.globex.mobile",),
         ),
         exclusions=ScopeExclusions(
-            hostnames=["staging.globex.io"],
-            paths=["/admin"],
+            hostnames=("staging.globex.io",),
+            paths=("/admin",),
             notes="No DoS",
         ),
         rate_limits=RateLimits(default_rps=10, relaxed_hosts={"api.globex.io": 50}),

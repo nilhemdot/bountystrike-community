@@ -52,7 +52,7 @@ class ScopeFilter(ValueObject):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_jwt_claims(cls, claims: dict[str, Any]) -> "ScopeFilter":
+    def from_jwt_claims(cls, claims: dict[str, Any]) -> ScopeFilter:
         """Build a filter from a validated scope JWT payload."""
         targets = claims.get("targets") or {}
         exclusions = claims.get("exclusions") or {}

@@ -11,7 +11,6 @@ import pytest
 from oracle_mcp.result import OracleResult
 from oracle_mcp.security import DestructivePayloadError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

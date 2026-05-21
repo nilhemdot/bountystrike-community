@@ -65,7 +65,7 @@ class FixtureTarget:
     tags: tuple[str, ...] = ()
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "FixtureTarget":
+    def from_dict(cls, raw: dict[str, Any]) -> FixtureTarget:
         oracle = str(raw.get("oracle") or "").strip().lower()
         if oracle not in SUPPORTED_ORACLES:
             raise ValueError(
@@ -189,8 +189,13 @@ async def _dispatch_oracle(target: FixtureTarget) -> OracleResult:
         from oracle_mcp.oracles.ssrf_imds import oracle_ssrf_imds
         return await oracle_ssrf_imds(target.url, target.param)
     if target.oracle == "idor":
-        from oracle_mcp.oracles.idor import oracle_idor
-        return await oracle_idor(target.url, target.param)
+        # IDOR requires two `SessionCredentials` (owner + accessor) that the
+        # (url, param) fixture row cannot supply; callers must inject a custom
+        # dispatcher via FieldValidationRunner(dispatcher=...).
+        raise NotImplementedError(
+            "idor oracle requires owner/accessor sessions; "
+            "inject a custom dispatcher for field validation"
+        )
     if target.oracle == "rce":
         from oracle_mcp.oracles.rce import oracle_rce
         return await oracle_rce(target.url, target.param)

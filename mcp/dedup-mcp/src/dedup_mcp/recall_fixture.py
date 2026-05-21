@@ -29,14 +29,13 @@ import math
 import random
 import uuid
 from collections.abc import Iterable, Sequence
+from typing import Any, cast
 
 from dedup_mcp.embedding import EMBEDDING_DIM, Embedder, build_finding_text
 from dedup_mcp.server import (
     SEMANTIC_DISPLAY_THRESHOLD,
-    SEMANTIC_T2_THRESHOLD,
     _classify_tier,
 )
-
 
 # ---------------------------------------------------------------------------
 # Corpus types
@@ -414,7 +413,7 @@ class BagOfWordsEmbedder:
 def cosine_similarity(a: Sequence[float], b: Sequence[float]) -> float:
     if len(a) != len(b):
         raise ValueError(f"dim mismatch: {len(a)} vs {len(b)}")
-    return sum(x * y for x, y in zip(a, b))
+    return sum(x * y for x, y in zip(a, b, strict=True))
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +457,7 @@ async def run_recall_measurement(
         for f in corpus.findings
     ]
     if hasattr(embedder, "embed_many"):
-        embeddings = await embedder.embed_many(texts)
+        embeddings = await cast(Any, embedder).embed_many(texts)
     else:
         embeddings = [await embedder.embed(t) for t in texts]
 

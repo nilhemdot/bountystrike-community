@@ -143,11 +143,11 @@ def c3() -> str:
 @app.route("/c4")
 def c4() -> str:
     """Map lookup: q is a key into an internal id→URL map; never user URL."""
-    INTERNAL = {
+    internal = {
         "logo": "http://acme.internal/static/logo.png",
         "favicon": "http://acme.internal/static/favicon.ico",
     }
-    target = INTERNAL.get(_q())
+    target = internal.get(_q())
     if not target:
         return "<html><body>not found</body></html>"
     # Fetch the safe internal URL — never the user value.

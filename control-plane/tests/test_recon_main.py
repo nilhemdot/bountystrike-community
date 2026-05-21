@@ -6,7 +6,6 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from control_plane.domains.recon import __main__ as recon_main
 
 

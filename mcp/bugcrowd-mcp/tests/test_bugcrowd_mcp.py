@@ -8,7 +8,6 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-
 from bugcrowd_mcp.client import (
     DEFAULT_BASE_URL,
     SEVERITY_TO_INT,
@@ -16,7 +15,6 @@ from bugcrowd_mcp.client import (
     BugcrowdError,
 )
 from bugcrowd_mcp.server import _submit_report_impl
-
 
 _PROGRAM_UUID = "11111111-2222-3333-4444-555555555555"
 _TARGET_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"

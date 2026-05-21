@@ -32,7 +32,6 @@ import os
 
 from sandbox_mcp.types import RunRequest, RunResult, Verdict
 
-
 # Image pin — bumping this requires re-running the egress-gate harness
 # tests against the new image. Never use ``:latest``.
 DEFAULT_IMAGE = os.environ.get("SANDBOX_DOCKER_IMAGE", "bs5/sandbox-runtime:0.1.0")

@@ -6,15 +6,12 @@ import json
 from pathlib import Path
 
 import pytest
-
 from oracle_mcp.field_validation import (
     FieldValidationRunner,
     FixtureTarget,
-    ValidationResult,
     load_fixtures,
 )
-from oracle_mcp.result import OracleResult
-
+from oracle_mcp.result import OracleResult, Verdict
 
 # ---------------------------------------------------------------------------
 # Fixture loader
@@ -104,7 +101,7 @@ def test_example_fixtures_in_repo_are_loadable():
 # ---------------------------------------------------------------------------
 
 
-def _ok_result(verdict: str) -> OracleResult:
+def _ok_result(verdict: Verdict) -> OracleResult:
     return OracleResult(verdict=verdict, oracle_method="fake", evidence={})
 
 
@@ -127,7 +124,9 @@ async def test_runner_perfect_score():
     ]
 
     async def fake(target: FixtureTarget) -> OracleResult:
-        return _ok_result("validated" if target.expected_verdict == "validated" else "unreproducible")
+        return _ok_result(
+            "validated" if target.expected_verdict == "validated" else "unreproducible"
+        )
 
     runner = FieldValidationRunner(dispatcher=fake)
     report = await runner.run(fixtures)

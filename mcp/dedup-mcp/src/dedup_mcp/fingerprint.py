@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import re
-from urllib.parse import urlparse
 
 
 def _normalize_host(host: str) -> str:

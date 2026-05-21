@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import hashlib
 import json
 import os
@@ -194,10 +195,8 @@ class LocalSubprocessDriver:
             exit_code = proc.returncode
         except TimeoutError:
             proc.kill()
-            try:
+            with contextlib.suppress(Exception):
                 await proc.wait()
-            except Exception:
-                pass
             verdict = Verdict.TIMEOUT
             exit_code = None
 

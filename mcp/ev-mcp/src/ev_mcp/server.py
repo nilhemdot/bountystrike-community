@@ -13,12 +13,10 @@ formula propagates without touching this server.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 import asyncpg
 import structlog
-from mcp.server.fastmcp import FastMCP
-
 from control_plane.domains.program_ranking.services.scoring_service import (
     rank_programs as _rank_programs_internal,
     score_program,
@@ -27,8 +25,9 @@ from control_plane.domains.program_ranking.value_objects import (
     OperatorProfile,
     ProgramFeatures,
 )
+from mcp.server.fastmcp import FastMCP
 
-from .db import ProgramFeatureLoader
+from .db import ProgramFeatureLoader, _ConnLike
 
 log = structlog.get_logger("ev_mcp.server")
 
@@ -140,7 +139,7 @@ async def rank_programs(
     pool = await _get_pool()
     async with pool.acquire() as conn:
         features_list = await loader.list_features(
-            conn,
+            cast(_ConnLike, conn),
             platforms=platforms,
             require_bounty=require_bounty,
         )
@@ -198,7 +197,7 @@ async def get_program_details(
 
     pool = await _get_pool()
     async with pool.acquire() as conn:
-        features = await loader.get_features(conn, program_handle)
+        features = await loader.get_features(cast(_ConnLike, conn), program_handle)
 
     if features is None:
         return {"error": "not_found", "program_handle": program_handle}

@@ -255,7 +255,7 @@ def c5() -> str:
 @app.route("/c6")
 def c6() -> str:
     """JSON response — Chromium does not render HTML in JSON content type."""
-    payload = '{"echo": "%s"}' % _q().replace('"', '\\"')
+    payload = '{{"echo": "{}"}}'.format(_q().replace('"', '\\"'))
     return Response(payload, mimetype="application/json")
 
 

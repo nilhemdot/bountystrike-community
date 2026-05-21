@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import asyncpg
 
@@ -66,7 +66,9 @@ class DedupStore:
         finding_id: str,
     ) -> dict:
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(_INSERT, fingerprint_hex, platform, program_handle, vuln_type, finding_id)
+            row = await conn.fetchrow(
+                _INSERT, fingerprint_hex, platform, program_handle, vuln_type, finding_id
+            )
         if row is not None:
             return {
                 "registered": True,

@@ -12,7 +12,7 @@ a FastMCP tool.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import asyncpg
 
@@ -64,7 +64,7 @@ class StateStore:
         self._pool = pool
 
     @classmethod
-    async def create(cls, dsn: str) -> "StateStore":
+    async def create(cls, dsn: str) -> StateStore:
         pool = await asyncpg.create_pool(_strip_asyncpg_driver(dsn))
         return cls(pool)
 

@@ -7,14 +7,10 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from control_plane.domains.program_ranking.value_objects import (
     OperatorProfile,
-    ProgramFeatures,
 )
-
 from ev_mcp.db import ProgramFeatureLoader
-
 
 # ---------------------------------------------------------------------------
 # Helpers — minimal asyncpg row stand-ins
@@ -178,14 +174,14 @@ def stub_pool(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(srv, "_get_pool", fake_get_pool)
     monkeypatch.setattr(srv, "_pool", pool)
-    srv.test_conn = test_conn  # for tests to grab
+    setattr(srv, "test_conn", test_conn)  # for tests to grab
 
 
 @pytest.fixture
 def test_conn():
     import ev_mcp.server as srv
 
-    return srv.test_conn
+    return getattr(srv, "test_conn")
 
 
 # ----- rank_programs -------------------------------------------------------

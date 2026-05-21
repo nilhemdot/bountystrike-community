@@ -167,15 +167,30 @@ def issue_scope_jwt(
 # ---------------------------------------------------------------------------
 
 def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--program",   default=os.environ.get("PROGRAM_HANDLE"), help="Program handle (required)")
+    p = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        "--program",
+        default=os.environ.get("PROGRAM_HANDLE"),
+        help="Program handle (required)",
+    )
     p.add_argument("--platform",  default=os.environ.get("PLATFORM", "hackerone"))
     p.add_argument("--operator",  default="dev-operator")
-    p.add_argument("--wildcards", default="", help="Comma-separated wildcard targets, e.g. *.example.com")
+    p.add_argument(
+        "--wildcards",
+        default="",
+        help="Comma-separated wildcard targets, e.g. *.example.com",
+    )
     p.add_argument("--hosts",     default="", help="Comma-separated exact hosts")
     p.add_argument("--hours",     type=float, default=24.0, help="Expiry hours (max 168)")
     p.add_argument("--rps",       type=int,   default=5,    help="Default rate limit RPS")
-    p.add_argument("--out",       default=None, help="Write JWT token to file (token only, no JSON)")
+    p.add_argument(
+        "--out",
+        default=None,
+        help="Write JWT token to file (token only, no JSON)",
+    )
     p.add_argument("--keygen",    action="store_true", help="Force regenerate key pair")
     return p.parse_args()
 

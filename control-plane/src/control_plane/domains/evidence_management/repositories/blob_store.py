@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import aioboto3
-
 from control_plane.domains.evidence_management.value_objects import R2Key
 
 
@@ -90,7 +89,7 @@ class R2BlobStore:
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "R2BlobStore":
+    def from_env(cls) -> R2BlobStore:
         """Build the store from environment variables.
 
         Required env::
@@ -125,7 +124,9 @@ class R2BlobStore:
     @asynccontextmanager
     async def _client(self) -> AsyncIterator:
         """Yield an aioboto3 S3 client; closes it on exit."""
-        async with self._session.client(
+        # aioboto3.Session.client() returns an async-context-manager at runtime,
+        # but its stubs do not expose __aenter__/__aexit__.
+        async with self._session.client(  # pyright: ignore[reportGeneralTypeIssues]
             "s3",
             endpoint_url=self._endpoint_url,
             aws_access_key_id=self._access_key_id,

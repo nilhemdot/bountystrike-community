@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import json as _json
 import os
+from datetime import UTC
 from typing import Any
 
 import httpx
@@ -100,13 +101,13 @@ def _parse_retry_after(value: str) -> float | None:
         return min(secs, RETRY_AFTER_CAP_SEC)
     except ValueError:
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
             from email.utils import parsedate_to_datetime
 
             target = parsedate_to_datetime(value)
             if target.tzinfo is None:
-                target = target.replace(tzinfo=timezone.utc)
-            delta = (target - datetime.now(tz=timezone.utc)).total_seconds()
+                target = target.replace(tzinfo=UTC)
+            delta = (target - datetime.now(tz=UTC)).total_seconds()
             if delta < 0:
                 return 0.0
             return min(delta, RETRY_AFTER_CAP_SEC)
@@ -160,7 +161,7 @@ class ImmunefiClient:
         if self._owns_client:
             await self._client.aclose()
 
-    async def __aenter__(self) -> "ImmunefiClient":
+    async def __aenter__(self) -> ImmunefiClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:

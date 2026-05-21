@@ -56,9 +56,7 @@ def _server_supports_subdomain_callbacks(server_url: str) -> bool:
     if host_only in {"localhost", "127.0.0.1", "::1"}:
         return False
     # Bare IP literal (no letters) ⇒ no DNS ⇒ path callback.
-    if all(ch.isdigit() or ch == "." for ch in host_only):
-        return False
-    return True
+    return not all(ch.isdigit() or ch == "." for ch in host_only)
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,7 +128,7 @@ class InteractshClient:
         self._owns_client = http_client is None
         self._token_prefix = token_prefix
 
-    async def __aenter__(self) -> "InteractshClient":
+    async def __aenter__(self) -> InteractshClient:
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=10.0)
             self._owns_client = True
@@ -179,7 +177,7 @@ class InteractshClient:
     async def poll_interactions(
         self,
         token: InteractshToken,
-        timeout: float = 20.0,
+        timeout: float = 20.0,  # noqa: ASYNC109 - timeout is part of the public oracle contract
         interaction_types: tuple[str, ...] = ("http", "dns"),
         poll_interval: float = 1.5,
     ) -> list[Interaction]:

@@ -16,6 +16,7 @@ without R2 secrets stays green. To run locally::
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import uuid
@@ -70,12 +71,10 @@ async def cleanup_keys(store: R2BlobStore):
         yield written
     finally:
         for key in written:
-            try:
+            # Cleanup is best-effort; any error here would mask the
+            # real test failure if we re-raised.
+            with contextlib.suppress(Exception):
                 await store.delete(key)
-            except Exception:  # noqa: BLE001
-                # Cleanup is best-effort; any error here would mask the
-                # real test failure if we re-raised.
-                pass
 
 
 @_skip_if_no_r2

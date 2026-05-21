@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
 from unittest.mock import AsyncMock
 
 import pytest
-
 from dedup_mcp.fingerprint import _normalize_host, _normalize_path, compute_fingerprint
 from dedup_mcp.server import _check_duplicate_impl, _register_finding_impl
-
 
 # ---------------------------------------------------------------------------
 # _normalize_host

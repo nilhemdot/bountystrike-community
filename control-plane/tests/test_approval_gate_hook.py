@@ -7,11 +7,12 @@ from __future__ import annotations
 import importlib.util
 import time
 import uuid
+from dataclasses import replace
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
-
 from control_plane.domains.approval_gate import (
     ApprovalGateService,
     ApprovalRequestStatus,
@@ -25,28 +26,27 @@ from control_plane.domains.approval_gate.value_objects import (
     ApprovalTier,
 )
 
-
 _HOOK_PATH = (
     Path(__file__).resolve().parents[2]
     / ".claude" / "hooks" / "pretool_approval_gate.py"
 )
 
+_BASE_CTX = ApprovalContext(
+    cvss=5.0,
+    similarity=0.10,
+    bug_class="xss",
+    oracle_verdict="validated",
+    evidence_hash_present=True,
+    sandbox_execution=False,
+    hop_count=1,
+    pii_record_count=0,
+    platform="hackerone",
+    tags=frozenset(),
+)
 
-def _ctx(**overrides) -> ApprovalContext:
-    base = dict(
-        cvss=5.0,
-        similarity=0.10,
-        bug_class="xss",
-        oracle_verdict="validated",
-        evidence_hash_present=True,
-        sandbox_execution=False,
-        hop_count=1,
-        pii_record_count=0,
-        platform="hackerone",
-        tags=frozenset(),
-    )
-    base.update(overrides)
-    return ApprovalContext(**base)
+
+def _ctx(**overrides: Any) -> ApprovalContext:
+    return replace(_BASE_CTX, **overrides)
 
 
 def _load_hook_module():
@@ -218,10 +218,10 @@ async def test_service_swallows_cache_publish_errors():
         async def set_status(self, *args, **kwargs):
             raise RuntimeError("cache down")
 
-        async def get_status(self, _fid):
+        async def get_status(self, finding_id):
             return None
 
-        async def clear(self, _fid):
+        async def clear(self, finding_id):
             return None
 
     service = ApprovalGateService(InMemoryApprovalRequestStore(), _Boom())

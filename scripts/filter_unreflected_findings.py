@@ -45,7 +45,6 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import UUID
 
 import asyncpg
-
 from control_plane.domains.recon.probers import HttpxReflectionProber
 
 DEFAULT_CONCURRENCY = 4

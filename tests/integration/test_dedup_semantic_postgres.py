@@ -25,7 +25,6 @@ import os
 import sys
 import uuid
 
-import asyncpg
 import pytest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))

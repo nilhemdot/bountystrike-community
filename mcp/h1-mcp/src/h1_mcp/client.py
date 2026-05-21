@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import json as _json
 import os
+from datetime import UTC
 from typing import Any
 
 import httpx
@@ -106,13 +107,13 @@ def _parse_retry_after(value: str) -> float | None:
     except ValueError:
         # HTTP-date form — try to parse via email.utils.parsedate_to_datetime
         try:
-            from datetime import datetime, timezone
+            from datetime import datetime
             from email.utils import parsedate_to_datetime
 
             target = parsedate_to_datetime(value)
             if target.tzinfo is None:
-                target = target.replace(tzinfo=timezone.utc)
-            delta = (target - datetime.now(tz=timezone.utc)).total_seconds()
+                target = target.replace(tzinfo=UTC)
+            delta = (target - datetime.now(tz=UTC)).total_seconds()
             if delta < 0:
                 return 0.0
             return min(delta, RETRY_AFTER_CAP_SEC)
@@ -169,7 +170,7 @@ class HackerOneClient:
         if self._owns_client:
             await self._client.aclose()
 
-    async def __aenter__(self) -> "HackerOneClient":
+    async def __aenter__(self) -> HackerOneClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:

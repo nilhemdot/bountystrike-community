@@ -41,9 +41,7 @@ import random
 from typing import Literal
 
 import pytest
-
 from control_plane.domains.recon import ScopeFilter
-
 
 # ---------------------------------------------------------------------------
 # Audit corpus
@@ -175,7 +173,6 @@ def _build_corpus(seed: int = 42) -> list[ScanAttempt]:
         for u in _OOS_EXCLUDED_PATH_ON_ALLOWED
     ]
     rows.extend(excluded_path_rows[:8])
-    target_oos = 30 - len(excluded_path_rows[:8])
 
     while len([r for r in rows if r.label == "deny"]) < 30:
         cat, samples = rng.choice(oos_buckets)

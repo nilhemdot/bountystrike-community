@@ -12,9 +12,8 @@ import hashlib
 import re
 from typing import ClassVar, Self
 
-from pydantic import ConfigDict, Field
-
 from control_plane.core.shared import ValueObject
+from pydantic import ConfigDict, Field
 
 _HEX_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _STORAGE_REF_PATTERN = re.compile(r"^sha256:([0-9a-f]{64})$")

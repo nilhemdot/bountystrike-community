@@ -29,7 +29,6 @@ from sandbox_mcp.types import (
     MAX_TIMEOUT_SEC,
     RunRequest,
     RunResult,
-    Verdict,
 )
 
 mcp = FastMCP("sandbox-mcp")

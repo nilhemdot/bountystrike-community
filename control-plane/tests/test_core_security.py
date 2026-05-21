@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-from pydantic import BaseModel, ValidationError
-
 from control_plane.core.security import (
     JtiStr,
     NormalizedScore,
@@ -16,6 +12,7 @@ from control_plane.core.security import (
     reject_destructive_payload,
     secure_path,
 )
+from pydantic import BaseModel, ValidationError
 
 
 def test_secure_path_resolves_inside_root(tmp_path):

@@ -8,14 +8,12 @@ spec change — investigate before adjusting expectations.
 from __future__ import annotations
 
 import pytest
-
 from normalize_mcp.cvss_calc import (
     SEVERITY_BANDS,
     compute,
     detect_version,
     severity_from_score,
 )
-
 
 # ---------------------------------------------------------------------------
 # detect_version
@@ -140,7 +138,7 @@ def test_compute_rejects_unknown_prefix() -> None:
 
 
 def test_compute_rejects_malformed_vector() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 - cvss library raises various exception types for malformed input
         # The cvss library raises its own exception type for malformed
         # bodies; we just want to confirm the wrapper does not silently
         # return a 0.0 score.

@@ -63,7 +63,10 @@ def classify_tier(context: ApprovalContext) -> ApprovalTier:
         return ApprovalTier.T3
     if context.bug_class in CREDENTIAL_THEFT_BUG_CLASSES:
         return ApprovalTier.T3
-    if context.platform.lower() == "immunefi" and context.bug_class in SMART_CONTRACT_CRITICAL_BUG_CLASSES:
+    if (
+        context.platform.lower() == "immunefi"
+        and context.bug_class in SMART_CONTRACT_CRITICAL_BUG_CLASSES
+    ):
         return ApprovalTier.T3
     if context.bug_class in PII_BUG_CLASSES and context.pii_record_count > 10:
         return ApprovalTier.T3

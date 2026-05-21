@@ -11,12 +11,10 @@ import uuid
 from unittest.mock import AsyncMock
 
 import pytest
-
 from control_plane.domains.evidence_management.services import (
     ComplianceReport,
     audit_validator_compliance,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. ComplianceReport — invariants on the dataclass.

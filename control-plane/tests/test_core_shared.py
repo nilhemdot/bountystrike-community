@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-
 from control_plane.core.shared import AggregateRoot, DomainEvent, ValueObject
+from pydantic import ValidationError
 
 
 class _Coords(ValueObject):
@@ -32,7 +32,7 @@ class _Cart(AggregateRoot[str]):
 
 def test_value_object_is_frozen():
     a = _Coords(x=1, y=2)
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         a.x = 99  # type: ignore[misc]
 
 
@@ -42,7 +42,9 @@ def test_value_object_equality_by_value():
 
 
 def test_value_object_hashable():
-    pair = {_Coords(x=1, y=2), _Coords(x=1, y=2)}
+    # frozen Pydantic models are hashable at runtime even though BaseModel
+    # declares __hash__ = None in its stubs.
+    pair = {_Coords(x=1, y=2), _Coords(x=1, y=2)}  # pyright: ignore[reportUnhashable]
     assert len(pair) == 1
 
 

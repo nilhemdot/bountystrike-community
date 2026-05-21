@@ -8,7 +8,6 @@ from datetime import date, datetime, timedelta
 import httpx
 import pytest
 import respx
-
 from kev_mcp.cache import KevCache
 from kev_mcp.epss import DEFAULT_EPSS_URL, EpssClient, EpssScore
 from kev_mcp.loader import (
@@ -17,7 +16,6 @@ from kev_mcp.loader import (
     KevEntry,
     _parse_entry,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Loader — _parse_entry

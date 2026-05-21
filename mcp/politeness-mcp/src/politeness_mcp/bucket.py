@@ -15,8 +15,8 @@ Time source is injected so tests run deterministically without sleeping.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 # Backoff window after a 429/503 response.
 BACKOFF_SECONDS = 60.0
@@ -57,7 +57,7 @@ class TokenBucketLimiter:
         self,
         default_rps: float = 5.0,
         time_source: Callable[[], float] | None = None,
-        sleep_fn: Callable[[float], "asyncio.Future"] | None = None,
+        sleep_fn: Callable[[float], asyncio.Future] | None = None,
     ) -> None:
         if default_rps <= 0 or default_rps > MAX_RPS_CEILING:
             raise ValueError(f"default_rps out of range: {default_rps}")

@@ -18,7 +18,8 @@ class HashChainService:
     async def get_latest_chain_hash(self, finding_id: uuid.UUID, conn) -> bytes:
         """Return prev_hash for the next audit entry. Returns b'' for genesis."""
         result = await conn.fetchval(
-            "SELECT chain_hash FROM audit_log WHERE finding_id = $1 ORDER BY created_at DESC LIMIT 1",
+            "SELECT chain_hash FROM audit_log WHERE finding_id = $1"
+            " ORDER BY created_at DESC LIMIT 1",
             finding_id,
         )
         return result or b""
@@ -48,7 +49,10 @@ class HashChainService:
             )
             await conn.execute(
                 """
-                INSERT INTO audit_log (id, finding_id, entry_type, payload, prev_hash, chain_hash, created_at)
+                INSERT INTO audit_log (
+                    id, finding_id, entry_type, payload,
+                    prev_hash, chain_hash, created_at
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 """,
                 entry.id,

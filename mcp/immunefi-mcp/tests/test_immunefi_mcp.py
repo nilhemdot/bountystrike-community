@@ -8,7 +8,6 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-
 from immunefi_mcp.client import (
     DEFAULT_BASE_URL,
     VALID_ASSET_TYPES,
@@ -68,22 +67,22 @@ def test_authed_construction_sets_bearer(client_authed) -> None:
 
 
 def test_severity_set() -> None:
-    assert VALID_SEVERITIES == {
+    assert {
         "informational",
         "low",
         "medium",
         "high",
         "critical",
-    }
+    } == VALID_SEVERITIES
 
 
 def test_asset_type_set() -> None:
-    assert VALID_ASSET_TYPES == {
+    assert {
         "smart_contract",
         "website_and_application",
         "blockchain",
         "other",
-    }
+    } == VALID_ASSET_TYPES
 
 
 # -- validation --
@@ -304,7 +303,7 @@ async def test_override_url_strips_auth_when_host_differs(
     await client_authed.submit_report(**base_kwargs)
     sent = route.calls[0].request
     # CRITICAL: Bearer must be stripped because host != api.immunefi.com
-    assert "authorization" not in {k.lower() for k in sent.headers.keys()}
+    assert "authorization" not in {k.lower() for k in sent.headers}
 
 
 @respx.mock

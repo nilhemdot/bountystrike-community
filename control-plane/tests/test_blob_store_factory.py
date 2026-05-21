@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from control_plane.domains.evidence_management.repositories import (
     LocalFsBlobStore,
     R2BlobStore,
@@ -100,4 +99,5 @@ def test_r2_region_passed_through(monkeypatch):
         "R2_SECRET_ACCESS_KEY": "s",
         "R2_REGION": "wnam",
     })
+    assert isinstance(store, R2BlobStore)
     assert store._region == "wnam"

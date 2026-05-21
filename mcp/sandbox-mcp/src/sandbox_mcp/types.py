@@ -12,7 +12,7 @@ import enum
 from typing import Any
 
 
-class Verdict(str, enum.Enum):
+class Verdict(enum.StrEnum):
     SUCCESS = "success"
     EGRESS_BLOCKED = "egress_blocked"
     TIMEOUT = "timeout"

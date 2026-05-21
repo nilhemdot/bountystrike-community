@@ -15,7 +15,6 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-
 from h1_mcp.client import (
     DEFAULT_BASE_URL,
     H1_SEVERITIES,
@@ -23,7 +22,6 @@ from h1_mcp.client import (
     HackerOneError,
 )
 from h1_mcp.server import _submit_report_impl
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

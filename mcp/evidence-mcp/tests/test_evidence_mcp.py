@@ -8,7 +8,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -186,7 +185,7 @@ async def test_audit_chain_is_hash_chained():
 
     # Verify the chain from genesis.
     prev_hash = b""
-    for i, (entry, payload) in enumerate(zip(entries, payloads)):
+    for i, (entry, payload) in enumerate(zip(entries, payloads, strict=True)):
         expected = _chain_hash(prev_hash, payload)
         assert entry["chain_hash_hex"] == expected.hex(), (
             f"Entry {i}: chain_hash mismatch. "

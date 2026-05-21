@@ -20,10 +20,9 @@ import uuid
 from pathlib import Path
 from typing import ClassVar, Self
 
-from pydantic import ConfigDict, Field
-
 from control_plane.core.security import ProgramHandle, secure_path
 from control_plane.core.shared import ValueObject
+from pydantic import ConfigDict, Field
 
 from .content_hash import ContentHash
 

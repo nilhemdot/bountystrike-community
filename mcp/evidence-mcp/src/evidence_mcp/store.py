@@ -88,15 +88,14 @@ class AuditStore:
 
     async def get_latest_chain_hash(self, finding_id: str) -> bytes:
         """Return the most recent chain_hash for *finding_id*, or ``b''`` for genesis."""
-        async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute(
-                "SELECT chain_hash FROM audit_log "
-                "WHERE finding_id = ? "
-                "ORDER BY created_at DESC, id DESC "
-                "LIMIT 1",
-                (finding_id,),
-            ) as cursor:
-                row = await cursor.fetchone()
+        async with aiosqlite.connect(self.db_path) as db, db.execute(
+            "SELECT chain_hash FROM audit_log "
+            "WHERE finding_id = ? "
+            "ORDER BY created_at DESC, id DESC "
+            "LIMIT 1",
+            (finding_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
         return row[0] if row else b""
 
     async def append(
@@ -121,15 +120,14 @@ class AuditStore:
 
     async def get_chain(self, finding_id: str) -> list[dict]:
         """Return all audit entries for *finding_id* ordered by creation time."""
-        async with aiosqlite.connect(self.db_path) as db:
-            async with db.execute(
-                "SELECT id, entry_type, payload, chain_hash, created_at "
-                "FROM audit_log "
-                "WHERE finding_id = ? "
-                "ORDER BY created_at ASC, id ASC",
-                (finding_id,),
-            ) as cursor:
-                rows = await cursor.fetchall()
+        async with aiosqlite.connect(self.db_path) as db, db.execute(
+            "SELECT id, entry_type, payload, chain_hash, created_at "
+            "FROM audit_log "
+            "WHERE finding_id = ? "
+            "ORDER BY created_at ASC, id ASC",
+            (finding_id,),
+        ) as cursor:
+            rows = await cursor.fetchall()
         return [
             {
                 "id": row[0],

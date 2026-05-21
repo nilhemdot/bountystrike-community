@@ -27,6 +27,7 @@ guard (Layer 1) remain in force regardless.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -138,12 +139,10 @@ class AgentSupervisor:
         timeout = max(2 * self._poll_interval + 1.0, 1.0)
         try:
             await asyncio.wait_for(self._poll_task, timeout=timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._poll_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await self._poll_task
-            except (asyncio.CancelledError, Exception):
-                pass
         self._poll_task = None
 
     # ---- Worker registration --------------------------------------
@@ -170,7 +169,7 @@ class AgentSupervisor:
 
     # ---- Quiescence wait ------------------------------------------
 
-    async def wait_until_quiesced(self, timeout: float | None = None) -> bool:
+    async def wait_until_quiesced(self, timeout: float | None = None) -> bool:  # noqa: ASYNC109 — public API mirrors asyncio.wait_for timeout semantics
         """Return True iff every registered worker has stopped within *timeout*.
 
         "Quiesced" means no live registered tasks: either they finished
@@ -183,7 +182,7 @@ class AgentSupervisor:
                 self._quiesced_event.wait(), timeout=timeout
             )
             return True
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return False
 
     # ---- Polling loop ---------------------------------------------
@@ -204,13 +203,11 @@ class AgentSupervisor:
 
             self._update_quiescence()
 
-            try:
+            with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(
                     self._stop_event.wait(),
                     timeout=self._poll_interval,
                 )
-            except asyncio.TimeoutError:
-                pass
 
     async def _enforce(self, state: KillSwitchState) -> None:
         # Reap anything that completed naturally regardless of state.

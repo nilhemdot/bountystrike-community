@@ -7,14 +7,12 @@ and the end-to-end ReconService.run orchestration.
 
 from __future__ import annotations
 
-import json
 import uuid
 from collections.abc import Iterable
 from unittest.mock import AsyncMock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-
 from control_plane.domains.recon import (
     BinaryRunner,
     KatanaEndpoint,
@@ -29,7 +27,6 @@ from control_plane.domains.recon.tool_runner import (
     _to_httpx_probe,
     _to_katana_endpoint,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. ScopeFilter — allow/deny semantics

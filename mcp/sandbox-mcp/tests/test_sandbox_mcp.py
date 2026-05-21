@@ -11,12 +11,10 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 from unittest.mock import AsyncMock
 
 import pytest
-
-from sandbox_mcp.drivers.docker import DOCKER_FORCE_ENV, DockerDriver
+from sandbox_mcp.drivers.docker import DOCKER_FORCE_ENV
 from sandbox_mcp.drivers.local import (
     DEV_MODE_ENV,
     DEV_MODE_JWT_CLAIM,
@@ -28,7 +26,6 @@ from sandbox_mcp.server import (
     _result_to_dict,
     _run_code_impl,
     _run_poc_template_impl,
-    _select_driver,
 )
 from sandbox_mcp.types import (
     DEFAULT_TIMEOUT_SEC,
@@ -58,7 +55,7 @@ def test_run_request_is_frozen() -> None:
         egress_allowlist=("a",),
         command="echo hi",
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 - dataclass(frozen=True) raises FrozenInstanceError
         # dataclass(frozen=True) raises FrozenInstanceError
         req.command = "rm -rf"  # type: ignore[misc]
 

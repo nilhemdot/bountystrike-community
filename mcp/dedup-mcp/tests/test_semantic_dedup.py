@@ -10,7 +10,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
-
 from dedup_mcp.embedding import EMBEDDING_DIM, build_finding_text
 from dedup_mcp.server import (
     SEMANTIC_DISPLAY_THRESHOLD,
@@ -20,7 +19,6 @@ from dedup_mcp.server import (
     _classify_tier,
     _register_embedding_impl,
 )
-
 
 # ---------------------------------------------------------------------------
 # build_finding_text

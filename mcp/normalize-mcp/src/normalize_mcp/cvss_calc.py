@@ -69,10 +69,7 @@ def compute(vector: str) -> dict:
         ValueError: prefix not recognised, or vector is malformed.
     """
     version = detect_version(vector)
-    if version == "3.1":
-        impl = CVSS3(vector)
-    else:
-        impl = CVSS4(vector)
+    impl = CVSS3(vector) if version == "3.1" else CVSS4(vector)
     # The ``cvss`` library returns a score already rounded per the FIRST
     # spec ("round-up to one decimal"). Re-rounding with Python's
     # banker's-rounding ``round()`` shifts edge values (e.g. 9.05 stays

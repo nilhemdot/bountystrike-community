@@ -11,7 +11,6 @@ import asyncio
 import time
 
 import pytest
-
 from control_plane.domains.safety import (
     AgentSupervisor,
     InMemoryKillSwitchStore,
@@ -25,7 +24,6 @@ from control_plane.domains.safety.services.agent_supervisor import (
     MIN_POLL_INTERVAL_SECONDS,
     _scope_blocked,
 )
-
 
 # Match the supervisor's own poll cadence in tests so we don't add
 # accidental wall-clock dependence; tests that need faster reactivity

@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import pytest
-
 from normalize_mcp.cwe import normalize
-
 
 # ---------------------------------------------------------------------------
 # Numeric / canonical input

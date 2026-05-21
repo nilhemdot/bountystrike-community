@@ -315,7 +315,7 @@ class _FakeStreamingBody:
     def __init__(self, data: bytes) -> None:
         self._data = data
 
-    async def __aenter__(self) -> "_FakeStreamingBody":
+    async def __aenter__(self) -> _FakeStreamingBody:
         return self
 
     async def __aexit__(self, *_: object) -> bool:
@@ -342,27 +342,34 @@ class _FakeS3Client:
             "_Exceptions", (), {"ClientError": _FakeClientError}
         )()
 
-    async def __aenter__(self) -> "_FakeS3Client":
+    async def __aenter__(self) -> _FakeS3Client:
         return self
 
     async def __aexit__(self, *_: object) -> bool:
         return False
 
-    async def put_object(self, *, Bucket: str, Key: str, Body: bytes) -> dict:
+    # boto3-style PascalCase kwargs mirror the real S3 client surface.
+    async def put_object(
+        self,
+        *,
+        Bucket: str,  # noqa: N803 — mirrors boto3 API
+        Key: str,  # noqa: N803
+        Body: bytes,  # noqa: N803
+    ) -> dict:
         self._storage[(Bucket, Key)] = Body
         return {}
 
-    async def get_object(self, *, Bucket: str, Key: str) -> dict:
+    async def get_object(self, *, Bucket: str, Key: str) -> dict:  # noqa: N803
         if (Bucket, Key) not in self._storage:
             raise _FakeClientError("NoSuchKey")
         return {"Body": _FakeStreamingBody(self._storage[(Bucket, Key)])}
 
-    async def head_object(self, *, Bucket: str, Key: str) -> dict:
+    async def head_object(self, *, Bucket: str, Key: str) -> dict:  # noqa: N803
         if (Bucket, Key) not in self._storage:
             raise _FakeClientError("404")
         return {}
 
-    async def delete_object(self, *, Bucket: str, Key: str) -> dict:
+    async def delete_object(self, *, Bucket: str, Key: str) -> dict:  # noqa: N803
         # S3 DeleteObject is idempotent — succeeds whether the key existed.
         self._storage.pop((Bucket, Key), None)
         return {}

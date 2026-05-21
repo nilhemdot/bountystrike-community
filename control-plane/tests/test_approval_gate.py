@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import time
 import uuid
+from dataclasses import replace
+from typing import Any
 
 import pytest
-
 from control_plane.domains.approval_gate import (
     ApprovalContext,
     ApprovalGateService,
@@ -20,22 +21,22 @@ from control_plane.domains.approval_gate import (
     classify_tier,
 )
 
+_BASE_CTX = ApprovalContext(
+    cvss=5.0,
+    similarity=0.10,
+    bug_class="xss",
+    oracle_verdict="validated",
+    evidence_hash_present=True,
+    sandbox_execution=False,
+    hop_count=1,
+    pii_record_count=0,
+    platform="hackerone",
+    tags=frozenset(),
+)
 
-def _ctx(**overrides) -> ApprovalContext:
-    base = dict(
-        cvss=5.0,
-        similarity=0.10,
-        bug_class="xss",
-        oracle_verdict="validated",
-        evidence_hash_present=True,
-        sandbox_execution=False,
-        hop_count=1,
-        pii_record_count=0,
-        platform="hackerone",
-        tags=frozenset(),
-    )
-    base.update(overrides)
-    return ApprovalContext(**base)
+
+def _ctx(**overrides: Any) -> ApprovalContext:
+    return replace(_BASE_CTX, **overrides)
 
 
 # ---------------------------------------------------------------------------

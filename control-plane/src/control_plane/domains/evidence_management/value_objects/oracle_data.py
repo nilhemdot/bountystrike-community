@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
-
 from control_plane.core.shared import ValueObject
+from pydantic import ConfigDict, Field
 
 OracleVerdict = Literal["validated", "unreproducible", "flaky"]
 

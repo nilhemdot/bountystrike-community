@@ -104,11 +104,13 @@ async def oracle_sqli(
     baseline_mean = sum(baseline_times) / len(baseline_times)
     inject_mean = sum(inject_times) / len(inject_times)
 
-    t_stat, p_value = stats.ttest_ind(
+    result = stats.ttest_ind(
         baseline_times,
         inject_times,
         equal_var=False,  # Welch's t-test
     )
+    t_stat = float(result.statistic)
+    p_value = float(result.pvalue)
 
     evidence: dict[str, Any] = {
         "baseline_mean": baseline_mean,

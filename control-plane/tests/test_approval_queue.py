@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from control_plane.domains.approval_gate import (
@@ -25,9 +25,25 @@ from control_plane.domains.approval_gate import (
 )
 from control_plane.domains.approval_gate.queue import _backoff_seconds
 
+if TYPE_CHECKING:
+    import asyncpg
+
 # ---------------------------------------------------------------------------
 # Fake asyncpg.Connection — minimal surface for queue.py
 # ---------------------------------------------------------------------------
+
+
+def _conn() -> asyncpg.Connection:
+    """Create a FakeConnection and present it as asyncpg.Connection to typers.
+
+    Tests still access ``.rows`` etc. by casting back via :func:`_rows`.
+    """
+    return cast("asyncpg.Connection", FakeConnection())
+
+
+def _rows(conn: asyncpg.Connection) -> dict[uuid.UUID, dict[str, Any]]:
+    """Reach into the FakeConnection for inspection in assertions."""
+    return cast(FakeConnection, conn).rows
 
 
 class FakeConnection:
@@ -176,11 +192,11 @@ def test_backoff_caps_at_60s():
 
 @pytest.mark.asyncio
 async def test_enqueue_inserts_pending_row():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2, poc_text="curl ...")
 
-    row = conn.rows[fid]
+    row = _rows(conn)[fid]
     assert row["status"] == "pending"
     assert row["tier"] == "T2"
     assert row["poc_text"] == "curl ..."
@@ -190,20 +206,20 @@ async def test_enqueue_inserts_pending_row():
 
 @pytest.mark.asyncio
 async def test_enqueue_idempotent_on_duplicate():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
-    first_requested = conn.rows[fid]["requested_at"]
+    first_requested = _rows(conn)[fid]["requested_at"]
     await queue_enqueue(conn, fid, ApprovalTier.T2)  # second call
-    assert conn.rows[fid]["requested_at"] == first_requested
+    assert _rows(conn)[fid]["requested_at"] == first_requested
 
 
 @pytest.mark.asyncio
 async def test_enqueue_uses_custom_sla():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2, sla_seconds=10)
-    delta = conn.rows[fid]["expires_at"] - datetime.now(UTC)
+    delta = _rows(conn)[fid]["expires_at"] - datetime.now(UTC)
     assert delta < timedelta(seconds=11)
 
 
@@ -214,14 +230,14 @@ async def test_enqueue_uses_custom_sla():
 
 @pytest.mark.asyncio
 async def test_approve_t2_returns_token():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
 
     token = await queue_approve(conn, fid, "operator-1", reason="pre-prod scan")
 
     assert isinstance(token, uuid.UUID)
-    row = conn.rows[fid]
+    row = _rows(conn)[fid]
     assert row["status"] == "approved"
     assert row["token"] == token
     assert row["approver_id"] == "operator-1"
@@ -230,7 +246,7 @@ async def test_approve_t2_returns_token():
 
 @pytest.mark.asyncio
 async def test_approve_t2_rejects_empty_actor():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
 
@@ -240,7 +256,7 @@ async def test_approve_t2_rejects_empty_actor():
 
 @pytest.mark.asyncio
 async def test_approve_missing_request_raises():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     with pytest.raises(ApprovalQueueError, match="no approval request"):
         await queue_approve(conn, fid, "operator-1")
@@ -248,7 +264,7 @@ async def test_approve_missing_request_raises():
 
 @pytest.mark.asyncio
 async def test_approve_already_approved_rejects():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
     await queue_approve(conn, fid, "operator-1")
@@ -259,15 +275,15 @@ async def test_approve_already_approved_rejects():
 
 @pytest.mark.asyncio
 async def test_approve_expired_drifts_to_expired():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
     # Force expiry
-    conn.rows[fid]["expires_at"] = datetime.now(UTC) - timedelta(seconds=1)
+    _rows(conn)[fid]["expires_at"] = datetime.now(UTC) - timedelta(seconds=1)
 
     with pytest.raises(ApprovalQueueError, match="expired"):
         await queue_approve(conn, fid, "operator-1")
-    assert conn.rows[fid]["status"] == "expired"
+    assert _rows(conn)[fid]["status"] == "expired"
 
 
 # ---------------------------------------------------------------------------
@@ -277,20 +293,20 @@ async def test_approve_expired_drifts_to_expired():
 
 @pytest.mark.asyncio
 async def test_approve_t3_first_approver_pending():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T3)
 
     result = await queue_approve(conn, fid, "operator-1")
 
     assert result is None
-    assert conn.rows[fid]["approver_id"] == "operator-1"
-    assert conn.rows[fid]["status"] == "pending"
+    assert _rows(conn)[fid]["approver_id"] == "operator-1"
+    assert _rows(conn)[fid]["status"] == "pending"
 
 
 @pytest.mark.asyncio
 async def test_approve_t3_two_distinct_actors_clears():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T3)
 
@@ -300,7 +316,7 @@ async def test_approve_t3_two_distinct_actors_clears():
     token = await queue_approve(conn, fid, "operator-2")
 
     assert isinstance(token, uuid.UUID)
-    row = conn.rows[fid]
+    row = _rows(conn)[fid]
     assert row["status"] == "approved"
     assert row["approver_id"] == "operator-1"
     assert row["approver_id_2"] == "operator-2"
@@ -309,7 +325,7 @@ async def test_approve_t3_two_distinct_actors_clears():
 
 @pytest.mark.asyncio
 async def test_approve_t3_same_actor_twice_rejects():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T3)
 
@@ -326,19 +342,19 @@ async def test_approve_t3_same_actor_twice_rejects():
 
 @pytest.mark.asyncio
 async def test_reject_pending_marks_rejected():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
 
     await queue_reject(conn, fid, "operator-1", reason="out of scope")
 
-    assert conn.rows[fid]["status"] == "rejected"
-    assert conn.rows[fid]["reason"] == "out of scope"
+    assert _rows(conn)[fid]["status"] == "rejected"
+    assert _rows(conn)[fid]["reason"] == "out of scope"
 
 
 @pytest.mark.asyncio
 async def test_reject_missing_request_raises():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     with pytest.raises(ApprovalQueueError):
         await queue_reject(conn, fid, "operator-1", reason="x")
@@ -346,7 +362,7 @@ async def test_reject_missing_request_raises():
 
 @pytest.mark.asyncio
 async def test_reject_requires_reason():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
     with pytest.raises(ValueError):
@@ -360,7 +376,7 @@ async def test_reject_requires_reason():
 
 @pytest.mark.asyncio
 async def test_get_returns_entry():
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2, poc_text="curl X")
 
@@ -375,13 +391,13 @@ async def test_get_returns_entry():
 
 @pytest.mark.asyncio
 async def test_get_missing_returns_none():
-    conn = FakeConnection()
+    conn = _conn()
     assert await queue_get(conn, uuid.uuid4()) is None
 
 
 @pytest.mark.asyncio
 async def test_list_pending_filters_by_tier():
-    conn = FakeConnection()
+    conn = _conn()
     fid_t2 = uuid.uuid4()
     fid_t3 = uuid.uuid4()
     await queue_enqueue(conn, fid_t2, ApprovalTier.T2)
@@ -401,7 +417,7 @@ async def test_list_pending_filters_by_tier():
 
 @pytest.mark.asyncio
 async def test_wait_for_approval_returns_token_immediately(monkeypatch):
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
     token = await queue_approve(conn, fid, "operator-1")
@@ -413,7 +429,7 @@ async def test_wait_for_approval_returns_token_immediately(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_wait_for_approval_returns_none_on_rejection(monkeypatch):
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
     await queue_reject(conn, fid, "operator-1", reason="oos")
@@ -424,7 +440,7 @@ async def test_wait_for_approval_returns_none_on_rejection(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_wait_for_approval_returns_none_on_missing():
-    conn = FakeConnection()
+    conn = _conn()
     result = await queue_wait_for_approval(conn, uuid.uuid4(), timeout_seconds=1.0)
     assert result is None
 
@@ -432,7 +448,7 @@ async def test_wait_for_approval_returns_none_on_missing():
 @pytest.mark.asyncio
 async def test_wait_for_approval_times_out(monkeypatch):
     """Timeout returns None without raising."""
-    conn = FakeConnection()
+    conn = _conn()
     fid = uuid.uuid4()
     await queue_enqueue(conn, fid, ApprovalTier.T2)
 

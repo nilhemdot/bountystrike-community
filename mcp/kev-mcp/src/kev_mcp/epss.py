@@ -10,8 +10,8 @@ one query, which keeps the live KEV-merge cheap.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 import httpx
 import structlog

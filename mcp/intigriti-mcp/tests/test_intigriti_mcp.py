@@ -8,7 +8,6 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-
 from intigriti_mcp.client import (
     DEFAULT_BASE_URL,
     VALID_SEVERITIES,
@@ -307,7 +306,7 @@ async def test_override_url_strips_auth_when_host_differs(
     )
     await client.submit_report(**base_kwargs)
     sent = route.calls[0].request
-    assert "authorization" not in {k.lower() for k in sent.headers.keys()}
+    assert "authorization" not in {k.lower() for k in sent.headers}
 
 
 @respx.mock

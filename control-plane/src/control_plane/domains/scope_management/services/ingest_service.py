@@ -482,9 +482,9 @@ async def _upsert_scopes(
 
     # Chunk to stay under the asyncpg/PG 32767-bind-param-per-statement cap.
     # Each row has 8 bound columns; 1000 rows = 8000 params, safe margin.
-    _SCOPE_CHUNK = 1000
-    for start in range(0, len(rows), _SCOPE_CHUNK):
-        chunk = rows[start : start + _SCOPE_CHUNK]
+    scope_chunk = 1000
+    for start in range(0, len(rows), scope_chunk):
+        chunk = rows[start : start + scope_chunk]
         insert_stmt = _dialect_insert(session.bind.dialect, Scope, chunk)  # type: ignore[arg-type]
         update_set = {
             "in_scope": insert_stmt.excluded.in_scope,

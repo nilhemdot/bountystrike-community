@@ -11,14 +11,12 @@ from unittest.mock import patch
 import httpx
 import pytest
 import respx
-
 from yeswehack_mcp.client import (
     DEFAULT_BASE_URL,
     YesWeHackClient,
     YesWeHackError,
 )
 from yeswehack_mcp.server import _submit_report_impl
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

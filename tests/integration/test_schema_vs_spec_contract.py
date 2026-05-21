@@ -114,7 +114,7 @@ def _split_statements(sql: str) -> list[str]:
             splits.append(i + 1)
     splits.append(len(sql))
     statements: list[str] = []
-    for a, b in zip(splits, splits[1:]):
+    for a, b in zip(splits, splits[1:], strict=False):
         chunk = sql[a:b].strip().rstrip(";").strip()
         if chunk:
             statements.append(chunk)

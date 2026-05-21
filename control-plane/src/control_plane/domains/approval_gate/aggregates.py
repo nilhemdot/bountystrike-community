@@ -42,7 +42,7 @@ class ApprovalRequest:
         finding_id: uuid.UUID,
         tier: ApprovalTier,
         now: float | None = None,
-    ) -> "ApprovalRequest":
+    ) -> ApprovalRequest:
         """Factory — sets ``created_at`` and ``expires_at`` from the tier SLA."""
         t = now if now is not None else time.time()
         return cls(

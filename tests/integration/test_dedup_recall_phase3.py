@@ -27,7 +27,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
 from dedup_mcp.recall_fixture import (
     BagOfWordsEmbedder,
     generate_corpus,
