@@ -22,6 +22,11 @@ the loop are logged and the loop continues, because terminating the
 supervisor would silently disable Layer 3 of the kill switch. The hook
 layer (Layer 2, ``pretool_killswitch.py``) and the OpenRouter Bridge
 guard (Layer 1) remain in force regardless.
+
+When a :class:`KillSwitchMonitor` is provided, the supervisor emits
+structured log alerts (to the ``safety.kill_switch.alert`` namespace)
+on state transitions from ``INACTIVE`` to any active tier, meeting the
+build-plan §10.4 <1s alert-latency requirement.
 """
 
 from __future__ import annotations
@@ -29,10 +34,16 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from control_plane.domains.safety.monitoring.kill_switch_monitor import (
+        KillSwitchMonitor,
+    )
 
 from control_plane.domains.safety.services.kill_switch_service import (
     KillSwitchService,
@@ -40,6 +51,7 @@ from control_plane.domains.safety.services.kill_switch_service import (
 from control_plane.domains.safety.value_objects import KillSwitchState
 
 log = structlog.get_logger("safety.agent_supervisor")
+alert_log = structlog.get_logger("safety.kill_switch.alert")
 
 # Build-plan §6.6: 100ms poll cadence keeps Layer-3 latency well below
 # the 5-second exit criterion while staying cheap on Redis.
@@ -84,12 +96,21 @@ class AgentSupervisor:
             ...
         finally:
             await supervisor.stop()
+
+    With monitoring enabled::
+
+        monitor = KillSwitchMonitor(service)
+        supervisor = AgentSupervisor(service, monitor=monitor)
+        await supervisor.start()
+        # Alerts fire automatically on state transitions
     """
 
     def __init__(
         self,
         service: KillSwitchService,
         poll_interval_seconds: float = DEFAULT_POLL_INTERVAL_SECONDS,
+        *,
+        monitor: KillSwitchMonitor | None = None,
     ) -> None:
         if not (
             MIN_POLL_INTERVAL_SECONDS
@@ -103,6 +124,7 @@ class AgentSupervisor:
             )
         self._service = service
         self._poll_interval = poll_interval_seconds
+        self._monitor = monitor
         self._workers: dict[str, _Worker] = {}
         self._poll_task: asyncio.Task[None] | None = None
         self._stop_event = asyncio.Event()
@@ -194,6 +216,15 @@ class AgentSupervisor:
             except Exception as exc:  # noqa: BLE001 — fail-open per §6.6
                 log.error("kill_switch.poll_failed", error=str(exc))
                 state = KillSwitchState.INACTIVE
+
+            # Emit monitoring alert on INACTIVE → ACTIVE transition
+            if (
+                self._monitor is not None
+                and self._last_observed_state == KillSwitchState.INACTIVE
+                and state != KillSwitchState.INACTIVE
+            ):
+                self._emit_alert(state)
+
             self._last_observed_state = state
 
             if state != KillSwitchState.INACTIVE:
@@ -245,6 +276,19 @@ class AgentSupervisor:
             self._quiesced_event.clear()
         else:
             self._quiesced_event.set()
+
+    def _emit_alert(self, state: KillSwitchState) -> None:
+        """Emit structured log alert for kill-switch activation.
+
+        Mirrors :meth:`KillSwitchMonitor._emit_alert` to provide
+        integrated alerting when a monitor is attached to the supervisor.
+        """
+        alert_log.warning(
+            "kill_switch.alert",
+            state=state.value,
+            timestamp=datetime.now(UTC).isoformat(),
+            severity="critical",
+        )
 
 
 __all__ = [

@@ -14,6 +14,7 @@ import pytest
 from control_plane.domains.safety import (
     AgentSupervisor,
     InMemoryKillSwitchStore,
+    KillSwitchMonitor,
     KillSwitchService,
     KillSwitchState,
     WorkerScope,
@@ -438,4 +439,107 @@ async def test_kill_switch_halts_all_workers_within_5_seconds_sla(
                 t.cancel()
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
+        await sup.stop()
+
+
+# ---------------------------------------------------------------------------
+# 10. Monitoring integration — alerts fire on state transitions
+# ---------------------------------------------------------------------------
+
+
+async def test_supervisor_with_monitor_emits_alert_on_activation() -> None:
+    """When a monitor is attached, the supervisor emits alerts on
+    INACTIVE → ACTIVE transitions."""
+    service, store = _make_service()
+    monitor = KillSwitchMonitor(service, poll_interval_seconds=FAST_POLL)
+    sup = AgentSupervisor(
+        service, poll_interval_seconds=FAST_POLL, monitor=monitor
+    )
+
+    alert_count = 0
+    alerted_state = None
+
+    def count_alerts(state: KillSwitchState) -> None:
+        nonlocal alert_count, alerted_state
+        alert_count += 1
+        alerted_state = state
+
+    # Mock the supervisor's _emit_alert method to track calls
+    sup._emit_alert = count_alerts  # type: ignore[method-assign]
+
+    await sup.start()
+    try:
+        # Activate kill switch
+        await store.set_state(KillSwitchState.HALT_ALL, ttl_seconds=300)
+
+        # Wait for supervisor to poll and detect the transition
+        await asyncio.sleep(0.2)
+
+        # Verify alert was emitted
+        assert alert_count == 1, f"Expected 1 alert, got {alert_count}"
+        assert alerted_state == KillSwitchState.HALT_ALL
+    finally:
+        await sup.stop()
+
+
+async def test_supervisor_without_monitor_does_not_emit_alerts() -> None:
+    """When no monitor is attached, the supervisor does not emit alerts."""
+    service, store = _make_service()
+    # No monitor attached
+    sup = AgentSupervisor(service, poll_interval_seconds=FAST_POLL)
+
+    alert_count = 0
+
+    def count_alerts(_: KillSwitchState) -> None:
+        nonlocal alert_count
+        alert_count += 1
+
+    sup._emit_alert = count_alerts  # type: ignore[method-assign]
+
+    await sup.start()
+    try:
+        await store.set_state(KillSwitchState.HALT_ALL, ttl_seconds=300)
+
+        # Wait to ensure no alert is emitted
+        await asyncio.sleep(0.2)
+
+        # Verify no alert was emitted (monitor is None, so _emit_alert check prevents call)
+        assert alert_count == 0, "Alert was emitted without monitor"
+    finally:
+        await sup.stop()
+
+
+async def test_supervisor_only_alerts_on_inactive_to_active_transition() -> None:
+    """Alerts are only emitted when transitioning from INACTIVE to an
+    active state, not on subsequent active → active transitions."""
+    service, store = _make_service()
+    monitor = KillSwitchMonitor(service, poll_interval_seconds=FAST_POLL)
+    sup = AgentSupervisor(
+        service, poll_interval_seconds=FAST_POLL, monitor=monitor
+    )
+
+    alert_count = 0
+
+    def count_alerts(_: KillSwitchState) -> None:
+        nonlocal alert_count
+        alert_count += 1
+
+    sup._emit_alert = count_alerts  # type: ignore[method-assign]
+
+    await sup.start()
+    try:
+        # First transition: INACTIVE → HALT_SUBMISSIONS
+        await store.set_state(
+            KillSwitchState.HALT_SUBMISSIONS, ttl_seconds=300
+        )
+        await asyncio.sleep(0.2)
+        assert alert_count == 1, "Expected initial alert"
+
+        # Second transition: HALT_SUBMISSIONS → HALT_ALL (no new alert)
+        await store.set_state(KillSwitchState.HALT_ALL, ttl_seconds=300)
+        await asyncio.sleep(0.2)
+        assert alert_count == 1, (
+            "Alert emitted on active → active transition"
+        )
+    finally:
         await sup.stop()
