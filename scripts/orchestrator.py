@@ -66,6 +66,10 @@ from control_plane.domains.evidence_management.services import (  # noqa: E402
     audit_validator_compliance,
 )
 
+# Dedup store for fingerprint-based and semantic duplicate detection.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp", "dedup-mcp", "src"))
+from dedup_mcp.store import DedupStore  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -473,6 +477,16 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
     dsn = database_url.replace("+asyncpg", "")
     conn: asyncpg.Connection = await asyncpg.connect(dsn)
 
+    # Initialize DedupStore for fingerprint-based and semantic dedup checks.
+    # Agents access it via MCP; orchestrator may use it directly for
+    # pre-exploit filtering or post-validation registration in future phases.
+    dedup_store: DedupStore | None = None
+    try:
+        dedup_store = await DedupStore.create(dsn)
+        _log("DedupStore initialized")
+    except Exception as exc:
+        _log(f"WARNING: DedupStore initialization failed: {exc} — continuing without dedup")
+
     try:
         scope_jwt_jti = _jwt_jti(scope_jwt)
         job_id = await _create_scan_job(conn, program_handle, platform, scope_jwt_jti)
@@ -699,6 +713,8 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
         )
 
     finally:
+        if dedup_store is not None:
+            await dedup_store.close()
         await conn.close()
 
 

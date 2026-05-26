@@ -11,8 +11,16 @@
 #   httpx      v1.6.9   HTTP probe + tech fingerprint
 #   katana     v1.1.2   endpoint crawler with form extraction
 #
+# Multi-arch support: This Dockerfile builds for linux/amd64 and linux/arm64.
+# Go binaries are compiled natively for each target platform. BuildKit cache
+# mounts use sharing=locked to prevent cross-platform cache corruption.
+#
 # Build (from repo root):
 #   docker build -f infra/docker/Dockerfile.recon -t bs-recon:dev .
+#
+# Multi-arch build:
+#   docker buildx build --platform linux/amd64,linux/arm64 \
+#     -f infra/docker/Dockerfile.recon -t bs-recon:dev --push .
 #
 # Run (one-shot — orchestrator wires the env):
 #   docker run --rm \
@@ -44,9 +52,10 @@ RUN mkdir -p /out
 # BuildKit cache mounts on /go/pkg/mod (module download) and
 # /root/.cache/go-build (compile cache) persist across builds. Layer
 # cache misses (version bumps, base image rotates) no longer force a
-# full re-download / re-compile of upstream Go deps.
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
+# full re-download / re-compile of upstream Go deps. sharing=locked
+# prevents cross-platform cache corruption during multi-arch builds.
+RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+    --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     CGO_ENABLED=0 go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@v2.6.6 && \
     CGO_ENABLED=0 go install github.com/projectdiscovery/httpx/cmd/httpx@v1.6.9
 
@@ -58,8 +67,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # (`-linkmode external -extldflags -static`) so the output binary is
 # still copyable into the glibc runtime stage as a self-contained
 # executable with no shared-library deps.
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+    --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     CGO_ENABLED=1 go install \
     -ldflags '-linkmode external -extldflags "-static"' \
     github.com/projectdiscovery/katana/cmd/katana@v1.1.2
@@ -129,9 +138,10 @@ ENV UV_COMPILE_BYTECODE=1 \
 #
 # Cache mount on uv's wheel cache persists across rebuilds — even when
 # uv.lock changes invalidate this layer, wheel downloads stay cached.
+# sharing=locked prevents cross-platform cache corruption.
 COPY --chown=recon:recon uv.lock pyproject.toml /home/recon/app/
 COPY --chown=recon:recon control-plane/pyproject.toml /home/recon/app/control-plane/pyproject.toml
-RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000 \
+RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000,sharing=locked \
     cd /home/recon/app/control-plane && \
     uv sync --frozen --no-dev --no-install-workspace
 
@@ -142,7 +152,7 @@ RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000 \
 # which is fast because every wheel it would otherwise re-download
 # is already in Layer A's `.venv`.
 COPY --chown=recon:recon control-plane /home/recon/app/control-plane
-RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000 \
+RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000,sharing=locked \
     cd /home/recon/app/control-plane && uv sync --frozen --no-dev
 
 # Sanity check: the harness module must be importable in the final image.

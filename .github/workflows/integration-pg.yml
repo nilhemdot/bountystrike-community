@@ -126,5 +126,8 @@ jobs:
               -v ON_ERROR_STOP=1 -f "$f"
           done
 
+      - name: Run schema-Pydantic contract test
+        run: uv run --frozen pytest tests/integration/test_schema_pydantic_contract.py -q --no-header
+
       - name: Run integration suite
         run: uv run --frozen pytest tests/integration -q --no-header
