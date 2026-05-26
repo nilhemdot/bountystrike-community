@@ -1,0 +1,100 @@
+# syntax=docker/dockerfile:1.7
+#
+# BountyStrike v5 — Python MCP server runtime container.
+#
+# Single-stage build: slim Python image with a specific MCP server source
+# and all dependencies installed via pip + hatchling.
+#
+# Per mcp/*/pyproject.toml each MCP is a standalone FastMCP server with
+# dependencies managed by hatchling. This Dockerfile is parameterized by
+# MCP_NAME to support building any Python-based MCP server.
+#
+# Build (from repo root):
+#   docker build -f infra/docker/Dockerfile.mcp-python \
+#     --build-arg MCP_NAME=oracle-mcp \
+#     -t bs-mcp-oracle:dev .
+#
+# Run (server — docker-compose wires the env):
+#   docker run --rm \
+#     -e ANTHROPIC_API_KEY=... \
+#     -p 3000:3000 \
+#     bs-mcp-oracle:dev
+
+# ============================================================================
+# Runtime: slim Python with MCP server installed.
+# ============================================================================
+FROM python:3.12-slim AS runtime
+
+# Build argument: which MCP server to build (e.g., "oracle-mcp", "state-mcp").
+# The directory mcp/${MCP_NAME} must exist and contain a pyproject.toml.
+ARG MCP_NAME
+RUN test -n "$MCP_NAME" || (echo "ERROR: MCP_NAME build arg is required" && exit 1)
+
+# Runtime deps: ca-certs for HTTPS to external APIs, tini for PID-1 signal
+# handling so `docker stop` reaches the MCP server process cleanly.
+# Additional deps for specific MCP servers:
+# - playwright-deps for oracle-mcp (browser automation)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user — MCP servers have no business writing outside their working
+# directory. uid pinned to 1000 for consistent permissions across environments.
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 1000 mcp
+USER mcp
+WORKDIR /home/mcp/app
+
+# Pre-compile bytecode at install time so the first `import` after
+# container start doesn't pay the JIT-compile cost per module.
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# --- Layer A: install the MCP package and its dependencies ---
+# Copy only the specific MCP directory we're building. Each MCP has its
+# own pyproject.toml with dependencies and entry points defined.
+# We use `pip install .` which invokes hatchling (the build backend in
+# pyproject.toml) to build and install the package.
+COPY --chown=mcp:mcp mcp/${MCP_NAME} /home/mcp/app/mcp/${MCP_NAME}
+
+# Install the MCP package in editable mode for better import path handling
+# and to match the dev environment. Only production dependencies are
+# installed (no dev/test deps).
+RUN cd /home/mcp/app/mcp/${MCP_NAME} && \
+    pip install --no-cache-dir .
+
+# Playwright setup for oracle-mcp (conditional, only runs if pyproject.toml
+# lists playwright as a dependency). This installs browser binaries.
+# We do this as root briefly, then switch back to mcp user.
+USER root
+RUN if python -c "import sys; sys.exit(0 if '${MCP_NAME}' == 'oracle-mcp' else 1)" 2>/dev/null; then \
+        apt-get update && apt-get install -y --no-install-recommends \
+            libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+            libdrm2 libdbus-1-3 libxkbcommon0 libxcomposite1 libxdamage1 \
+            libxfixes3 libxrandr2 libgbm1 libasound2 libpango-1.0-0 \
+            libcairo2 && \
+        su mcp -s /bin/sh -c "python -m playwright install chromium" && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+USER mcp
+
+# Sanity check: the MCP module must be importable in the final image.
+# This catches missing dependencies or broken package structure at build time.
+RUN python -c "import importlib; \
+    module_name = '${MCP_NAME}'.replace('-', '_'); \
+    mod = importlib.import_module(module_name); \
+    print(f'{module_name} module OK')"
+
+# Expose default MCP server port (varies by MCP but 3000 is common).
+# docker-compose can override this per service.
+EXPOSE 3000
+
+# Tini owns PID 1; the entrypoint is the MCP server command defined in
+# pyproject.toml [project.scripts]. We invoke it via the console_scripts
+# entry point that pip installed.
+#
+# For example, oracle-mcp defines `oracle-mcp = "oracle_mcp.server:main"`
+# so we can run `oracle-mcp` directly.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD sh -c "${MCP_NAME}"

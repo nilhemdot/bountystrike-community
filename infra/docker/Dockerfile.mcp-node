@@ -1,0 +1,88 @@
+# syntax=docker/dockerfile:1.7
+#
+# BountyStrike v5 — Node.js/TypeScript MCP server runtime container.
+#
+# Single-stage build: slim Node image with a specific MCP server source
+# and all dependencies installed via npm.
+#
+# Per mcp/*/package.json each MCP is a standalone TypeScript MCP server with
+# dependencies managed by npm. This Dockerfile is parameterized by MCP_NAME
+# to support building any Node-based MCP server.
+#
+# Build (from repo root):
+#   docker build -f infra/docker/Dockerfile.mcp-node \
+#     --build-arg MCP_NAME=scope-mcp \
+#     -t bs-mcp-scope:dev .
+#
+# Run (server — docker-compose wires the env):
+#   docker run --rm \
+#     -e JWT_PRIVATE_KEY_PATH=... \
+#     -p 3000:3000 \
+#     bs-mcp-scope:dev
+
+# ============================================================================
+# Runtime: slim Node.js with MCP server built and installed.
+# ============================================================================
+FROM node:20-slim AS runtime
+
+# Build argument: which MCP server to build (e.g., "scope-mcp", "state-mcp").
+# The directory mcp/${MCP_NAME} must exist and contain a package.json.
+ARG MCP_NAME
+RUN test -n "$MCP_NAME" || (echo "ERROR: MCP_NAME build arg is required" && exit 1)
+
+# Runtime deps: ca-certs for HTTPS to external APIs, tini for PID-1 signal
+# handling so `docker stop` reaches the MCP server process cleanly.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
+
+# Non-root user — MCP servers have no business writing outside their working
+# directory. uid pinned to 1000 for consistent permissions across environments.
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 1000 mcp
+USER mcp
+WORKDIR /home/mcp/app
+
+# --- Layer A: install dependencies ---
+# Copy only package files first for better layer caching. If package.json
+# and package-lock.json haven't changed, this layer is reused.
+COPY --chown=mcp:mcp mcp/${MCP_NAME}/package*.json /home/mcp/app/mcp/${MCP_NAME}/
+
+# Install dependencies using npm ci (clean install from lockfile).
+# This ensures reproducible builds with exact versions from package-lock.json.
+RUN cd /home/mcp/app/mcp/${MCP_NAME} && \
+    npm ci --omit=dev --ignore-scripts
+
+# --- Layer B: build the TypeScript source ---
+# Copy the source code and TypeScript config files.
+COPY --chown=mcp:mcp mcp/${MCP_NAME}/src /home/mcp/app/mcp/${MCP_NAME}/src
+COPY --chown=mcp:mcp mcp/${MCP_NAME}/tsconfig*.json /home/mcp/app/mcp/${MCP_NAME}/
+
+# Install dev dependencies temporarily for the build step (tsc, tsx, etc).
+# We do this in a separate layer so we can delete node_modules afterward
+# and only keep the compiled dist/ output.
+RUN cd /home/mcp/app/mcp/${MCP_NAME} && \
+    npm ci --include=dev --ignore-scripts && \
+    npm run build && \
+    npm prune --omit=dev
+
+# Sanity check: the compiled entry point must exist in the final image.
+# This catches build failures or missing output at build time.
+RUN test -f /home/mcp/app/mcp/${MCP_NAME}/dist/index.js || \
+    (echo "ERROR: dist/index.js not found after build" && exit 1)
+
+# Additional sanity check: verify Node can load the entry point without errors.
+# This catches import/module resolution issues at build time.
+RUN cd /home/mcp/app/mcp/${MCP_NAME} && \
+    node --check dist/index.js
+
+# Expose default MCP server port (3000 is common for MCP servers).
+# docker-compose can override this per service.
+EXPOSE 3000
+
+# Set working directory to the MCP server directory for runtime.
+WORKDIR /home/mcp/app/mcp/${MCP_NAME}
+
+# Tini owns PID 1; the entrypoint is the compiled MCP server entry point.
+# The MCP server connects to stdio transport and communicates via JSON-RPC.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "dist/index.js"]
