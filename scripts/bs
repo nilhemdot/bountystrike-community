@@ -6,6 +6,7 @@
 # map 1:1 to script filenames so `git grep` finds either.
 #
 # Usage:
+#   scripts/bs init
 #   scripts/bs metrics [--weeks 4 --json]
 #   scripts/bs cost-audit
 #   scripts/bs onboard [hunter args]
@@ -27,6 +28,7 @@ usage() {
 bs — BountyStrike operator CLI
 
 Subcommands:
+  init                 interactive onboarding wizard for new hunters
   metrics              Phase 3 exit-criteria dashboard
   cost-audit           per-job LLM-spend audit
   onboard              register a hunter in the operators table
@@ -52,6 +54,7 @@ fi
 sub="$1"; shift
 
 case "$sub" in
+    init)               target="scripts/init_wizard.py" ;;
     metrics)            target="scripts/metrics.py" ;;
     cost-audit)         target="scripts/cost_audit.py" ;;
     onboard)            target="scripts/onboard_hunter.py" ;;

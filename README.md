@@ -38,6 +38,12 @@ operator → JWT →  │   recon  approval_gate  evidence  EV    │ ← Postgr
 
 Requires Python ≥3.12, Docker, [`uv`](https://docs.astral.sh/uv/), and `openssl` for keygen. Full prerequisites in [`docs/research/05-deployment.md`](docs/research/05-deployment.md).
 
+> **New to BountyStrike?** Run the interactive setup wizard — it walks through environment configuration, API key setup, JWT keypair generation, and a guided first-scan walkthrough:
+> ```bash
+> scripts/bs init
+> ```
+> The wizard can be re-run anytime to update configuration: `scripts/bs init --update`.
+
 ```bash
 # 1. Clone + sync workspace
 git clone <repo> bountystrike-v5 && cd bountystrike-v5
