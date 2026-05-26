@@ -10,6 +10,8 @@ Usage:
     python scripts/cost_audit.py --operator alice
     python scripts/cost_audit.py --job <UUID>          # one job, with model breakdown
     python scripts/cost_audit.py --summary             # just the headline numbers
+    python scripts/cost_audit.py --by-task-type        # cost breakdown by task type
+    python scripts/cost_audit.py --by-task-type --summary  # aggregated summary only
 
 Environment:
     DATABASE_URL  postgresql[+asyncpg]://...   (required)
@@ -50,6 +52,24 @@ WHERE ($1::timestamptz IS NULL OR started_at >= $1)
   AND ($2::text        IS NULL OR operator_id = $2)
 ORDER BY started_at DESC
 LIMIT 200
+"""
+
+SQL_BY_TASK_TYPE = """
+SELECT
+    mc.task_type,
+    COUNT(*)                           AS invocation_count,
+    COALESCE(SUM(mc.cost_usd), 0)      AS total_cost_usd,
+    COALESCE(AVG(mc.cost_usd), 0)      AS avg_cost_usd,
+    COALESCE(SUM(mc.tokens_in), 0)     AS total_tokens_in,
+    COALESCE(SUM(mc.tokens_out), 0)    AS total_tokens_out,
+    COUNT(DISTINCT mc.model)           AS models_used,
+    MIN(mc.ts)                         AS first_seen_at,
+    MAX(mc.ts)                         AS last_seen_at
+FROM model_costs mc
+WHERE ($1::timestamptz IS NULL OR mc.ts >= $1)
+  AND ($2::text        IS NULL OR mc.task_type = $2)
+GROUP BY mc.task_type
+ORDER BY total_cost_usd DESC NULLS LAST
 """
 
 SQL_ONE_JOB_BREAKDOWN = """
@@ -138,11 +158,67 @@ async def cmd_one(conn: asyncpg.Connection, args: argparse.Namespace) -> int:
     return 0
 
 
+async def cmd_by_task_type(conn: asyncpg.Connection, args: argparse.Namespace) -> int:
+    since: datetime | None = None
+    if args.since is not None:
+        since = datetime.now(UTC) - timedelta(days=args.since)
+
+    task_filter: str | None = args.task_type if args.task_type else None
+    rows = await conn.fetch(SQL_BY_TASK_TYPE, since, task_filter)
+    if not rows:
+        print("(no model_costs entries in window)")
+        return 0
+
+    # --summary: aggregated headline only
+    if args.summary:
+        total_cost = sum(float(r["total_cost_usd"] or 0.0) for r in rows)
+        total_invocations = sum(int(r["invocation_count"] or 0) for r in rows)
+        avg = total_cost / total_invocations if total_invocations else 0.0
+        print(
+            f"task_types={len(rows)}  invocations={total_invocations}  "
+            f"total=${total_cost:.4f}  avg_per_call=${avg:.4f}"
+        )
+        return 0
+
+    # Full table
+    print(
+        f"{'task_type':<28} {'calls':>6} {'total':>10} {'avg':>10} "
+        f"{'tok_in':>10} {'tok_out':>10} {'models':>6}"
+    )
+    print("-" * 90)
+
+    total_cost = 0.0
+    total_invocations = 0
+    for r in rows:
+        cost = float(r["total_cost_usd"] or 0.0)
+        calls = int(r["invocation_count"] or 0)
+        total_cost += cost
+        total_invocations += calls
+        avg = float(r["avg_cost_usd"] or 0.0)
+        print(
+            f"{(r['task_type'] or '-'):<28} {calls:>6} "
+            f"${cost:>8.4f} ${avg:>8.4f} "
+            f"{int(r['total_tokens_in'] or 0):>10} "
+            f"{int(r['total_tokens_out'] or 0):>10} "
+            f"{int(r['models_used'] or 0):>6}"
+        )
+
+    overall_avg = total_cost / total_invocations if total_invocations else 0.0
+    print("-" * 90)
+    print(
+        f"task_types={len(rows)}  invocations={total_invocations}  "
+        f"total=${total_cost:.4f}  avg_per_call=${overall_avg:.4f}"
+    )
+    return 0
+
+
 async def _main(args: argparse.Namespace) -> int:
     conn = await asyncpg.connect(_get_dsn())
     try:
         if args.job:
             return await cmd_one(conn, args)
+        if args.by_task_type:
+            return await cmd_by_task_type(conn, args)
         return await cmd_list(conn, args)
     finally:
         await conn.close()
@@ -156,6 +232,22 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--since", type=int, default=7, help="last N days (default 7)")
     p.add_argument("--operator", help="filter by operator_id")
     p.add_argument("--job", help="show per-model breakdown for one scan_job UUID")
+    p.add_argument(
+        "--by-task-type",
+        action="store_true",
+        default=False,
+        help="show cost breakdown by task type (uses model_costs.task_type)",
+    )
+    p.add_argument(
+        "--task-type",
+        help="filter results to a specific task type (used with --by-task-type)",
+    )
+    p.add_argument(
+        "--summary",
+        action="store_true",
+        default=False,
+        help="print only headline numbers",
+    )
     return p
 
 

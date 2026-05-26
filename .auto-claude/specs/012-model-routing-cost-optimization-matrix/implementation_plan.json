@@ -1,0 +1,403 @@
+{
+  "feature": "Model Routing Cost Optimization Matrix",
+  "workflow_type": "feature",
+  "workflow_rationale": "Multi-component feature requiring backend routing logic, orchestrator integration, cost tracking enhancement, and CLI interface. Follows service dependency order: routing core → orchestrator integration → cost reporting.",
+  "phases": [
+    {
+      "id": "phase-1-routing-core",
+      "name": "Routing Matrix Core",
+      "type": "implementation",
+      "description": "Build the core model routing matrix with 16 task types mapped to 4 cost tiers",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Create cost_tiers.py with 4-tier model definitions (frontier/mid/fast/minimal)",
+          "service": "control-plane",
+          "files_to_modify": [],
+          "files_to_create": [
+            "control-plane/src/control_plane/core/routing/cost_tiers.py",
+            "control-plane/src/control_plane/core/routing/__init__.py"
+          ],
+          "patterns_from": [
+            "control-plane/src/control_plane/core/shared/value_object.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python -c \"from control_plane.core.routing.cost_tiers import CostTier; print('OK')\"",
+            "expected": "OK"
+          },
+          "status": "completed",
+          "notes": "Created cost_tiers.py with 4-tier model definitions (FRONTIER/MID/FAST/MINIMAL). Implemented ModelDefinition ValueObject with pricing, fallbacks, and context windows for 9 models across all tiers. Verification passed successfully.",
+          "updated_at": "2026-05-26T19:05:15.606086+00:00"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Create model_router.py with routing logic mapping task types to models",
+          "service": "control-plane",
+          "files_to_modify": [],
+          "files_to_create": [
+            "control-plane/src/control_plane/core/routing/model_router.py"
+          ],
+          "patterns_from": [
+            "docs/research/02-routing-ev.md"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python -c \"from control_plane.core.routing.model_router import ModelRouter; r = ModelRouter(); print(r.get_model_for_task('bulk_triage_dedup'))\"",
+            "expected": "deepseek/deepseek-v4-flash"
+          },
+          "status": "completed",
+          "notes": "Created model_router.py with ModelRouter class mapping 16 task types to optimal models across 4 cost tiers (FRONTIER/MID/FAST/MINIMAL). Implemented get_model_for_task(), get_model_definition(), estimate_cost() methods with support for operator overrides. Updated __init__.py to export ModelRouter. Verification passed successfully: bulk_triage_dedup correctly routes to deepseek/deepseek-v4-flash.",
+          "updated_at": "2026-05-26T19:20:00.000000+00:00"
+        },
+        {
+          "id": "subtask-1-3",
+          "description": "Create routing_config.py for operator-specific overrides",
+          "service": "control-plane",
+          "files_to_modify": [],
+          "files_to_create": [
+            "control-plane/src/control_plane/core/routing/routing_config.py"
+          ],
+          "patterns_from": [
+            "control-plane/src/control_plane/domains/scope_management/services/jwt_issuer.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python -c \"from control_plane.core.routing.routing_config import RoutingConfig; print('OK')\"",
+            "expected": "OK"
+          },
+          "status": "completed",
+          "notes": "Created RoutingConfig class for operator-specific model overrides. Implements environment variable loading (MODEL_OVERRIDE_<task_type>=<model_id>), task type validation against routing matrix, and clean interface for ModelRouter integration. Updated __init__.py to export RoutingConfig, ENV_PREFIX, and load_routing_config. All import and functional tests pass successfully.",
+          "updated_at": "2026-05-26T19:35:00.000000+00:00"
+        },
+        {
+          "id": "subtask-1-4",
+          "description": "Add unit tests for model router",
+          "service": "control-plane",
+          "files_to_modify": [],
+          "files_to_create": [
+            "control-plane/tests/test_model_router.py"
+          ],
+          "patterns_from": [
+            "control-plane/tests/test_evidence_chain.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "uv run --package control-plane pytest control-plane/tests/test_model_router.py -v",
+            "expected": "All tests pass"
+          },
+          "status": "completed",
+          "notes": "Created test_model_router.py with 49 unit tests covering: CostTier enum, ModelDefinition immutability, tier registries, get_model_by_tier, full 16-task routing matrix, operator overrides, get_model_definition, cost estimation, RoutingConfig env loading, validation, query helpers, factory function, whitespace stripping, copy semantics, tier coverage, fallbacks, free models, classvar verification. All 49 tests pass.",
+          "updated_at": "2026-05-26T20:38:05.046659+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-orchestrator-integration",
+      "name": "Orchestrator Integration",
+      "type": "implementation",
+      "description": "Integrate routing matrix into orchestrator to select models per agent task",
+      "depends_on": [
+        "phase-1-routing-core"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Add model selection logic to orchestrator based on task type",
+          "service": "orchestrator",
+          "files_to_modify": [
+            "scripts/orchestrator.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "control-plane/src/control_plane/core/routing/model_router.py"
+          ],
+          "verification": {
+            "type": "manual",
+            "instructions": "Run orchestrator with DRYRUN=1 and verify model selection logs show correct routing"
+          },
+          "status": "completed",
+          "notes": "Added model routing to orchestrator: _AGENT_TASK_TYPE mapping (5 agents → task types), _init_model_router() with RoutingConfig override loading, _select_model() with logging, model_id parameter on _run_agent/phase functions, CLAUDE_MODEL env var injection. All routing verified: recon→gemini-3.1-pro, scanner→haiku-4-5, exploit→qwen3-coder, validator→opus-4-7, reporter→sonnet-4-6. Compilation verified.",
+          "updated_at": "2026-05-26T20:51:37.822593+00:00"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Add MODEL_OVERRIDE env var support for operator overrides",
+          "service": "orchestrator",
+          "files_to_modify": [
+            "scripts/orchestrator.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "scripts/orchestrator.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "MODEL_OVERRIDE_recon=anthropic/claude-opus-4-7 python -c \"import os; print(os.environ.get('MODEL_OVERRIDE_recon'))\"",
+            "expected": "anthropic/claude-opus-4-7"
+          },
+          "status": "completed",
+          "notes": "Added MODEL_OVERRIDE_<task_type> documentation to orchestrator docstring. The _init_model_router() already loads/applies overrides via RoutingConfig with runtime logging and graceful fallback. Verification passed: MODEL_OVERRIDE_recon env var correctly readable.",
+          "updated_at": "2026-05-26T20:56:17.884160+00:00"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Update agent launch to pass selected model via environment",
+          "service": "orchestrator",
+          "files_to_modify": [
+            "scripts/orchestrator.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "scripts/orchestrator.py"
+          ],
+          "verification": {
+            "type": "manual",
+            "instructions": "Launch recon agent and verify CLAUDE_MODEL env var is set"
+          },
+          "status": "completed",
+          "notes": "Verified: _run_agent() already accepts model_id param and sets CLAUDE_MODEL in merged_env (line 306). All 5 agent launch sites pass model_id through _run_agent. No code changes needed — implementation was completed as part of subtask-2-1.",
+          "updated_at": "2026-05-26T21:00:00.000000+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-cost-tracking",
+      "name": "Enhanced Cost Tracking",
+      "type": "implementation",
+      "description": "Enhance cost tracking to record task type and model per invocation",
+      "depends_on": [
+        "phase-1-routing-core"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Add task_type column to model_costs table",
+          "service": "control-plane",
+          "files_to_modify": [],
+          "files_to_create": [
+            "infra/sql/09_model_routing_tracking.sql"
+          ],
+          "patterns_from": [
+            "infra/sql/07_phase3_calibration.sql"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "psql $DATABASE_URL -c \"\\d model_costs\" | grep task_type",
+            "expected": "task_type column exists"
+          },
+          "status": "completed",
+          "notes": "Created infra/sql/09_model_routing_tracking.sql adding task_type TEXT column to model_costs with IF NOT EXISTS idempotency. Added idx_model_costs_task_type_ts index on (task_type, ts DESC) for cost-by-task-type reporting. Committed as 87d4659.",
+          "updated_at": "2026-05-26T21:05:00.000000+00:00"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Create v_cost_by_task_type view for reporting",
+          "service": "control-plane",
+          "files_to_modify": [
+            "infra/sql/09_model_routing_tracking.sql"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "infra/sql/07_phase3_calibration.sql"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "psql $DATABASE_URL -c \"SELECT * FROM v_cost_by_task_type LIMIT 1\"",
+            "expected": "Query succeeds"
+          },
+          "status": "completed",
+          "notes": "Created v_cost_by_task_type view aggregating model_costs by task_type and model with invocation_count, total_cost_usd, avg_cost_usd, token usage, min/max timestamps. Fixed column names to use tokens_in/tokens_out (actual schema column names). Committed as 1676bd2.",
+          "updated_at": "2026-05-26T21:09:52.440740+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-cli-reporting",
+      "name": "CLI Cost Reporting",
+      "type": "implementation",
+      "description": "Add CLI command for cost breakdown by task type and model",
+      "depends_on": [
+        "phase-3-cost-tracking"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Extend cost_audit.py with --by-task-type flag",
+          "service": "orchestrator",
+          "files_to_modify": [
+            "scripts/cost_audit.py"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "scripts/cost_audit.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python scripts/cost_audit.py --by-task-type --summary",
+            "expected": "Shows cost breakdown by task type"
+          },
+          "status": "completed",
+          "notes": "Added --by-task-type, --task-type, and --summary flags. New cmd_by_task_type() handler queries model_costs grouped by task_type with invocation_count, total/avg cost, token usage, and distinct models. Wired into _main() dispatch. Supports --since filtering. Syntax verified, argument parsing verified, help output confirmed. Committed as 11d6163.",
+          "updated_at": "2026-05-26T21:15:33.205953+00:00"
+        },
+        {
+          "id": "subtask-4-2",
+          "description": "Add bountystrike cost-report alias script",
+          "service": "orchestrator",
+          "files_to_modify": [],
+          "files_to_create": [
+            "scripts/cost_report.sh"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "bash scripts/cost_report.sh --help",
+            "expected": "Shows help text"
+          },
+          "status": "completed",
+          "notes": "Created scripts/cost_report.sh as a thin wrapper over cost_audit.py --by-task-type. Shows custom help with usage examples, forwards all args, uses uv when available. Verification passed. Committed as 1796b66.",
+          "updated_at": "2026-05-26T21:19:50.945493+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-integration",
+      "name": "Integration Testing",
+      "type": "integration",
+      "description": "End-to-end verification of model routing with cost tracking",
+      "depends_on": [
+        "phase-2-orchestrator-integration",
+        "phase-4-cli-reporting"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Run full scan with routing enabled and verify cost < $0.20 per target",
+          "all_services": true,
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Launch orchestrator with test program",
+              "Verify each agent uses correct model tier",
+              "Check model_costs table has task_type populated",
+              "Run cost-report and verify avg cost ≤ $0.20"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 5,
+    "total_subtasks": 12,
+    "services_involved": [
+      "control-plane",
+      "orchestrator"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 2,
+      "parallel_groups": [
+        {
+          "phases": [
+            "phase-1-routing-core",
+            "phase-3-cost-tracking"
+          ],
+          "reason": "No file conflicts; routing logic and database changes are independent"
+        }
+      ],
+      "recommended_workers": 1,
+      "speedup_estimate": "1.3x faster with phase-1 and phase-3 parallel"
+    }
+  },
+  "verification_strategy": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration"
+    ],
+    "security_scanning_required": false,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "All 16 task types map to correct cost tier",
+      "Orchestrator selects models based on task type",
+      "Cost tracking records task_type per invocation",
+      "CLI cost report shows breakdown by task type",
+      "Average cost per target ≤ $0.20"
+    ],
+    "verification_steps": [
+      {
+        "name": "Unit Tests",
+        "command": "uv run --package control-plane pytest control-plane/tests/test_model_router.py",
+        "expected_outcome": "All tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Integration Test",
+        "command": "python scripts/orchestrator.py",
+        "expected_outcome": "Scan completes with cost < $0.20",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      }
+    ],
+    "reasoning": "Medium risk: adds new routing logic but cost tracking already exists; requires integration testing to verify end-to-end flow"
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "uv run --package control-plane pytest control-plane/tests/test_model_router.py"
+      ],
+      "minimum_coverage": null
+    },
+    "integration_tests": {
+      "required": true,
+      "commands": [
+        "python scripts/orchestrator.py"
+      ],
+      "services_to_test": [
+        "control-plane",
+        "orchestrator"
+      ]
+    },
+    "e2e_tests": {
+      "required": false,
+      "commands": [],
+      "flows": []
+    },
+    "browser_verification": {
+      "required": false,
+      "pages": []
+    },
+    "database_verification": {
+      "required": true,
+      "checks": [
+        "task_type column exists in model_costs",
+        "v_cost_by_task_type view exists"
+      ]
+    }
+  },
+  "qa_signoff": null,
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "xstateState": "backlog",
+  "executionPhase": "coding",
+  "updated_at": "2026-05-26T21:15:59.293Z",
+  "last_updated": "2026-05-26T21:19:50.945493+00:00",
+  "recoveryNote": "Task recovered from stuck state at 2026-05-26T20:32:35.207Z"
+}

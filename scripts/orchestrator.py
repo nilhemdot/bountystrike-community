@@ -38,6 +38,8 @@ Optional:
     NUCLEI_TEMPLATE_DIR — passed through to scanner-agent
     TIME_BUDGET_MIN   — passed through to scanner-agent
     CLAUDE_CMD        — claude CLI binary (default: claude)
+    MODEL_OVERRIDE_<task_type> — override model for a routing matrix task type
+                      (e.g. MODEL_OVERRIDE_recon_synthesis=anthropic/claude-opus-4-7)
 """
 
 from __future__ import annotations
@@ -65,6 +67,11 @@ from control_plane.domains.approval_gate import (  # noqa: E402
 from control_plane.domains.evidence_management.services import (  # noqa: E402
     audit_validator_compliance,
 )
+
+# Model routing for cost-optimized task execution.
+# Must be imported after approval_gate (shares control-plane/src sys.path entry).
+from control_plane.core.routing.model_router import ModelRouter  # noqa: E402
+from control_plane.core.routing.routing_config import load_routing_config  # noqa: E402
 
 # Dedup store for fingerprint-based and semantic duplicate detection.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp", "dedup-mcp", "src"))
@@ -136,6 +143,63 @@ _SCANNER_BINARIES = ("nuclei", "feroxbuster", "ffuf", "sqlmap", "arjun", "kr")
 
 def _missing_scanner_binaries() -> list[str]:
     return [b for b in _SCANNER_BINARIES if shutil.which(b) is None]
+
+
+# ---------------------------------------------------------------------------
+# Model routing
+# ---------------------------------------------------------------------------
+
+# Maps orchestrator agent types to routing matrix task types.
+# Each agent phase corresponds to a specific task type for model selection.
+_AGENT_TASK_TYPE: dict[str, str] = {
+    "recon": "recon_synthesis",
+    "scanner-agent": "subdomain_enum_triage",
+    "exploit-agent": "exploit_code_gen",
+    "validator": "exploit_validation",
+    "reporter": "report_prose",
+}
+
+
+def _init_model_router() -> ModelRouter:
+    """Initialize ModelRouter with operator overrides from environment.
+
+    Loads ``MODEL_OVERRIDE_<task_type>`` env vars via RoutingConfig and
+    constructs a ModelRouter instance. On failure, logs a warning and
+    returns a router with no overrides so the pipeline still runs.
+    """
+    try:
+        config = load_routing_config()
+        router = ModelRouter(overrides=config.get_overrides())
+        if config.has_overrides():
+            _log(f"model-router overrides loaded: {sorted(config.get_overrides().keys())}")
+        return router
+    except Exception as exc:
+        _log(f"WARNING: model-router init failed ({exc}) — using defaults with no overrides")
+        return ModelRouter()
+
+
+def _select_model(router: ModelRouter, agent_type: str) -> str:
+    """Select the optimal model for an agent type.
+
+    Args:
+        router: Initialized ModelRouter instance
+        agent_type: Orchestrator agent type (e.g., "recon", "validator")
+
+    Returns:
+        OpenRouter model ID string
+    """
+    task_type = _AGENT_TASK_TYPE.get(agent_type)
+    if task_type is None:
+        _log(f"model-router: no task mapping for agent={agent_type}, using default")
+        return "anthropic/claude-sonnet-4-6"
+
+    try:
+        model_id = router.get_model_for_task(task_type)
+        _log(f"model-router: agent={agent_type} task={task_type} → model={model_id}")
+        return model_id
+    except ValueError:
+        _log(f"model-router: task={task_type} not in matrix, using default for agent={agent_type}")
+        return "anthropic/claude-sonnet-4-6"
 
 
 # ---------------------------------------------------------------------------
@@ -231,15 +295,18 @@ async def _run_agent(
     agent_type: str,
     env_extras: dict[str, str],
     claude_cmd: str,
+    model_id: str | None = None,
 ) -> int:
     prompt = (
         f"Run the {agent_type} subagent exactly as specified in "
         f".claude/agents/{agent_type}.md. Follow all steps in the spec."
     )
-    env = {**os.environ, **env_extras}
+    merged_env = {**os.environ, **env_extras}
+    if model_id:
+        merged_env["CLAUDE_MODEL"] = model_id
     proc = await asyncio.create_subprocess_exec(
         claude_cmd, "-p", prompt, "--dangerously-skip-permissions",
-        env=env,
+        env=merged_env,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -265,11 +332,13 @@ async def _phase_recon(
     database_url: str,
     claude_cmd: str,
     timeout_seconds: int,
+    model_router: ModelRouter | None = None,
 ) -> None:
     await conn.execute(
         "UPDATE scan_jobs SET status = 'running' WHERE id = $1", job_id
     )
     _log("launching recon-agent")
+    model_id = _select_model(model_router, "recon") if model_router else None
     rc = await _run_agent(
         "recon",
         {
@@ -281,6 +350,7 @@ async def _phase_recon(
             "TASK_STATUS":    "recon_complete",
         },
         claude_cmd,
+        model_id=model_id,
     )
     if rc != 0:
         _log(f"WARNING: recon-agent exited {rc} — polling DB anyway")
@@ -304,6 +374,7 @@ async def _phase_scanner(
     database_url: str,
     claude_cmd: str,
     timeout_seconds: int,
+    model_router: ModelRouter | None = None,
 ) -> None:
     if _flag("SKIP_SCANNER"):
         _log("SKIP_SCANNER set — skipping scanner-agent phase")
@@ -321,6 +392,7 @@ async def _phase_scanner(
         "UPDATE scan_jobs SET status = 'running_scan' WHERE id = $1", job_id
     )
     _log("launching scanner-agent")
+    model_id = _select_model(model_router, "scanner-agent") if model_router else None
     env_extras = {
         "SCOPE_JWT":      scope_jwt,
         "PROGRAM_HANDLE": program_handle,
@@ -332,7 +404,7 @@ async def _phase_scanner(
         if passthrough in os.environ:
             env_extras[passthrough] = os.environ[passthrough]
 
-    rc = await _run_agent("scanner-agent", env_extras, claude_cmd)
+    rc = await _run_agent("scanner-agent", env_extras, claude_cmd, model_id=model_id)
     if rc != 0:
         _log(f"WARNING: scanner-agent exited {rc} — polling DB anyway")
 
@@ -372,6 +444,7 @@ async def _exploit_one(
     approval_token: str | None,
     semaphore: asyncio.Semaphore,
     claude_cmd: str,
+    model_id: str | None = None,
 ) -> int:
     async with semaphore:
         env_extras: dict[str, str] = {
@@ -388,7 +461,7 @@ async def _exploit_one(
         if approval_token:
             env_extras["APPROVAL_TOKEN"] = approval_token
 
-        rc = await _run_agent("exploit-agent", env_extras, claude_cmd)
+        rc = await _run_agent("exploit-agent", env_extras, claude_cmd, model_id=model_id)
         _log(f"exploit-agent finding={finding_id} rc={rc}")
         return rc
 
@@ -474,6 +547,9 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
     skip_report  = _flag("SKIP_REPORT")
     skip_idor    = _flag("SKIP_IDOR")
 
+    # Initialize model router for cost-optimized task execution.
+    model_router = _init_model_router()
+
     dsn = database_url.replace("+asyncpg", "")
     conn: asyncpg.Connection = await asyncpg.connect(dsn)
 
@@ -502,6 +578,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             database_url=database_url,
             claude_cmd=claude_cmd,
             timeout_seconds=recon_timeout,
+            model_router=model_router,
         )
 
         if skip_idor:
@@ -518,6 +595,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             database_url=database_url,
             claude_cmd=claude_cmd,
             timeout_seconds=scan_timeout,
+            model_router=model_router,
         )
 
         # ── Exploit ────────────────────────────────────────────────────────
@@ -529,6 +607,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             _log(f"{len(hypo_ids)} hypothesis findings for exploit phase")
 
             if hypo_ids:
+                exp_model_id = _select_model(model_router, "exploit-agent")
                 exp_sem = asyncio.Semaphore(max_exploits)
                 await asyncio.gather(*[
                     _exploit_one(
@@ -545,6 +624,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                         approval_token=None,
                         semaphore=exp_sem,
                         claude_cmd=claude_cmd,
+                        model_id=exp_model_id,
                     )
                     for fid in hypo_ids
                 ])
@@ -578,6 +658,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                             approval_token=token,
                             semaphore=asyncio.Semaphore(1),
                             claude_cmd=claude_cmd,
+                            model_id=exp_model_id,
                         )
 
         # ── Validate ───────────────────────────────────────────────────────
@@ -591,6 +672,8 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
         semaphore = asyncio.Semaphore(max_validators)
         completed = 0
         failed = 0
+
+        val_model_id = _select_model(model_router, "validator")
 
         async def _validate_one(finding_id: str) -> None:
             nonlocal completed, failed
@@ -609,6 +692,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                         "DEDUP_MCP_URL":    dedup_mcp_url,
                     },
                     claude_cmd,
+                    model_id=val_model_id,
                 )
                 if rc == 0:
                     completed += 1
@@ -661,6 +745,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             _log(f"{len(validated_ids)} validated findings to report")
 
             if validated_ids:
+                rep_model_id = _select_model(model_router, "reporter")
                 rep_semaphore = asyncio.Semaphore(max_reporters)
                 rep_failed = 0
 
@@ -681,7 +766,7 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                         ):
                             if tok_var in os.environ:
                                 reporter_env[tok_var] = os.environ[tok_var]
-                        rc = await _run_agent("reporter", reporter_env, claude_cmd)
+                        rc = await _run_agent("reporter", reporter_env, claude_cmd, model_id=rep_model_id)
                         if rc != 0:
                             rep_failed += 1
                         _log(f"reporter finding={finding_id} rc={rc}")

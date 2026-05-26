@@ -15,11 +15,11 @@ from control_plane.core.routing.cost_tiers import (
 )
 from control_plane.core.routing.model_router import ModelRouter
 
+
 __all__ = [
     "CostTier",
     "ModelDefinition",
     "ModelRouter",
-    "get_model_by_tier",
     "FRONTIER_MODELS",
     "MID_MODELS",
     "FAST_MODELS",
