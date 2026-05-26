@@ -12,6 +12,16 @@ members = [
     "mcp/dedup-mcp",
     "mcp/kev-mcp",
     "mcp/ev-mcp",
+    "mcp/bugcrowd-mcp",
+    "mcp/h1-mcp",
+    "mcp/immunefi-mcp",
+    "mcp/intigriti-mcp",
+    "mcp/normalize-mcp",
+    "mcp/politeness-mcp",
+    "mcp/sandbox-mcp",
+    "mcp/scope-mcp",
+    "mcp/state-mcp",
+    "mcp/yeswehack-mcp",
 ]
 
 [tool.uv.sources]

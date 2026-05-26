@@ -9,12 +9,22 @@ resolution-markers = [
 [manifest]
 members = [
     "bountystrike-v5",
+    "bugcrowd-mcp",
     "control-plane",
     "dedup-mcp",
     "ev-mcp",
     "evidence-mcp",
+    "h1-mcp",
+    "immunefi-mcp",
+    "intigriti-mcp",
     "kev-mcp",
+    "normalize-mcp",
     "oracle-mcp",
+    "politeness-mcp",
+    "sandbox-mcp",
+    "scope-mcp",
+    "state-mcp",
+    "yeswehack-mcp",
 ]
 
 [[package]]
@@ -320,6 +330,36 @@ version = "0.1.0"
 source = { virtual = "." }
 
 [[package]]
+name = "bugcrowd-mcp"
+version = "0.1.0"
+source = { editable = "mcp/bugcrowd-mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "certifi"
 version = "2026.4.22"
 source = { registry = "https://pypi.org/simple" }
@@ -600,6 +640,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cvss"
+version = "3.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/f6/1f7d315de23f39bbc32b94bb6b33a1b6124856037bfaa3f8bdb1a49584fa/cvss-3.6.tar.gz", hash = "sha256:f21d18224efcd3c01b44ff1b37dec2e3208d29a6d0ce6c87a599c73c21ee1a99", size = 30047, upload-time = "2025-08-04T10:50:13.753Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/63/6d/fe2c65b94a28ae0481dc254e8cd664b82390069003bea945076d8a445f2b/cvss-3.6-py2.py3-none-any.whl", hash = "sha256:e342c6ad9c7eb69d2aebbbc2768a03cabd57eb947c806e145de5b936219833ea", size = 31154, upload-time = "2025-08-04T10:50:12.328Z" },
+]
+
+[[package]]
 name = "dedup-mcp"
 version = "0.1.0"
 source = { editable = "mcp/dedup-mcp" }
@@ -862,6 +911,36 @@ wheels = [
 ]
 
 [[package]]
+name = "h1-mcp"
+version = "0.1.0"
+source = { editable = "mcp/h1-mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -946,6 +1025,36 @@ wheels = [
 ]
 
 [[package]]
+name = "immunefi-mcp"
+version = "0.1.0"
+source = { editable = "mcp/immunefi-mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -953,6 +1062,36 @@ sdist = { url = "https://files.pythonhosted.org/packages/72/34/14ca021ce8e5dfedc
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
 ]
+
+[[package]]
+name = "intigriti-mcp"
+version = "0.1.0"
+source = { editable = "mcp/intigriti-mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "jiter"
@@ -1331,6 +1470,34 @@ wheels = [
 ]
 
 [[package]]
+name = "normalize-mcp"
+version = "0.1.0"
+source = { editable = "mcp/normalize-mcp" }
+dependencies = [
+    { name = "cvss" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cvss", specifier = ">=3.0" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "numpy"
 version = "2.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1486,6 +1653,32 @@ sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
 ]
+
+[[package]]
+name = "politeness-mcp"
+version = "0.1.0"
+source = { editable = "mcp/politeness-mcp" }
+dependencies = [
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "propcache"
@@ -2008,6 +2201,32 @@ wheels = [
 ]
 
 [[package]]
+name = "sandbox-mcp"
+version = "0.1.0"
+source = { editable = "mcp/sandbox-mcp" }
+dependencies = [
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
+
+[[package]]
 name = "scipy"
 version = "1.17.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2067,6 +2286,30 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/11/2f/b29eafe4a3fbc3d6de9662b36e028d5f039e72d345e05c250e121a230dd4/scipy-1.17.1-cp314-cp314t-win_amd64.whl", hash = "sha256:eb092099205ef62cd1782b006658db09e2fed75bffcae7cc0d44052d8aa0f484", size = 37345327, upload-time = "2026-02-23T00:22:24.442Z" },
     { url = "https://files.pythonhosted.org/packages/07/39/338d9219c4e87f3e708f18857ecd24d22a0c3094752393319553096b98af/scipy-1.17.1-cp314-cp314t-win_arm64.whl", hash = "sha256:200e1050faffacc162be6a486a984a0497866ec54149a01270adc8a59b7c7d21", size = 25489165, upload-time = "2026-02-23T00:22:29.563Z" },
 ]
+
+[[package]]
+name = "scope-mcp"
+version = "0.1.0"
+source = { editable = "mcp/scope-mcp" }
+dependencies = [
+    { name = "mcp" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "six"
@@ -2162,6 +2405,34 @@ sdist = { url = "https://files.pythonhosted.org/packages/81/69/17425771797c36cde
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/c9/584bc9651441b4ba60cc4d557d8a547b5aff901af35bda3a4ee30c819b82/starlette-1.0.0-py3-none-any.whl", hash = "sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b", size = 72651, upload-time = "2026-03-22T18:29:45.111Z" },
 ]
+
+[[package]]
+name = "state-mcp"
+version = "0.1.0"
+source = { editable = "mcp/state-mcp" }
+dependencies = [
+    { name = "asyncpg" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "asyncpg", specifier = ">=0.29" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "structlog"
@@ -2525,3 +2796,33 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/51/47/3fa2286c3cb162c71cdb34c4224d5745a1ceceb391b2bd9b19b668a8d724/yarl-1.23.0-cp314-cp314t-win_arm64.whl", hash = "sha256:44bb7bef4ea409384e3f8bc36c063d77ea1b8d4a5b2706956c0d6695f07dcc25", size = 86041, upload-time = "2026-03-01T22:07:49.026Z" },
     { url = "https://files.pythonhosted.org/packages/69/68/c8739671f5699c7dc470580a4f821ef37c32c4cb0b047ce223a7f115757f/yarl-1.23.0-py3-none-any.whl", hash = "sha256:a2df6afe50dea8ae15fa34c9f824a3ee958d785fd5d089063d960bae1daa0a3f", size = 48288, upload-time = "2026-03-01T22:07:51.388Z" },
 ]
+
+[[package]]
+name = "yeswehack-mcp"
+version = "0.1.0"
+source = { editable = "mcp/yeswehack-mcp" }
+dependencies = [
+    { name = "httpx" },
+    { name = "mcp" },
+    { name = "structlog" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "respx" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "mcp", specifier = ">=1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
+    { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.7" },
+    { name = "structlog", specifier = ">=24" },
+]
+provides-extras = ["dev"]
