@@ -1,11 +1,14 @@
 """SQLi vulnerable lab for Phase 2 W9-10 field validation.
 
-20 routes total:
-  - /v1 .. /v10  → vulnerable (honor SLEEP(N) in `q` — no input sanitisation)
+40 routes total:
+  - /v1 .. /v10  → vulnerable (honor SLEEP(N) or pg_sleep(N) in `q` — no input sanitisation)
   - /c1 .. /c10  → clean      (parameterised, numeric-only, or no DB lookup)
+  - /p1 .. /p10  → Postgres vulnerable (honor pg_sleep(N) in `q` — no input sanitisation)
+  - /pc1 .. /pc10 → Postgres clean (parameterised, numeric-only, or no DB lookup)
 
 The lab is purpose-built for the oracle's MySQL time-delay payload
-``' OR SLEEP({delay})-- -``. A "vulnerable" route extracts ``SLEEP(N)``
+``' OR SLEEP({delay})-- -`` and Postgres variant ``' OR pg_sleep({delay})-- -``.
+A "vulnerable" route extracts ``SLEEP(N)`` or ``pg_sleep(N)``
 from the parameter value (mirroring how a real string-concat SQL query
 would unconditionally execute the SLEEP) and pauses for ``N`` seconds
 before responding. A "clean" route either rejects non-numeric input,
@@ -49,20 +52,29 @@ _MAX_SLEEP_SECONDS = 12.0
 # so callers can pass floats during fast smoke-testing.
 _SLEEP_RE = re.compile(r"SLEEP\(\s*(\d+(?:\.\d+)?)\s*\)", re.IGNORECASE)
 
+# Matches the Postgres variant pg_sleep(N). Same greedy numeric capture
+# as the MySQL pattern above.
+_PG_SLEEP_RE = re.compile(r"pg_sleep\(\s*(\d+(?:\.\d+)?)\s*\)", re.IGNORECASE)
+
 
 def _q() -> str:
     return request.args.get("q", "")
 
 
 def _vulnerable_sleep(value: str) -> None:
-    """Pause for the SLEEP(N) duration embedded in *value*, if any.
+    """Pause for the SLEEP(N) or pg_sleep(N) duration embedded in *value*, if any.
 
     A vulnerable route uses string-concatenation SQL of the form
     ``"SELECT ... WHERE x = '" + value + "'"``; if the user supplies
-    ``' OR SLEEP(5)-- -`` the database evaluates the SLEEP function and
-    the response stalls. We simulate that timing without a real DB.
+    ``' OR SLEEP(5)-- -`` (MySQL) or ``' OR pg_sleep(5)-- -`` (Postgres)
+    the database evaluates the SLEEP function and the response stalls.
+    We simulate that timing without a real DB.
     """
+    # Check for MySQL SLEEP(N)
     m = _SLEEP_RE.search(value)
+    if not m:
+        # Check for Postgres pg_sleep(N)
+        m = _PG_SLEEP_RE.search(value)
     if not m:
         return
     delay = min(float(m.group(1)), _MAX_SLEEP_SECONDS)
@@ -253,6 +265,186 @@ def c9():
 @app.route("/c10")
 def c10():
     """Clean: 404 on every input — DB never queried."""
+    return jsonify({"error": "not found"}), 404
+
+
+# ---------------------------------------------------------------------------
+# Postgres-specific vulnerable routes — mirrors v1-v10 for Postgres testing.
+# Each honors pg_sleep(N) in the same way vulnerable routes honor SLEEP(N).
+# ---------------------------------------------------------------------------
+
+
+@app.route("/p1")
+def p1() -> str:
+    """Postgres vulnerable HTML page returning the q value verbatim after SQL exec."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return f"<html><body>row: {q}</body></html>"
+
+
+@app.route("/p2")
+def p2():
+    """Postgres vulnerable JSON endpoint."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return jsonify({"row": q, "found": False})
+
+
+@app.route("/p3")
+def p3() -> str:
+    """Postgres vulnerable plaintext endpoint."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return f"value={q}", 200, {"Content-Type": "text/plain"}
+
+
+@app.route("/p4")
+def p4():
+    """Postgres vulnerable redirect — but we still execute SQL before redirecting."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return ("", 302, {"Location": "/login"})
+
+
+@app.route("/p5")
+def p5():
+    """Postgres vulnerable empty 200 — no body but still slow on payload."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return ("", 200)
+
+
+@app.route("/p6")
+def p6():
+    """Postgres vulnerable with numeric coercion attempt that fails open on string."""
+    q = _q()
+    # Naive: tries int() but on failure still does string-concat SQL.
+    with contextlib.suppress(ValueError):
+        int(q)
+    _vulnerable_sleep(q)
+    return jsonify({"q": q, "kind": "fallback-string-concat"})
+
+
+@app.route("/p7")
+def p7():
+    """Postgres vulnerable with response that varies in length (still sleep-driven)."""
+    q = _q()
+    _vulnerable_sleep(q)
+    body = "row\n" * 50
+    return body, 200, {"Content-Type": "text/plain"}
+
+
+@app.route("/p8")
+def p8():
+    """Postgres vulnerable behind a permissive header check."""
+    if request.headers.get("X-Skip-DB") == "yes":
+        return jsonify({"row": "skipped"})
+    q = _q()
+    _vulnerable_sleep(q)
+    return jsonify({"row": q})
+
+
+@app.route("/p9")
+def p9():
+    """Postgres vulnerable with quoted reflection in body — payload echoes back."""
+    q = _q()
+    _vulnerable_sleep(q)
+    return f"<html><body><pre>'{q}'</pre></body></html>"
+
+
+@app.route("/p10")
+def p10():
+    """Postgres vulnerable with response cookies set after SQL runs."""
+    q = _q()
+    _vulnerable_sleep(q)
+    resp = app.make_response(jsonify({"row": q}))
+    resp.set_cookie("last_query", q[:32])
+    return resp
+
+
+# ---------------------------------------------------------------------------
+# Postgres-specific clean routes — mirrors c1-c10 for Postgres testing.
+# Each ignores pg_sleep() payload through parameterisation or input rejection.
+# ---------------------------------------------------------------------------
+
+
+@app.route("/pc1")
+def pc1():
+    """Postgres clean: numeric-only input, rejects everything else."""
+    q = _q()
+    if not q.isdigit():
+        return jsonify({"error": "numeric only"}), 400
+    return jsonify({"row": int(q)})
+
+
+@app.route("/pc2")
+def pc2():
+    """Postgres clean: parameterised — payload is treated as literal data."""
+    return jsonify({"row": _q()})
+
+
+@app.route("/pc3")
+def pc3():
+    """Postgres clean: static response regardless of input."""
+    return "static-response", 200, {"Content-Type": "text/plain"}
+
+
+@app.route("/pc4")
+def pc4():
+    """Postgres clean: regex allowlist [a-z0-9-]{1,32}."""
+    q = _q()
+    if not re.fullmatch(r"[a-z0-9-]{1,32}", q):
+        return jsonify({"error": "invalid"}), 400
+    return jsonify({"row": q})
+
+
+@app.route("/pc5")
+def pc5():
+    """Postgres clean: input is hashed before the (non-time-sensitive) DB lookup."""
+    import hashlib
+
+    q = _q()
+    digest = hashlib.sha256(q.encode()).hexdigest()
+    return jsonify({"hash": digest, "found": False})
+
+
+@app.route("/pc6")
+def pc6():
+    """Postgres clean: HTML escape + parameterised — no pg_sleep expansion path."""
+    from html import escape
+
+    q = _q()
+    return f"<html><body>row: {escape(q)}</body></html>"
+
+
+@app.route("/pc7")
+def pc7():
+    """Postgres clean: short-circuits before any DB call when payload too long."""
+    q = _q()
+    if len(q) > 16:
+        return jsonify({"error": "too long"}), 400
+    return jsonify({"row": q})
+
+
+@app.route("/pc8")
+def pc8():
+    """Postgres clean: rejects on common SQL keywords (defence in depth)."""
+    q = _q().upper()
+    for kw in ("SELECT", "UNION", "SLEEP", "WAITFOR", "BENCHMARK", "PG_SLEEP"):
+        if kw in q:
+            return jsonify({"error": f"forbidden token {kw}"}), 400
+    return jsonify({"row": _q()})
+
+
+@app.route("/pc9")
+def pc9():
+    """Postgres clean: parameterised JSON endpoint (cache-friendly)."""
+    return jsonify({"q": _q(), "cached": True}), 200, {"Cache-Control": "max-age=60"}
+
+
+@app.route("/pc10")
+def pc10():
+    """Postgres clean: 404 on every input — DB never queried."""
     return jsonify({"error": "not found"}), 404
 
 

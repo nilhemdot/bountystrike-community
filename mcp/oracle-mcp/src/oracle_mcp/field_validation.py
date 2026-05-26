@@ -181,7 +181,9 @@ async def _dispatch_oracle(target: FixtureTarget) -> OracleResult:
         return await oracle_xss(target.url, target.param)
     if target.oracle == "sqli":
         from oracle_mcp.oracles.sqli import oracle_sqli
-        return await oracle_sqli(target.url, target.param)
+        # Determine payload type from target tags
+        payload_type = "postgres" if "postgres" in target.tags else "mysql"
+        return await oracle_sqli(target.url, target.param, payload_type=payload_type)
     if target.oracle == "ssrf":
         from oracle_mcp.oracles.ssrf import oracle_ssrf
         return await oracle_ssrf(target.url, target.param)

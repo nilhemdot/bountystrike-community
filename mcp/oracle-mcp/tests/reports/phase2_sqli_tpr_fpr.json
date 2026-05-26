@@ -1,9 +1,9 @@
 {
   "oracle": "sqli",
-  "total": 20,
-  "true_positives": 10,
+  "total": 40,
+  "true_positives": 20,
   "false_positives": 0,
-  "true_negatives": 10,
+  "true_negatives": 20,
   "false_negatives": 0,
   "tpr": 1.0,
   "fpr": 0.0,
@@ -24,10 +24,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.003163893001328688,
-        "inject_mean": 2.002975714749482,
-        "p_value": 1.5168402911535363e-10,
-        "t_stat": -1381.530080203492,
+        "baseline_mean": 0.2794369750045007,
+        "inject_mean": 2.276256500001182,
+        "p_value": 1.7874161159479455e-07,
+        "t_stat": -172.54006293662988,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -51,10 +51,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.001902585249808908,
-        "inject_mean": 2.0025161657504214,
-        "p_value": 4.9743247114976125e-17,
-        "t_stat": -9282.240267508843,
+        "baseline_mean": 0.2674823250126792,
+        "inject_mean": 2.277005600000848,
+        "p_value": 4.063172960973111e-11,
+        "t_stat": -464.63705210319876,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -78,10 +78,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.002308836749762122,
-        "inject_mean": 2.0029065707485643,
-        "p_value": 3.5695701696067506e-14,
-        "t_stat": -4672.500467721,
+        "baseline_mean": 0.26998724999430124,
+        "inject_mean": 2.2710440999944694,
+        "p_value": 5.791464295102423e-12,
+        "t_stat": -569.2311986461389,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -105,10 +105,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.002887138249207055,
-        "inject_mean": 2.0033195387513842,
-        "p_value": 1.5010872596182473e-15,
-        "t_stat": -2049.7581839831605,
+        "baseline_mean": 0.2726855750370305,
+        "inject_mean": 2.276206224996713,
+        "p_value": 7.384987485695749e-14,
+        "t_stat": -349.96457726899285,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -132,10 +132,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0024632667509649764,
-        "inject_mean": 2.002421243500976,
-        "p_value": 1.9701184392450877e-12,
-        "t_stat": -4917.158797549945,
+        "baseline_mean": 0.27490775000478607,
+        "inject_mean": 2.272108125005616,
+        "p_value": 1.0721634582871149e-13,
+        "t_stat": -617.9867823552677,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -158,10 +158,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0019517109994922066,
-        "inject_mean": 2.0041419219996897,
-        "p_value": 5.943505463662722e-11,
-        "t_stat": -2410.8599487311353,
+        "baseline_mean": 0.2705276750057237,
+        "inject_mean": 2.2775599250162486,
+        "p_value": 2.0129339954301887e-13,
+        "t_stat": -305.44409449276696,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -185,10 +185,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0018474297503416892,
-        "inject_mean": 2.0035492869992595,
-        "p_value": 2.141417645563365e-12,
-        "t_stat": -2247.6641126475106,
+        "baseline_mean": 0.2718947750108782,
+        "inject_mean": 2.274190424999688,
+        "p_value": 2.051030569910462e-14,
+        "t_stat": -592.8574128291364,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -212,10 +212,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0016032089997679577,
-        "inject_mean": 2.0029194304997873,
-        "p_value": 5.599308460456019e-13,
-        "t_stat": -3879.7129410595394,
+        "baseline_mean": 0.2683515999960946,
+        "inject_mean": 2.2749804749910254,
+        "p_value": 3.815102116628744e-14,
+        "t_stat": -377.69042105242994,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -239,10 +239,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0015810672493898892,
-        "inject_mean": 2.002348649249143,
-        "p_value": 3.2250152895537395e-23,
-        "t_stat": -11410.552179251485,
+        "baseline_mean": 0.27172850001079496,
+        "inject_mean": 2.2759501000109594,
+        "p_value": 1.9824880859818135e-14,
+        "t_stat": -390.3767052598165,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -266,10 +266,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0017526347492093919,
-        "inject_mean": 2.0027629287496893,
-        "p_value": 2.098351932211288e-21,
-        "t_stat": -8472.904414333629,
+        "baseline_mean": 0.27464649998000823,
+        "inject_mean": 2.2742651250155177,
+        "p_value": 2.6717228062879202e-11,
+        "t_stat": -566.3043162366546,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -293,10 +293,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.001884354000139865,
-        "inject_mean": 0.002224952000688063,
-        "p_value": 0.253662465390214,
-        "t_stat": -1.3264422619955025,
+        "baseline_mean": 0.2727656999923056,
+        "inject_mean": 0.26994122497853823,
+        "p_value": 0.677428291044214,
+        "t_stat": 0.4427905588124142,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -319,10 +319,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.002148538749679574,
-        "inject_mean": 0.00198944274961832,
-        "p_value": 0.6554331372772778,
-        "t_stat": 0.4694259928029526,
+        "baseline_mean": 0.26446552500419784,
+        "inject_mean": 0.2713992750068428,
+        "p_value": 0.3416581250302867,
+        "t_stat": -1.0925411287791778,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -345,10 +345,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0032706602514736005,
-        "inject_mean": 0.0020960150004611933,
-        "p_value": 0.02186388515952052,
-        "t_stat": 3.1115149464367873,
+        "baseline_mean": 0.27055589998781215,
+        "inject_mean": 0.27447119999851566,
+        "p_value": 0.4204154219342451,
+        "t_stat": -0.8937771826653425,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -372,10 +372,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0026164497485297034,
-        "inject_mean": 0.002576216999841563,
-        "p_value": 0.9735334562536446,
-        "t_stat": 0.03459156796718917,
+        "baseline_mean": 0.2733150249987375,
+        "inject_mean": 0.2716306749935029,
+        "p_value": 0.5776179801277707,
+        "t_stat": 0.5931902303352282,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -398,10 +398,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.001634933750210621,
-        "inject_mean": 0.002030296500379336,
-        "p_value": 0.49183646729744007,
-        "t_stat": -0.7618180990234154,
+        "baseline_mean": 0.268493950003176,
+        "inject_mean": 0.2658853250031825,
+        "p_value": 0.7408268899212361,
+        "t_stat": 0.3515009759388438,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -425,10 +425,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0018182234998675995,
-        "inject_mean": 0.0014398412495211232,
-        "p_value": 0.01195936903621617,
-        "t_stat": 4.13614242511387,
+        "baseline_mean": 0.26819892499770503,
+        "inject_mean": 0.2680574000114575,
+        "p_value": 0.9738411162998765,
+        "t_stat": 0.035103014192330806,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -451,10 +451,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.002220358499471331,
-        "inject_mean": 0.0018386544998065801,
-        "p_value": 0.10386442883247017,
-        "t_stat": 1.9429706818346455,
+        "baseline_mean": 0.2693926000210922,
+        "inject_mean": 0.273367124987999,
+        "p_value": 0.5942388834263478,
+        "t_stat": -0.5902980753013373,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -477,10 +477,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0024441654995825957,
-        "inject_mean": 0.0022766299989598338,
-        "p_value": 0.8258017354913426,
-        "t_stat": 0.23014334658432126,
+        "baseline_mean": 0.27467039998737164,
+        "inject_mean": 0.26851880000322126,
+        "p_value": 0.055254550930357714,
+        "t_stat": 2.650709615400892,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -504,10 +504,10 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0015483172501262743,
-        "inject_mean": 0.001454091000596236,
-        "p_value": 0.3719094211832628,
-        "t_stat": 0.9756936001082468,
+        "baseline_mean": 0.26993877500353847,
+        "inject_mean": 0.2663585249974858,
+        "p_value": 0.16548701096807097,
+        "t_stat": 1.6471267732632004,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,
@@ -531,10 +531,564 @@
       "correct": true,
       "error": "",
       "evidence": {
-        "baseline_mean": 0.0015838030003578751,
-        "inject_mean": 0.0013587305002147332,
-        "p_value": 0.14385210825406405,
-        "t_stat": 1.9323101839853845,
+        "baseline_mean": 0.27576017499086447,
+        "inject_mean": 0.2641239999938989,
+        "p_value": 0.03640091893481675,
+        "t_stat": 2.7169059941013267,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p1?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "naive HTML body \u2014 string-concat SQL (Postgres)",
+        "tags": [
+          "html",
+          "string-concat",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.27231210000172723,
+        "inject_mean": 2.2745311499893432,
+        "p_value": 1.42575942509492e-13,
+        "t_stat": -337.91048192754903,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p2?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "JSON endpoint \u2014 string-concat SQL (Postgres)",
+        "tags": [
+          "json",
+          "string-concat",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.26149892499961425,
+        "inject_mean": 2.273084275002475,
+        "p_value": 9.48932838516818e-11,
+        "t_stat": -305.9632788404807,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p3?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "plaintext endpoint \u2014 string-concat SQL (Postgres)",
+        "tags": [
+          "plaintext",
+          "string-concat",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2778520499850856,
+        "inject_mean": 2.2714590500108898,
+        "p_value": 5.207390537042776e-11,
+        "t_stat": -490.1316922716193,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p4?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "redirect after SQL exec (Postgres)",
+        "tags": [
+          "redirect",
+          "string-concat",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2720921250001993,
+        "inject_mean": 2.2680193499836605,
+        "p_value": 9.347553919322789e-11,
+        "t_stat": -343.39072951901204,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p5?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "empty-200 after SQL exec (Postgres)",
+        "tags": [
+          "empty-body",
+          "string-concat",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2747035250067711,
+        "inject_mean": 2.2742400000133784,
+        "p_value": 7.192603424765773e-13,
+        "t_stat": -461.16610135849214,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p6?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "fail-open numeric coercion (Postgres)",
+        "tags": [
+          "numeric-coercion-fallback",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2703110500006005,
+        "inject_mean": 2.2737700249854242,
+        "p_value": 1.202984069200527e-13,
+        "t_stat": -449.5953063206228,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p7?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "long-body response \u2014 timing only (Postgres)",
+        "tags": [
+          "plaintext",
+          "long-body",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.27087454999855254,
+        "inject_mean": 2.274246900007711,
+        "p_value": 3.506523381384826e-13,
+        "t_stat": -436.0469174976515,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p8?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "permissive header bypass \u2014 vulnerable default path (Postgres)",
+        "tags": [
+          "json",
+          "header-gate",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2739891250093933,
+        "inject_mean": 2.2750098750111647,
+        "p_value": 6.678969173716879e-10,
+        "t_stat": -779.205515269174,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p9?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "quoted reflection \u2014 payload echoes back (Postgres)",
+        "tags": [
+          "html",
+          "echo",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.26746262500819284,
+        "inject_mean": 2.2680042999854777,
+        "p_value": 2.1981549616948454e-08,
+        "t_stat": -357.0362939620939,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/p10?q=1",
+        "param": "q",
+        "expected_verdict": "validated",
+        "label": "cookie-setting endpoint after SQL exec (Postgres)",
+        "tags": [
+          "cookie",
+          "json",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "validated",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.27053307500318624,
+        "inject_mean": 2.2736004999896977,
+        "p_value": 1.019723774814174e-15,
+        "t_stat": -766.206257945292,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc1?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "numeric-only allowlist (Postgres)",
+        "tags": [
+          "allowlist",
+          "numeric",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2689754500024719,
+        "inject_mean": 0.2696155499725137,
+        "p_value": 0.9085960435963414,
+        "t_stat": -0.11995398689467562,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc2?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "parameterised query (Postgres)",
+        "tags": [
+          "parameterised",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.26987709998502396,
+        "inject_mean": 0.2685655250097625,
+        "p_value": 0.7845220786466841,
+        "t_stat": 0.2861821200268222,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc3?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "static response (Postgres)",
+        "tags": [
+          "no-db",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2716794250009116,
+        "inject_mean": 0.2692959000123665,
+        "p_value": 0.6562582847982922,
+        "t_stat": 0.4706293458900558,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc4?q=abc",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "regex allowlist [a-z0-9-]{1,32} (Postgres)",
+        "tags": [
+          "allowlist",
+          "regex",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2723818500089692,
+        "inject_mean": 0.2743279000133043,
+        "p_value": 0.6943191754312754,
+        "t_stat": -0.41248379067395013,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc5?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "input hashed before lookup (Postgres)",
+        "tags": [
+          "hash",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2726456750096986,
+        "inject_mean": 0.26293417501437943,
+        "p_value": 0.10277056322267213,
+        "t_stat": 1.9406202202688465,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc6?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "html-escape + parameterised (Postgres)",
+        "tags": [
+          "html-escape",
+          "parameterised",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.27390432498941664,
+        "inject_mean": 0.2702098500012653,
+        "p_value": 0.3593886387824733,
+        "t_stat": 0.9954842672448319,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc7?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "length cap rejects long payloads (Postgres)",
+        "tags": [
+          "length-gate",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2629979499906767,
+        "inject_mean": 0.26972267498786096,
+        "p_value": 0.21590867006778153,
+        "t_stat": -1.3856599616008676,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc8?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "WAF-style keyword denylist (Postgres)",
+        "tags": [
+          "denylist",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.2703112000017427,
+        "inject_mean": 0.2721334499801742,
+        "p_value": 0.6401356761468754,
+        "t_stat": -0.49436099847718423,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc9?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "cached parameterised endpoint (Postgres)",
+        "tags": [
+          "parameterised",
+          "cached",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.27472340001259,
+        "inject_mean": 0.27202390000456944,
+        "p_value": 0.49028144844096483,
+        "t_stat": 0.7530846277750193,
+        "n_baseline": 4,
+        "n_inject": 4,
+        "delay_seconds": 2.0,
+        "alpha": 0.01,
+        "param": "q"
+      }
+    },
+    {
+      "target": {
+        "oracle": "sqli",
+        "url": "http://localhost:5096/pc10?q=1",
+        "param": "q",
+        "expected_verdict": "unreproducible",
+        "label": "404 on every input \u2014 DB never queried (Postgres)",
+        "tags": [
+          "no-db",
+          "404",
+          "postgres"
+        ]
+      },
+      "actual_verdict": "inconclusive",
+      "correct": true,
+      "error": "",
+      "evidence": {
+        "baseline_mean": 0.26459895000152756,
+        "inject_mean": 0.265062874997966,
+        "p_value": 0.8697006760261247,
+        "t_stat": -0.17722390448507389,
         "n_baseline": 4,
         "n_inject": 4,
         "delay_seconds": 2.0,

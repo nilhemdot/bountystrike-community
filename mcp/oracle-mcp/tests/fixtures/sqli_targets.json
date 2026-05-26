@@ -158,5 +158,165 @@
     "expected_verdict": "unreproducible",
     "label": "404 on every input — DB never queried",
     "tags": ["no-db", "404"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p1?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "naive HTML body — string-concat SQL (Postgres)",
+    "tags": ["html", "string-concat", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p2?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "JSON endpoint — string-concat SQL (Postgres)",
+    "tags": ["json", "string-concat", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p3?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "plaintext endpoint — string-concat SQL (Postgres)",
+    "tags": ["plaintext", "string-concat", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p4?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "redirect after SQL exec (Postgres)",
+    "tags": ["redirect", "string-concat", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p5?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "empty-200 after SQL exec (Postgres)",
+    "tags": ["empty-body", "string-concat", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p6?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "fail-open numeric coercion (Postgres)",
+    "tags": ["numeric-coercion-fallback", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p7?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "long-body response — timing only (Postgres)",
+    "tags": ["plaintext", "long-body", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p8?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "permissive header bypass — vulnerable default path (Postgres)",
+    "tags": ["json", "header-gate", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p9?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "quoted reflection — payload echoes back (Postgres)",
+    "tags": ["html", "echo", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/p10?q=1",
+    "param": "q",
+    "expected_verdict": "validated",
+    "label": "cookie-setting endpoint after SQL exec (Postgres)",
+    "tags": ["cookie", "json", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc1?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "numeric-only allowlist (Postgres)",
+    "tags": ["allowlist", "numeric", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc2?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "parameterised query (Postgres)",
+    "tags": ["parameterised", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc3?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "static response (Postgres)",
+    "tags": ["no-db", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc4?q=abc",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "regex allowlist [a-z0-9-]{1,32} (Postgres)",
+    "tags": ["allowlist", "regex", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc5?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "input hashed before lookup (Postgres)",
+    "tags": ["hash", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc6?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "html-escape + parameterised (Postgres)",
+    "tags": ["html-escape", "parameterised", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc7?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "length cap rejects long payloads (Postgres)",
+    "tags": ["length-gate", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc8?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "WAF-style keyword denylist (Postgres)",
+    "tags": ["denylist", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc9?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "cached parameterised endpoint (Postgres)",
+    "tags": ["parameterised", "cached", "postgres"]
+  },
+  {
+    "oracle": "sqli",
+    "url": "http://localhost:5096/pc10?q=1",
+    "param": "q",
+    "expected_verdict": "unreproducible",
+    "label": "404 on every input — DB never queried (Postgres)",
+    "tags": ["no-db", "404", "postgres"]
   }
 ]

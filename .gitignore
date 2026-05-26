@@ -40,3 +40,6 @@ learn/
 evidence/
 mcp/*/evidence/
 reports/exploit_poc_*.txt
+
+# Auto Claude data directory
+.auto-claude/

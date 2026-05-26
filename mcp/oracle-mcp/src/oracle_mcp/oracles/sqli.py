@@ -27,8 +27,11 @@ from oracle_mcp.security import reject_destructive_payload
 
 log = structlog.get_logger("oracle_mcp.oracles")
 
-# MySQL time-delay payload (Phase 1; Postgres variant deferred to Phase 1.1b).
+# MySQL time-delay payload (Phase 1).
 _MYSQL_PAYLOAD_TEMPLATE = "' OR SLEEP({delay})-- -"
+
+# Postgres time-delay payload (Phase 1.1b).
+_POSTGRES_PAYLOAD_TEMPLATE = "' OR pg_sleep({delay})-- -"
 
 
 def _inject_param(url: str, param: str, value: str) -> str:
@@ -55,6 +58,7 @@ async def oracle_sqli(
     inject_n: int = 7,
     delay_seconds: float = 5.0,
     alpha: float = 0.01,
+    payload_type: str = "mysql",
 ) -> OracleResult:
     """Verify SQL injection via time-delay probing and Welch's t-test.
 
@@ -65,6 +69,7 @@ async def oracle_sqli(
         inject_n: Number of injected (time-delay) requests.
         delay_seconds: Seconds the SQL ``SLEEP`` should pause execution.
         alpha: Statistical significance threshold (default 0.01).
+        payload_type: Database type - "mysql" or "postgres" (default "mysql").
 
     Returns:
         :class:`~oracle_mcp.result.OracleResult` with verdict
@@ -72,7 +77,11 @@ async def oracle_sqli(
     """
     reject_destructive_payload(url)
 
-    inject_payload = _MYSQL_PAYLOAD_TEMPLATE.format(delay=delay_seconds)
+    # Select payload template based on database type
+    if payload_type.lower() == "postgres":
+        inject_payload = _POSTGRES_PAYLOAD_TEMPLATE.format(delay=delay_seconds)
+    else:
+        inject_payload = _MYSQL_PAYLOAD_TEMPLATE.format(delay=delay_seconds)
     injected_url = _inject_param(url, param, inject_payload)
 
     # Timeout must exceed delay_seconds to allow the injected sleep to complete.
