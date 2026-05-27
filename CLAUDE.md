@@ -1,0 +1,91 @@
+# CLAUDE.md — BountyStrike v5
+
+Autonomous Claude Code-native bug bounty platform. 15 MCP servers, 9 sub-agents, FastAPI control-plane, Postgres 17 + pgvector.
+
+## Session Start Protocol
+
+**MANDATORY** — load these 4 files at the start of every session (~800 tokens):
+1. `CLAUDE.md` (this file)
+2. `.claude/COMMON_MISTAKES.md` — critical errors to avoid
+3. `.claude/QUICK_START.md` — essential commands
+4. `.claude/ARCHITECTURE_MAP.md` — file locations
+
+Then load task-specific docs from `docs/INDEX.md`.
+
+**NEVER auto-load:** `.claude/completions/`, `.claude/sessions/`, `docs/archive/`
+
+## Architecture Quick Reference
+
+- **control-plane/** — FastAPI + DDD orchestrator (domains: recon, approval_gate, evidence_management, program_ranking, safety, scope_management)
+- **mcp/** — 15 MCP servers (14 Python FastMCP + 1 TypeScript scope-mcp)
+- **infra/** — Docker Compose: Postgres 17, Redis 7, Hatchet, Langfuse
+- **scripts/** — CLI entry points (orchestrator.py, approve.py, gen_scope_jwt.py, etc.)
+- **.claude/agents/** — 9 sub-agent specs (recon, cloud-recon, scanner, ai-vuln-hunter, exploit, validator, reporter, scope-guard, program-selector)
+- # ... 1 more
+
+## Quick Start Commands
+
+```bash
+uv run ruff check .                                    # lint
+uv run ruff format .                                   # format
+uv run pytest tests/                                   # unit tests
+uv run pytest tests/integration/ -m integration        # integration (needs live services)
+docker compose -f infra/docker-compose.yml up -d       # start infra
+python scripts/gen_scope_jwt.py                        # issue scope JWT
+python scripts/orchestrator.py                         # run hunt
+```
+
+## Code Style Rules
+
+- Return code first, explanation after only if non-obvious
+- No abstractions for single-use operations; three similar lines > premature abstraction
+- All async: use `httpx.AsyncClient`, `asyncpg`, `aioboto3`; never blocking calls in async context
+- Pydantic models at every input boundary (HTTP, MCP tool, file parser)
+- ruff line-length 100, target py312, rules: E F W I N UP B SIM ASYNC
+- # ... 1 more
+
+## Testing Methodology
+
+- `pytest-asyncio` with `asyncio_mode = "auto"`
+- Unit tests: `tests/` — no live services needed
+- Integration tests: `tests/integration/` — require Postgres, Redis, R2; mark with `@pytest.mark.integration`
+- Oracle field-validation suites: TPR=1.0 / FPR=0.0 required before wiring to agents
+
+## Documentation Navigation
+
+| Task | Load |
+|------|------|
+| Add/modify MCP server | `docs/learnings/mcp-patterns.md` |
+| Add/modify oracle | `docs/learnings/oracle-patterns.md` |
+| Database work | `docs/learnings/database-patterns.md` |
+| Agent work | `docs/learnings/agent-patterns.md` |
+| Deployment / infra | `docs/learnings/deployment.md` |
+| Full architecture | `docs/system-architecture.md` |
+| File map | `docs/codebase-summary.md` |
+| Code standards | `docs/code-standards.md` |
+| Phase 0/1 build | `docs/bountystrike_v6_phase0-1_technical_brief.md` |
+
+## Constraints — Phase 1 Build Traps (training-data is stale)
+
+Verified May 21 2026. Source: `docs/bountystrike_v6_phase0-1_technical_brief.md`.
+
+1. **claude-code-sdk → claude-agent-sdk** — `ClaudeCodeOptions` is now `ClaudeAgentOptions`. Agent SDK uses `anyio.run`, NOT `asyncio.run`. `setting_sources` defaults to `None` — must opt in to load `.claude/`.
+2. **Hatchet v1** (sdk 1.33.5+): `@hatchet.task()` function-based, NOT `@hatchet.workflow`. Pydantic inputs; `aio_` async prefix.
+3. **bbscope v2**: subcommands are `poll`/`db`, not v1 `bbscope h1 -t`.
+4. **DeepSeek pricing**: `$0.14` cache-miss in / `$0.0028` cache-hit in / `$0.28` out per 1M. `deepseek-chat`/`-reasoner` alias `deepseek-v4-flash`. (v6 plan's $0.28/$0.42 was WRONG.)
+5. **boto3 < 1.36** for R2 (1.36.0 checksum break) — or `request_checksum_calculation="when_required"`.
+6. **LiteLLM pin v1.86.1** — NEVER 1.82.7/1.82.8 (supply-chain incident Mar 24 2026).
+7. **Turborepo 2.x**: `tasks:` not `pipeline:` in turbo.json.
+8. **projectdiscovery list**: `dist/data.json` under `programs` key (not `chaos-bugbounty-list.json`).
+9. **HackerOne structured_scopes**: READ is CURRENT; only program-level WRITE removed. Merge `scope_exclusions`.
+10. **Bugcrowd cookie**: `_bugcrowd_session` (not `_crowdcontrol_session`).
+11. **SciPy 1.17.0 `ttest_ind`**: keyword-only args; `permutations`/`random_state` removed. Welch = `equal_var=False`.
+12. **Subagent frontmatter**: markdown uses `tools:`; SDK uses `allowedTools`.
+13. **MCP stdio**: never write stdout (corrupts JSON-RPC) — stderr/file only.
+14. **Playwright dialog**: register handler BEFORE trigger; MUST accept/dismiss or page freezes.
+15. **PyJWT**: hardcode `algorithms=["RS256"]` (RFC 8725 §2.1 none-alg attack).
+16. **OpenFeature→Unleash Python**: no official provider (May 2026) — custom or flagd.
+17. **CREATE EXTENSION `vectorscale`** (not `pgvectorscale`).
+18. **ParadeDB dropped pgvectorscale from bundle** — custom image needed for vector+vectorscale+pg_search.
+19. **1M context beta retired Apr 30 2026** — use Sonnet 4.6 / Opus 4.6 native 1M, no beta header.
+20. **Coolify v4.1.0** first stable v4 (May 18 2026).

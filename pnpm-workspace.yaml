@@ -1,0 +1,5 @@
+packages:
+  - "packages/core/*"        # bountystrike-core — Apache-2.0 (shared libs, schemas, MCP client, evidence model)
+  - "packages/community/*"   # bountystrike-community — AGPL-3.0 (subagents, CLI, self-hosted deployment)
+  - "packages/enterprise/*"  # bountystrike-enterprise — proprietary (multi-tenant control plane, SSO, AEV)
+  - "apps/*"

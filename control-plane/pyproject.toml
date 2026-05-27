@@ -17,9 +17,11 @@ dependencies = [
     "aioboto3>=13.0",
     "redis>=5.0",
     "scipy>=1.13",
+    "openfeature-sdk>=0.7",
 ]
 
 [project.optional-dependencies]
+unleash = ["UnleashClient>=6.0"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

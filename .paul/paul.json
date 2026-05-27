@@ -1,0 +1,25 @@
+{
+  "name": "BountyStrike-AIv7",
+  "version": "0.0.0",
+  "milestone": {
+    "name": "v0.1 Community Edition MVP",
+    "version": "0.1.0",
+    "status": "in_progress"
+  },
+  "phase": {
+    "number": 0,
+    "name": "Truth-in-Claims & Foundation",
+    "status": "in_progress"
+  },
+  "loop": {
+    "plan": null,
+    "position": "IDLE"
+  },
+  "timestamps": {
+    "created_at": "2026-05-27T00:00:00Z",
+    "updated_at": "2026-05-27T12:00:00Z"
+  },
+  "satellite": {
+    "groom": true
+  }
+}

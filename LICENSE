@@ -1,0 +1,37 @@
+BountyStrike — License Manifest
+
+This repository is multi-licensed across three tiers. There is NO single blanket
+license; the license that applies depends on which tier a file belongs to. See
+`LICENSES.md` for the authoritative file/directory → tier → license mapping.
+
+## Three-tier model
+
+| Tier | License | Location | Full text |
+|------|---------|----------|-----------|
+| core | Apache-2.0 | `packages/core/*` | `packages/core/LICENSE` (= `LICENSE-APACHE`) |
+| community | AGPL-3.0 | `packages/community/*` + current `control-plane/`, `mcp/*`, `scripts/` | `packages/community/LICENSE` (= `LICENSE-AGPL`) |
+| enterprise | Proprietary | `packages/enterprise/*` | `packages/enterprise/LICENSE` |
+
+## AGPL-3.0 §13 — Remote Network Interaction (community tier)
+
+Community-tier code is AGPL-3.0. Its defining obligation: **if you run a modified
+version of community-tier code as a network-accessible service, you must offer the
+corresponding source code to the users of that service** (AGPL-3.0 §13). The hosted
+SaaS tiers must satisfy this for any community-tier code they run.
+
+## Relicensing boundary
+
+Code flows one direction only, by license compatibility:
+
+    core (Apache-2.0)  →  community (AGPL-3.0)  →  enterprise (proprietary)
+
+- `core` must stay Apache-clean: **no imports from `community/` or `enterprise/`** (a copyleft import would relicense core).
+- `community` may use `core`.
+- `enterprise` may use `core` and `community` internally, but is distributed only under the proprietary license; enterprise-only behavior sits behind a `tier=enterprise` flag, never a forked code path.
+
+## Current state
+
+`control-plane/` and `mcp/*` exist today outside `packages/community/` but are
+**community-tier (AGPL-3.0)** — see `LICENSES.md`. Physical relocation under
+`packages/community/` is deferred to a later plan; the binding is authoritative
+via `LICENSES.md` in the meantime.

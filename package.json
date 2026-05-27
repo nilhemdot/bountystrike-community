@@ -1,0 +1,16 @@
+{
+  "name": "bountystrike",
+  "private": true,
+  "version": "0.1.0",
+  "description": "BountyStrike — Claude Code-native autonomous bug bounty platform (monorepo task layer over the uv Python workspace)",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "dev": "turbo run dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.0"
+  }
+}

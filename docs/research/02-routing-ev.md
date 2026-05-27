@@ -6,14 +6,14 @@ Source: `bountystrike_v5_build_plan.md`
 
 | Task | Primary Model | $/Mtok In/Out | Fallback | Rationale |
 |---|---|---|---|---|
-| Bulk triage / dedup | `deepseek/deepseek-v4-flash` | 0.14 / 0.28 | `qwen/qwen3-coder-30b` (free) | 10K findings ≈ $1.40 |
+| Bulk triage / dedup | `deepseek/deepseek-v4-flash` | 0.14 / 0.28 (cache-hit 0.0028) | `qwen/qwen3-coder-30b` (free) | 10K findings ≈ $1.40 cache-miss |
 | Recon synthesis (large output) | `google/gemini-3.1-pro` | 2.00 / 12.00 | `anthropic/claude-haiku-4-5` | 2M ctx subfinder+katana |
 | Subdomain enum triage | `anthropic/claude-haiku-4-5` | 1.00 / 5.00 | `deepseek/deepseek-v4-flash` | Fast/cheap binary classifier |
 | Vuln hypothesis gen | `anthropic/claude-sonnet-4-6` | 3.00 / 15.00 | `openai/gpt-5.4` | Quality gate |
 | Deep multi-step chain reasoning | `anthropic/claude-opus-4-7` | 5.00 / 25.00 | `openai/gpt-5.5-pro` | >4-step exploits only |
 | Mythos hypothesis (partner) | `anthropic/claude-mythos-preview` | 25.00 / 125.00 | `anthropic/claude-opus-4-7` | Glasswing partner; 83.1% CyberGym |
 | Exploit code gen | `qwen/qwen3-coder` (free) | 0.00 | `mistralai/devstral` (0.10/0.30) | Free 480B 1M ctx |
-| Uncensored payload synth | Venice Dolphin (FREE) | 0.00 | `cognitivecomputations/hermes-4-70b` (0.13/0.40) | 2.2% vs 71% refusal |
+| Uncensored payload synth | Venice Dolphin (FREE) | 0.00 | `cognitivecomputations/hermes-4-70b` (0.13/0.40) | 2.2% refusal; routes known-refusal payloads off Anthropic frontier models (no primary source for hard Anthropic refusal %; mechanism per v6) |
 | CVSS v4 scoring rationale | `deepseek/deepseek-r1-0528` | 0.50 / 2.15 | `deepseek/deepseek-v4-flash` | Auditable open reasoning |
 | Exploit validation reasoning | `anthropic/claude-opus-4-7` | 5.00 / 25.00 | `openai/gpt-5.5-pro` (30/180) | False neg costs $10K+ |
 | Report prose | `anthropic/claude-sonnet-4-6` | 3.00 / 15.00 | `openai/gpt-5.4` | Affects triage acceptance |
@@ -22,6 +22,8 @@ Source: `bountystrike_v5_build_plan.md`
 | LLM probe gen | `anthropic/claude-sonnet-4-6` | 3.00 / 15.00 | `x-ai/grok-4.20` (2M ctx) | Adversarial prompting |
 | Cloud IAM chain | `anthropic/claude-opus-4-7` | 5.00 / 25.00 | `google/gemini-3.1-pro` | Permission graph |
 | Daily intel brief | `anthropic/claude-haiku-4-5` | 1.00 / 5.00 | `deepseek/deepseek-v4-flash` | Routine summarization |
+
+> **Pricing note:** DeepSeek V4-Flash: cache-miss input $0.14 / output $0.28 per MTok; cache-hit input $0.0028. (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure)
 
 **Tier-S-Cyber self-hosted:** Deep Hat V2 30B (Kindo $0.40/$1.20) | WhiteRabbitNeo V3 8B (HF, RTX 3090+) | Foundation-Sec-8B Cisco (HF, 1× A100) | Pentest-R1 (GRPO RL on 500+ HTB/VulnHub; 24.2% AutoPenBench; Ollama) | Red-MIRROR (LoRA Qwen2.5-14B; 86% XBOW; 4× A100 / 2× H100). Solo: WhiteRabbit + Foundation-Sec on RTX 4090 via Ollama. SaaS: Pentest-R1 + Red-MIRROR on Hetzner AX102 (2× A100 80GB) via vLLM.
 
@@ -48,7 +50,9 @@ Source: `bountystrike_v5_build_plan.md`
 - **L1 — per-task ceiling:** OpenRouter Bridge MCP downgrades when expected cost > ceiling
 - **L2 — per-scan budget:** `cost_budget_usd` in `ScanJobRequest`; `mcp__openrouter__generation_stats` tracks; early-stop at 80% with no validated findings
 - **L3 — monthly ceiling:** Hatchet enforces; default $30/mo solo
-- **Solo example (100 targets):** Recon $0.20 + DeepSeek triage $0.07 + Venice/Qwen exploit $0.00 + Sonnet validation $0.15 + Sonnet report $0.09 = **$0.51 ≈ $0.0051/target**
+- **Solo example (100 targets, corrected DeepSeek pricing, cache-miss):** Recon $0.20 + DeepSeek triage $0.07 (500K tok × $0.14/M input) + Venice/Qwen exploit $0.00 + Sonnet validation $0.15 + Sonnet report $0.09 = **$0.51 ≈ $0.0051/target** *(per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure)*
+  - **With prompt caching** (cache-hit input $0.0028/M on repeated triage context): triage drops to ~$0.0014, total ≈ **$0.44**. Cache-hit ratio is the dominant lever on solo-scan cost.
+  - **Per-scan target check:** corrected per-target cost $0.0051 (cache-miss) / $0.0044 (cached) is well within the <$0.20/solo-scan target (target re-validated, not breached — AC-10 satisfied). The 100-target *aggregate* $0.51 is a batch figure, not a per-scan figure.
 - **SaaS tiers:** Starter $5/mo (25 scans) | Professional $50/mo (250 scans) | Enterprise $200/mo
 - **Circuit breaker (Redis):** 10s timeout. 3 fails / 60s window → OPEN 120s. 429 → exp backoff. 5xx → alt provider.
 
@@ -123,13 +127,13 @@ EV_score = min(S * (1 + 0.20 * f_cve), 1.0)
 | VDP (no bounty) | 0.10 |
 
 **Freshness decay:**
-- Scope: `f_fresh(Δt) = exp(-0.00065*Δt)` → 0.97 @ 48h, 0.89 @ 1wk, 0.63 @ 1mo
-- KEV: `f_kev(Δt) = exp(-0.00963*Δt)` → halves in ~72h
+- Scope: `f_fresh(Δt) = exp(-0.00065*Δt)` → 0.97 @ 48h, 0.89 @ 1wk, 0.63 @ 1mo *(hand-tuned heuristic, pending calibration — no published derivation)*
+- KEV: `f_kev(Δt) = exp(-0.00963*Δt)` → halves in ~72h *(hand-tuned heuristic, pending calibration — no published derivation)*
 
 **CVE opportunity score:**
 ```python
 def cve_opportunity_score(epss, kev_age_hours, has_nuclei_template, cvss_exploitability=0.5):
-    LAMBDA, MU = 0.00065, 0.00963
+    LAMBDA, MU = 0.00065, 0.00963  # hand-tuned heuristics, pending calibration — no published derivation
     template_factor = 0.25 if has_nuclei_template else 1.00
     freshness = math.exp(-MU * kev_age_hours)
     exploit_prob = max(epss, cvss_exploitability * 0.3)

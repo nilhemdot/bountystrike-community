@@ -74,7 +74,7 @@ Three-tier isolation:
 
 **Agent runtimes/SDKs:** Claude Code v2.1.89+; Claude Agent SDK; OpenAI Agents SDK; LangGraph 1.x; PydanticAI; OpenCode.
 
-**Models:** Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 / Mythos Preview ($25/$125 Mtok); DeepSeek V4-Flash ($0.14/$0.28); DeepSeek R1-0528; Qwen3-Coder (free + 480B 1M ctx); Qwen2.5-14B (Red-MIRROR LoRA); Pentest-R1 (Ollama); Venice Dolphin Mistral 24B (FREE, 2.2% refusal); Hermes-4-70B ($0.13/$0.40); OpenRouter (370 models); OpenAI text-embedding-3-large (1536-dim).
+**Models:** Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 / Mythos Preview ($25/$125 Mtok); DeepSeek V4-Flash ($0.14/$0.28, cache-hit $0.0028 input) (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure); DeepSeek R1-0528; Qwen3-Coder (free + 480B 1M ctx); Qwen2.5-14B (Red-MIRROR LoRA); Pentest-R1 (Ollama); Venice Dolphin Mistral 24B (FREE, 2.2% refusal); Hermes-4-70B ($0.13/$0.40); OpenRouter (370 models); OpenAI text-embedding-3-large (1536-dim).
 
 **Orchestration:** Hatchet; Temporal Cloud / Temporal self-hosted; Bifrost (MCP federation).
 

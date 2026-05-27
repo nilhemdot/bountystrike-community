@@ -281,7 +281,7 @@ async def ingest_h1_org_assets(org_handle: str, api_token: str):
 **`hooks/model_route_policy.py`** PreToolUse hook:
 - Triggers on `mcp__openrouter__openrouter_complete`
 - Keywords: `payload, inject, bypass, polyglot, XSS, SQLi, SSTI, RCE, shellcode`
-- DENY if Anthropic model + payload prompt (70%+ refusal rate)
+- DENY if Anthropic model + payload prompt (routes known-refusal payloads off Anthropic frontier models; no primary source for hard refusal %; mechanism per v6)
 - AUTO-REROUTE to `cognitivecomputations/dolphin-mistral-24b-venice-edition` with `provider.data_collection: deny` (Venice privacy)
 - Allowed alternates: `cognitivecomputations/hermes-3-llama-3-1-70b`
 
@@ -389,7 +389,7 @@ async def ingest_h1_org_assets(org_handle: str, api_token: str):
 - **Content-addressable storage** — SHA-256 hash IS the storage key.
 - **CyberStrikeAI** — Chinese AI-native offensive framework, 600+ FortiGate compromise Jan-Feb 2026.
 - **defer** — Claude Code April 2026 PreToolUse decision pausing for async validation.
-- **DeepSeek V4-Flash** — $0.14/$0.28 per MTok, triage/dedup model.
+- **DeepSeek V4-Flash** — $0.14 cache-miss in / $0.0028 cache-hit in / $0.28 out per MTok, triage/dedup model. (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure)
 - **DiskANN** — pgvectorscale disk-based ANN, > 99% recall < 10ms p99.
 - **E2B** — Firecracker microVM sandbox API.
 - **EPSS** — FIRST.org 30-day exploit probability score.
@@ -424,7 +424,7 @@ async def ingest_h1_org_assets(org_handle: str, api_token: str):
 - **Temporal Cloud** — SaaS durable workflow.
 - **T0-T3** — autonomy tiers: T0 fully auto, T1 alert, T2 single approval, T3 two-person review.
 - **Trickest** — 800+ public programs catalog.
-- **Venice Dolphin** — 2.2% refusal rate (vs 70%+ Anthropic) for payload generation.
+- **Venice Dolphin** — 2.2% refusal rate; routes known-refusal payloads off Anthropic frontier models. (no primary source for hard Anthropic refusal %; mechanism per v6)
 - **VulnCheck KEV** — commercial KEV extension, faster cadence.
 - **XBOW** — $237M / $1B+ valuation, #1 H1 leaderboard June 2025.
 
@@ -652,7 +652,7 @@ Pro tier: $79/mo ÷ 200 scans = $0.40/scan infra. 10+ confirmed/mo to be sustain
 | Claude Code defer primitive Apr 1 2026, v2.1.89 | research/agent_mcp_ecosystem.md §1.1 |
 | Claude Code 26-event hook table | research/agent_mcp_ecosystem.md §1.3 |
 | OpenRouter 370 models Apr 28 2026 | research/openrouter_models.md |
-| DeepSeek V4-Flash $0.14/$0.28 | research/openrouter_models.md §Tier-A |
+| DeepSeek V4-Flash $0.14 cache-miss in / $0.0028 cache-hit in / $0.28 out per MTok | research/openrouter_models.md §Tier-A (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) |
 | Venice Dolphin 2.2% refusal | research/openrouter_models.md §Tier-U |
 | BYOK Anthropic 1M free req/mo | research/openrouter_models.md §BYOK |
 | bbscope v2 federated ingestion | research/program_selection.md §1.1 |

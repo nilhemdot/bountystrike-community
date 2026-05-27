@@ -41,7 +41,7 @@ These are hard constraints. Any code, agent, or workflow that violates them is w
 
 - **Active scanning** of subdomains, endpoints, parameters, and form fields for the 8 oracle bug classes within JWT-validated scope.
 - **Submission** to HackerOne, Bugcrowd, Intigriti, YesWeHack, Immunefi via dedicated MCP submitters. Intigriti currently read-only via the researcher API; submission is a placeholder pending a relay endpoint (per [`research/00c-context7-verifications.md`](research/00c-context7-verifications.md)).
-- **Cost discipline** via the model-routing matrix (16 task types × 4 cost tiers) in [`research/02-routing-ev.md`](research/02-routing-ev.md). Bulk triage on DeepSeek ($0.14/M); deep reasoning on Opus ($5/M); Tier-S models for security-specific tasks (Pentest-R1, WhiteRabbitNeo).
+- **Cost discipline** via the model-routing matrix (16 task types × 4 cost tiers) in [`research/02-routing-ev.md`](research/02-routing-ev.md). Bulk triage on DeepSeek ($0.14/M input, cache-hit $0.0028/M) (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure); deep reasoning on Opus ($5/M); Tier-S models for security-specific tasks (Pentest-R1, WhiteRabbitNeo).
 - **Solo and SaaS deployment** modes. Solo: single docker-compose stack, BYOK, <$30/mo. SaaS: per-tenant Firecracker isolation, signed scope JWTs, Temporal Cloud, LiteLLM proxy.
 
 ## What's Out of Scope

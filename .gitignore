@@ -2,6 +2,7 @@ keys/
 .env
 .env.local
 node_modules/
+.turbo/
 __pycache__/
 *.pyc
 .venv/

@@ -51,7 +51,7 @@ The five non-negotiables that govern every architectural decision:
 
 **Non-Negotiable 2: Scope boundaries are enforced at the network layer, not the prompt layer.** Every outbound connection from the platform passes through a scope-gated egress proxy. Signed RS256 scope JWTs, issued by the control plane and validated at the Firecracker tap0 network interface, make scope violations impossible to commit accidentally or through prompt injection — regardless of what the LLM decides [research/academic_cve.md §5.5]. Adversarial prompt injection against the scope enforcement is a CFAA risk and an ecosystem trust risk; it must be architecturally impossible, not policy-instructed.
 
-**Non-Negotiable 3: The economic model must work for individual practitioners.** Every funded competitor — XBOW ($237M), Tenzai ($75M seed), RunSybil ($40M), Terra ($38M), Novee ($51.5M), Surf AI ($57M) — is building for enterprise procurement [research/competitors.md §Tier-1]. The solo hacker deploying on a MacBook Mini is nobody's target customer. BountyStrike v5 serves this underserved operator with a deployment mode that costs under $30/month in infrastructure and under $0.20/target in LLM costs, achieved through DeepSeek V4-Flash ($0.14/$0.28/Mtok) for high-volume triage and BYOK Anthropic credits (1M free requests/month) for quality-sensitive work [research/openrouter_models.md §BYOK].
+**Non-Negotiable 3: The economic model must work for individual practitioners.** Every funded competitor — XBOW ($237M), Tenzai ($75M seed), RunSybil ($40M), Terra ($38M), Novee ($51.5M) — is building for enterprise procurement [research/competitors.md §Tier-1]. *(Surf AI removed from the competitive set per v6: it is an agentic security-operations platform, not an offensive-security competitor.)* The solo hacker deploying on a MacBook Mini is nobody's target customer. BountyStrike v5 serves this underserved operator with a deployment mode that costs under $30/month in infrastructure and under $0.20/target in LLM costs when cache-hit rates are high, achieved through DeepSeek V4-Flash ($0.14 cache-miss input / $0.0028 cache-hit input / $0.28 output per MTok; per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) for high-volume triage and BYOK Anthropic credits (1M free requests/month) for quality-sensitive work [research/openrouter_models.md §BYOK].
 
 **Non-Negotiable 4: The platform must produce a transparent, auditable evidence chain for every finding.** SHA-256 content-addressable evidence blobs, a hash-chained audit log with optional Sigstore Rekor anchoring, and a fully replayable session transcript for every validated vulnerability. This addresses the fundamental transparency deficit in the funded competitor landscape: "XBOW, Pentera, RidgeGen, Hadrian Nova — the reports look polished, but operators have zero insight into the reasoning chain, evidence chain, or why a submission was or was not triaged" [research/competitors.md §Executive Summary]. Every BountyStrike v5 finding is accompanied by a machine-verifiable evidence bundle that any program operator can independently replay.
 
@@ -456,7 +456,7 @@ Each subagent is a markdown file in `.claude/agents/` with YAML frontmatter. Eac
 **Model:** Opus 4.7 as default (deep reasoning for multi-step chains). Escalation to Mythos for partner accounts. Falls back to OpenRouter routing for payload generation when Anthropic models refuse.
 
 **OpenRouter routing for exploit-agent:**
-- Attack-path reasoning / chaining: `deepseek/deepseek-v4-flash` ($0.14/$0.28) or Opus 4.7 for >4-step chains
+- Attack-path reasoning / chaining: `deepseek/deepseek-v4-flash` ($0.14 cache-miss input / $0.0028 cache-hit input / $0.28 output per MTok) (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) or Opus 4.7 for >4-step chains
 - Payload generation (XSS polyglots, SSRF payloads, SQLi injection strings): Venice Dolphin FREE (2.2% refusal) or `cognitivecomputations/hermes-4-70b` ($0.13/$0.40)
 - Exploit code writing (Python PoC, Burp extensions): `qwen/qwen3-coder` (free tier for common PoCs; 480B for complex)
 - CVSS v4 rationale: `deepseek/deepseek-r1-0528` (open reasoning tokens)
@@ -708,14 +708,14 @@ Every task in the BountyStrike pipeline has a designated primary model, fallback
 
 | Task | Primary Model | Price In/Out $/Mtok | Fallback | Rationale |
 |---|---|---|---|---|
-| Bulk triage / dedup | `deepseek/deepseek-v4-flash` | $0.14 / $0.28 | `qwen/qwen3-coder-30b` free | Highest-volume task; $0.14 input handles 10k findings for $1.40 |
+| Bulk triage / dedup | `deepseek/deepseek-v4-flash` | $0.14 / $0.28 (cache-hit $0.0028) | `qwen/qwen3-coder-30b` free | Highest-volume task; $0.14 cache-miss input handles 10k findings for $1.40 (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) |
 | Recon synthesis (large output) | `google/gemini-3.1-pro` | $2.00 / $12.00 | `anthropic/claude-haiku-4-5` | 2M context; synthesizes full subfinder+katana output without paging |
 | Subdomain enumeration triage | `anthropic/claude-haiku-4-5` | $1.00 / $5.00 | `deepseek/deepseek-v4-flash` | Fast + cheap for binary in-scope classification |
 | Vulnerability hypothesis gen | `anthropic/claude-sonnet-4-6` | $3.00 / $15.00 | `openai/gpt-5.4` | Primary hypothesis quality gate; Sonnet 4.6 = Opus-level coding at $3 |
 | Deep reasoning / multi-step chain | `anthropic/claude-opus-4-7` | $5.00 / $25.00 | `openai/gpt-5.5-pro` | Reserved for >4-step exploit chains; costs justify for $10K+ findings |
 | Mythos hypothesis (partner) | `anthropic/claude-mythos-preview` | $25.00 / $125.00 | `anthropic/claude-opus-4-7` | Glasswing partner accounts only; 83.1% CyberGym vs 40% public SOTA |
 | Exploit code generation | `qwen/qwen3-coder` free | $0.00 | `mistralai/devstral` $0.10/$0.30 | Free tier 480B model; 1M context for full codebase PoCs |
-| Uncensored payload synthesis | Venice Dolphin FREE | $0.00 | `cognitivecomputations/hermes-4-70b` $0.13/$0.40 | 2.2% refusal vs Claude 71% refusal for offensive payloads |
+| Uncensored payload synthesis | Venice Dolphin FREE | $0.00 | `cognitivecomputations/hermes-4-70b` $0.13/$0.40 | 2.2% refusal rate; Anthropic frontier models refuse a meaningful share of offensive prompts, so known-refusal categories route to Venice/Hermes (no primary source for a hard Anthropic refusal %; described as mechanism per v6 reframe) |
 | CVSS v4 scoring rationale | `deepseek/deepseek-r1-0528` | $0.50 / $2.15 | `deepseek/deepseek-v4-flash` | Open reasoning tokens; auditable scoring decisions |
 | Exploit validation reasoning | `anthropic/claude-opus-4-7` | $5.00 / $25.00 | `openai/gpt-5.5-pro` $30/$180 | Validation demands highest accuracy; false negatives cost $10K+ |
 | Report prose generation | `anthropic/claude-sonnet-4-6` | $3.00 / $15.00 | `openai/gpt-5.4` | Report quality directly affects triage acceptance rate |
@@ -766,7 +766,7 @@ The cost guardrails operate at three levels:
 
 **Solo cost model worked example (per 100-target engagement):**
 - Recon (Haiku 4.5, 200K tokens): 100 targets × 2K tokens avg = 200K tokens × $0.001/K = $0.20
-- Scanner triage (DeepSeek V4-Flash, bulk JSON extraction, 500K tokens): $0.14/Mtok × 0.5M = $0.07
+- Scanner triage (DeepSeek V4-Flash, bulk JSON extraction, 500K tokens): $0.14/Mtok × 0.5M = $0.07 (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure)
 - Exploit generation (Venice Dolphin FREE + Qwen3-Coder FREE): $0.00
 - Validation oracle (Sonnet 4.6, 50K tokens for 5 candidates): $0.003/K × 50K = $0.15
 - Report generation (Sonnet 4.6, 3 validated findings, 10K tokens each): $0.003/K × 30K = $0.09
@@ -804,7 +804,7 @@ The BYOK key is stored in the operator's secrets manager (1Password CLI for solo
 
 ## 3.6 Refusal Management
 
-Claude's refusal rate for offensive security content is approximately 71% for payloads and techniques that appear in standard security testing [research/community_signals.md §2 OpenRouter Model Recommendations]. Venice Dolphin (free tier) has a 2.2% refusal rate; Hermes-4-70B maintains similar low-refusal behavior [research/openrouter_models.md §Tier-U].
+A runtime refusal classifier routes known-refusal payload categories to Venice Dolphin / Hermes-4-70B. Venice Dolphin (free tier) has a 2.2% refusal rate; Hermes-4-70B maintains similar low-refusal behavior [research/openrouter_models.md §Tier-U]. (no primary source for a hard Anthropic refusal %; described as mechanism per v6 reframe)
 
 The platform's refusal management strategy is not to attempt to bypass Anthropic's safety systems — that is both futile and against terms of service — but to route tasks appropriately so that safety-constrained models never see requests they would refuse. The routing policy is:
 
@@ -1092,14 +1092,14 @@ Scope freshness is modeled with an exponential decay function [research/program_
 
 \[ f_{\text{fresh}}(\Delta t) = e^{-\lambda \cdot \Delta t} \]
 
-With \(\lambda = 0.00065\) (hours⁻¹), giving:
+With \(\lambda = 0.00065\) (hours⁻¹) (hand-tuned heuristic constant, pending empirical calibration — no published derivation), giving:
 - `scope_freshness(0)` = 1.00 (just changed)
 - `scope_freshness(48)` = 0.97 (2 days)
 - `scope_freshness(168)` = 0.89 (1 week)
 - `scope_freshness(720)` = 0.63 (1 month)
 - `scope_freshness(4320)` = 0.06 (6 months)
 
-KEV/EPSS opportunity also decays with a steeper function (μ = 0.00963/hour), so the first-mover advantage of a new KEV entry halves in ~72 hours [research/program_selection.md §11.2]:
+KEV/EPSS opportunity also decays with a steeper function (μ = 0.00963/hour) (hand-tuned heuristic constant, pending empirical calibration — no published derivation), so the first-mover advantage of a new KEV entry halves in ~72 hours [research/program_selection.md §11.2]:
 
 \[ f_{\text{kev}}(\Delta t_{\text{kev}}) = e^{-\mu \cdot \Delta t_{\text{kev}}} \]
 
@@ -1109,8 +1109,8 @@ The combined CVE opportunity score:
 def cve_opportunity_score(epss: float, kev_age_hours: float,
                            has_nuclei_template: bool,
                            cvss_exploitability: float = 0.5) -> float:
-    LAMBDA = 0.00065
-    MU = 0.00963
+    LAMBDA = 0.00065  # hand-tuned heuristic, pending empirical calibration
+    MU = 0.00963      # hand-tuned heuristic, pending empirical calibration
     
     template_factor = 0.25 if has_nuclei_template else 1.00
     freshness = math.exp(-MU * kev_age_hours)
@@ -1320,7 +1320,7 @@ BountyStrike v5's deterministic verifier addresses all four failure modes by arc
 - Self-exploitation is impossible because the sandbox VM's egress is scope-gated — any "code execution" on the attacker's own machine cannot generate an evidence artifact that reaches the validator
 - Mock validation is impossible because the validator is a different model on a different invocation with no access to the generator's context
 - Hallucinated code paths are caught by the oracle's deterministic execution — if the code path doesn't exist, the PoC simply doesn't produce the expected evidence artifact
-- Timing coincidence is eliminated by Welch's t-test statistical analysis (requires a population of measurements, not a single data point)
+- Timing coincidence is reduced by a Welch's t-test engineering heuristic (requires a population of measurements, not a single data point; calibrated against a labeled corpus with measured FP/FN rates — not an academically-derived SQLi-detection method) (engineering heuristic; no academic source for Welch-on-SQLi per v6)
 
 The validator is the single most important component in the platform. Without it, BountyStrike v5 is another AI noise generator. With it, the platform produces findings that programs confirm.
 
@@ -1483,7 +1483,7 @@ async def verify_ssrf(target_url: str, param_name: str,
 
 ### 5.2.3 SQLi Oracle — Welch's T-Test on Time Distributions
 
-The blind SQLi oracle uses statistical analysis rather than naive single-measurement timing, directly addressing the AnyPoC "timing coincidence" failure mode. Welch's t-test compares two populations of response times: one with a timing-based injection payload (e.g., `SLEEP(3)`) and one with a baseline request.
+The blind SQLi oracle uses statistical analysis rather than naive single-measurement timing, directly addressing the AnyPoC "timing coincidence" failure mode. Welch's t-test is used as an engineering heuristic calibrated against a labeled corpus with measured FP/FN rates — its application to blind-SQLi timing is not an academically-derived SQLi-detection method (engineering heuristic; no academic source for Welch-on-SQLi per v6). It compares two populations of response times: one with a timing-based injection payload (e.g., `SLEEP(3)`) and one with a baseline request.
 
 ```python
 import scipy.stats as stats
@@ -1805,7 +1805,7 @@ The AnyPoC paper [research/academic_cve.md §4.1] identifies the following rewar
 | Self-exploitation | Agent runs PoC against its own process | Sandbox VM has no loopback → attacker machine. Only external target IPs are reachable via scope-gated egress. Evidence artifacts generated by self-exploitation would have source IP = sandbox VM IP, not target IP — automatically rejected by oracle. |
 | Mock validation | Validator always returns "pass" | Validator is a different model, different invocation, no access to generator transcript. Validator receives only PoC + target URL. |
 | Hallucinated code paths | PoC references non-existent endpoints | Oracle executes the exact PoC in the sandbox. If the endpoint doesn't exist, HTTP 404 is returned. Oracle rejects 404s as non-evidence. |
-| Timing coincidence | Single network jitter misread as SLEEP | Welch's t-test on population of measurements (minimum N=7). Single-measurement timing evidence rejected. |
+| Timing coincidence | Single network jitter misread as SLEEP | Welch's t-test engineering heuristic on population of measurements (minimum N=7). Single-measurement timing evidence rejected. (engineering heuristic; no academic source for Welch-on-SQLi per v6) |
 | Circular evidence | Generator creates "evidence" artifact itself | All evidence artifacts are timestamped and IP-attributed. Evidence generated by the agent process (not by the target server) is rejected by oracle's source-IP validation. |
 | Overfitting to test | Agent optimizes for the benchmark metric | Benchmark targets are never in the training data. The oracle is deterministic and cannot be "learned" by the model. |
 
@@ -1817,7 +1817,7 @@ The verifier is a 4-6 week build with the following milestones:
 
 **Week 3:** XSS oracle with Playwright DOM mutation observer and alert dialog handler. This requires Playwright installation in the sandbox VM image. Write tests against XSS challenges in PortSwigger Web Security Academy.
 
-**Week 4:** SQLi timing oracle with Welch's t-test. This requires careful calibration of the statistical parameters (N=7, α=0.01, minimum time delta = sleep_seconds × 0.8) against real network conditions. Test against SQLmap's test environment.
+**Week 4:** SQLi timing oracle with Welch's t-test (engineering heuristic; no academic source for Welch-on-SQLi per v6). This requires careful calibration of the statistical parameters (N=7, α=0.01, minimum time delta = sleep_seconds × 0.8) against real network conditions — FP/FN rates must be measured against a labeled corpus. Test against SQLmap's test environment.
 
 **Week 5:** SSTI oracle (math expression evaluation), IDOR cross-account matrix (requires test account provisioning in the scope-mcp), RCE oracle with OOB DNS/HTTP.
 
@@ -2632,7 +2632,7 @@ async def generate_daily_brief(operator_id: str, date: datetime) -> DailyBrief:
 
 ### 8.5 New-CVE Alert Flow
 
-The most time-critical path in the ingestion pipeline is the new CVE/KEV alert. When CISA adds a CVE to the Known Exploited Vulnerabilities catalog, the first-mover advantage decays exponentially (λ = 0.00963, half-life ≈ 72 hours per [research/program_selection.md §11.2]). The platform must react in minutes, not hours.
+The most time-critical path in the ingestion pipeline is the new CVE/KEV alert. When CISA adds a CVE to the Known Exploited Vulnerabilities catalog, the first-mover advantage decays exponentially (μ = 0.00963, half-life ≈ 72 hours per [research/program_selection.md §11.2]; hand-tuned heuristic constant, pending empirical calibration). The platform must react in minutes, not hours.
 
 **Alert event chain:**
 
@@ -2683,7 +2683,7 @@ This drives several concrete decisions:
 - Postgres in Docker (not RDS): no managed DB cost, sufficient for single-operator workloads
 - Hatchet workflow engine (single binary, Postgres-backed): eliminates the Temporal Cloud subscription
 - microsandbox or Firecracker locally: no E2B API cost for sandboxed tool execution
-- DeepSeek V4-Flash as the primary model ($0.14/$0.28 per MTok): enables sub-$0.20 full scans
+- DeepSeek V4-Flash as the primary model ($0.14 cache-miss input / $0.0028 cache-hit input / $0.28 output per MTok; per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure): enables sub-$0.20 full scans at high cache-hit rates
 - BYOK Anthropic via the 1M free requests/month tier: Claude for premium tasks at zero marginal cost
 - Caddy reverse proxy + ngrok (or Cloudflare Tunnel): no dedicated load balancer
 - Cloudflare R2 for artifact storage: zero egress cost tier
@@ -2935,7 +2935,7 @@ The solo deployment is designed to cost under $30/month in infrastructure with b
 | Hatchet (self-hosted) | $0 | Open source, Postgres-backed |
 | Langfuse (self-hosted) | $0 | Open source |
 | BYOK Anthropic (Sonnet 4.6) | $0 | 1M requests/month free tier |
-| OpenRouter (DeepSeek V4-Flash) | ~$2–5 | Most scans; $0.14/$0.28 per MTok |
+| OpenRouter (DeepSeek V4-Flash) | ~$4–10 | Most scans; $0.14 cache-miss / $0.28 output per MTok (cache-hit $0.0028 input) (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) |
 | OpenRouter (Qwen3-Coder, Venice) | ~$1–3 | Exploit gen, payload synthesis |
 | interactsh-client (self-hosted) | $0 | OAST with open source server |
 | HackerOne/Bugcrowd API | $0 | Free API access |
@@ -2943,7 +2943,7 @@ The solo deployment is designed to cost under $30/month in infrastructure with b
 | **Per-scan cost (single target)** | **$0.08–0.20** | DeepSeek-heavy routing |
 | **Premium scan cost (full suite)** | **$0.50–1.50** | Sonnet 4.6 + Opus 4.7 for complex chains |
 
-The key cost driver is model selection. Using DeepSeek V4-Flash ($0.14/$0.28 per MTok) for triage, dedup, and intermediate reasoning, reserving Sonnet 4.6 for report writing and Opus 4.7 for complex exploit chaining via BYOK, the total per-scan cost is well under $0.20 for most targets. A single $500 bounty pays for hundreds of scans.
+The key cost driver is model selection. Using DeepSeek V4-Flash ($0.14 cache-miss input / $0.0028 cache-hit input / $0.28 output per MTok; per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) for triage, dedup, and intermediate reasoning, reserving Sonnet 4.6 for report writing and Opus 4.7 for complex exploit chaining via BYOK, the total per-scan cost is well under $0.20 for most targets when cache-hit rates are high. A single $500 bounty pays for hundreds of scans.
 
 ### 9.1.5 Solo-Mode Kill Switch
 
@@ -3494,7 +3494,10 @@ async def verify_sqli_time_based(
     - Null hypothesis: delayed and baseline response times have the same mean
     - Reject null (SQLi confirmed) when p < alpha
     
-    References: Welch 1947; standard for A/B test analysis with unequal variance.
+    References: Welch 1947 (origin of the t-test); its APPLICATION to blind-SQLi timing
+    is an engineering heuristic calibrated against a labeled corpus with measured FP/FN
+    rates, not an academically-derived SQLi-detection method (engineering heuristic;
+    no academic source for Welch-on-SQLi per v6).
     """
     
     # Baseline payloads (no sleep)
@@ -3627,11 +3630,11 @@ if tool_name == "mcp__openrouter__openrouter_complete":
     PAYLOAD_KEYWORDS = ["payload", "inject", "bypass", "polyglot", "XSS", "SQLi", "SSTI", "RCE", "shellcode"]
     is_payload_prompt = any(kw.lower() in prompt.lower() for kw in PAYLOAD_KEYWORDS)
     
-    # Block Anthropic models for payload prompts (they refuse > 70% of the time)
+    # Block Anthropic models for payload prompts (runtime classifier detects known-refusal categories)
     if is_payload_prompt and model.startswith("anthropic/"):
         print(json.dumps({
             "decision": "deny",
-            "reason": "Anthropic models have 70%+ refusal rate for payload generation. Route to Venice Dolphin or Hermes-4-70B instead."
+            "reason": "Known-refusal payload category detected. Routing to Venice Dolphin or Hermes-4-70B instead (no primary source for a hard Anthropic refusal %; described as mechanism per v6 reframe)."
         }))
         sys.exit(0)
     
@@ -3842,7 +3845,7 @@ func (sw *ScanWorkflow) Execute(ctx workflow.Context, params ScanParams) (*ScanR
 | R01 | AI slop generates false positives, programs ban platform | CRITICAL | HIGH | Oracle-first deterministic verification; confirmed-rate SLO > 70%; T3 approval gate | Validator subagent |
 | R02 | Agent breaks scope due to prompt injection in target HTML | CRITICAL | MEDIUM | Scope JWT enforced at network layer (iptables/tap0); application-layer scope check cannot be bypassed | Infrastructure |
 | R03 | CFAA liability from out-of-scope agent action | CRITICAL | LOW | Signed scope JWTs; PreToolUse defer + human review for ambiguous targets; legal review of safe harbor language | Legal + Scope-guard |
-| R04 | Anthropic model refusal rate degrades exploit-agent effectiveness | HIGH | HIGH | Venice Dolphin / Hermes-4-70B fallback routing; PreToolUse hook auto-reroutes payload prompts | Model routing |
+| R04 | Anthropic model refusal rate degrades exploit-agent effectiveness | HIGH | HIGH | Venice Dolphin / Hermes-4-70B fallback routing; runtime refusal classifier routes known-refusal categories; PreToolUse hook auto-reroutes payload prompts | Model routing |
 | R05 | OpenRouter price increases or rate limits | HIGH | MEDIUM | BYOK Anthropic as primary; LiteLLM proxy allows swap to Bedrock/Vertex in one config change | Infrastructure |
 | R06 | HackerOne API changes break scope ingestion | HIGH | MEDIUM | April 2026 migration already handled; monitor H1 changelog; fallback to arkadiyt | Scope-MCP |
 | R07 | Competitor (XBOW) preemptively offers individual hunter tier | HIGH | MEDIUM | Differentiate on transparency + cost + Claude Code native; transparent evidence chain is unique | Product |
@@ -3898,7 +3901,7 @@ func (sw *ScanWorkflow) Execute(ctx workflow.Context, params ScanParams) (*ScanR
 
 **defer**: Claude Code April 2026 PreToolUse hook decision that pauses a headless session and allows async validation before resuming. The key primitive for safe automated scope enforcement. [research/agent_mcp_ecosystem.md §1.1]
 
-**DeepSeek V4-Flash**: Ultra-cheap reasoning model at $0.14/$0.28 per MTok, used for triage, dedup, and intermediate reasoning in solo mode. [research/openrouter_models.md §Tier-A]
+**DeepSeek V4-Flash**: Ultra-cheap reasoning model at $0.14 cache-miss input / $0.0028 cache-hit input / $0.28 output per MTok (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure), used for triage, dedup, and intermediate reasoning in solo mode. [research/openrouter_models.md §Tier-A]
 
 **DiskANN**: Disk-Approximate Nearest Neighbor index from pgvectorscale, enabling > 99% recall at < 10ms p99 latency for vector similarity search in Postgres. [cleanslate2026bountystrike.md §4.1]
 
@@ -3928,7 +3931,7 @@ func (sw *ScanWorkflow) Execute(ctx workflow.Context, params ScanParams) (*ScanR
 
 **Interactsh**: Open-source OAST (Out-of-Band Application Security Testing) server for DNS/HTTP callback verification. Used by the SSRF oracle. [research/agent_mcp_ecosystem.md §3.1]
 
-**KEV**: CISA's Known Exploited Vulnerabilities catalog — CVEs with confirmed real-world exploitation. BountyStrike subscribes for real-time alerts with exponential freshness decay (λ = 0.00963). [research/program_selection.md §11.2]
+**KEV**: CISA's Known Exploited Vulnerabilities catalog — CVEs with confirmed real-world exploitation. BountyStrike subscribes for real-time alerts with exponential freshness decay (μ = 0.00963; pending calibration). [research/program_selection.md §11.2]
 
 **LangGraph 1.x**: Graph-based agent orchestration framework with checkpoints and human-in-the-loop interrupts. Used for T2/T3 approval tier workflows. [research/agent_mcp_ecosystem.md §6]
 
@@ -3972,7 +3975,7 @@ func (sw *ScanWorkflow) Execute(ctx workflow.Context, params ScanParams) (*ScanR
 
 **Trickest**: Platform cataloging 800+ public bug bounty programs with server/technology inventory data. Used for CVE-program cross-reference in EV scoring. [research/program_selection.md §1.4]
 
-**Venice Dolphin**: Privacy-focused Dolphin model via Venice/OpenRouter with 2.2% refusal rate (vs 70%+ for Anthropic frontier models on offensive prompts). Used for payload generation. [research/openrouter_models.md §Tier-U]
+**Venice Dolphin**: Privacy-focused Dolphin model via Venice/OpenRouter with 2.2% refusal rate; Anthropic frontier models refuse a meaningful share of offensive prompts, so known-refusal categories route here (no primary source for a hard Anthropic refusal %; described as mechanism per v6 reframe). Used for payload generation. [research/openrouter_models.md §Tier-U]
 
 **VulnCheck KEV**: Commercial extension of CISA KEV with additional vuln intelligence and faster update cadence. Used in SaaS tier. [research/academic_cve.md §Appendix B]
 
@@ -4457,14 +4460,14 @@ if __name__ == "__main__":
 | Claude Code defer primitive: April 1, 2026, v2.1.89 | research/agent_mcp_ecosystem.md §1.1 |
 | Claude Code 26-event hook table | research/agent_mcp_ecosystem.md §1.3 |
 | OpenRouter 370 models, April 28, 2026 | research/openrouter_models.md |
-| DeepSeek V4-Flash $0.14/$0.28 per MTok | research/openrouter_models.md §Tier-A |
+| DeepSeek V4-Flash $0.14 cache-miss / $0.0028 cache-hit input / $0.28 output per MTok | research/openrouter_models.md §Tier-A (per api-docs.deepseek.com; see docs/bountystrike_v6_phase0-1_technical_brief.md — corrects the v6 figure) |
 | Venice Dolphin 2.2% refusal rate | research/openrouter_models.md §Tier-U |
 | BYOK Anthropic 1M free requests/month | research/openrouter_models.md §BYOK |
 | bbscope v2 federated scope ingestion | research/program_selection.md §1.1 |
 | H1 structured_scopes deprecation April 16, 2026 | research/program_selection.md §2 |
 | EV formula: EV_b = BountyRange × P(eligible) × P(find|skill) × P(exploitable) × 1/T_validate | research/program_selection.md §10.1 |
 | Asset-type weights (smart_contract 1.40 → VDP 0.10) | research/program_selection.md §10.3 |
-| Scope freshness decay λ=0.00065, KEV decay μ=0.00963 | research/program_selection.md §11.1-11.2 |
+| Scope freshness decay λ=0.00065, KEV decay μ=0.00963 (pending calibration) | research/program_selection.md §11.1-11.2 |
 | CAI 3600× speed improvement | research/academic_cve.md §1.1 |
 | Red-MIRROR 86% XBOW benchmark | research/academic_cve.md §Appendix A |
 | Pentest-R1 24.2% AutoPenBench | research/academic_cve.md §Appendix A |
@@ -4489,7 +4492,7 @@ if __name__ == "__main__":
 | rix4uni/scope 10-minute cadence | research/program_selection.md §1.3 |
 | shuvonsec/claude-bug-bounty v3.0.0 community harness | research/community_signals.md §1 |
 | Immunefi top bounty: $16M Usual program | research/community_signals.md §10 |
-| Welch t-test for SQLi time-based detection | research/agent_mcp_ecosystem.md §5; academic_cve.md |
+| Welch t-test for SQLi time-based detection (engineering heuristic; no academic source for Welch-on-SQLi per v6) | research/agent_mcp_ecosystem.md §5; academic_cve.md |
 | pgvectorscale DiskANN index | cleanslate2026bountystrike.md §4.1 |
 | ParadeDB BM25 in Postgres | cleanslate2026bountystrike.md §4.1 |
 | Hatchet: single Postgres binary, solo orchestration | cleanslate2026bountystrike.md §4.1; program_selection.md §8.3 |
