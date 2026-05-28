@@ -1,0 +1,5 @@
+# Force LF on hook + shell scripts so shebangs don't break under WSL/Windows.
+# A CRLF shebang resolves to "python3\r" -> env: No such file or directory.
+.claude/hooks/** text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
