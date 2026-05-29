@@ -18,6 +18,10 @@ dependencies = [
     "redis>=5.0",
     "scipy>=1.13",
     "openfeature-sdk>=0.7",
+    # Hatchet v1 function-based SDK — durable workflow runtime (plan 01-02).
+    # PINNED per pin-doctrine. v1 `@hatchet.task` API is the 1.x line
+    # (0.x = legacy class-decorator API); CLAUDE.md trap #2 requires >=1.33.5.
+    "hatchet-sdk==1.33.6",
 ]
 
 [project.optional-dependencies]

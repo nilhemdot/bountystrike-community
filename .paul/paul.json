@@ -9,7 +9,7 @@
   "phase": {
     "number": 1,
     "name": "Community Edition MVP: The Moat",
-    "status": "not_started",
+    "status": "in_progress",
     "previous": {
       "number": 0,
       "name": "Truth-in-Claims & Foundation",
@@ -23,7 +23,7 @@
   },
   "timestamps": {
     "created_at": "2026-05-27T00:00:00Z",
-    "updated_at": "2026-05-29T00:00:00Z"
+    "updated_at": "2026-05-29T08:30:00Z"
   },
   "satellite": {
     "groom": true

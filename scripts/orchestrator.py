@@ -60,6 +60,10 @@ import asyncpg
 # Hot-path import of the approval queue helpers — keeps the orchestrator the
 # single owner of ``approval_queue`` writes; agents don't need DB access.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "control-plane", "src"))
+# Model routing for cost-optimized task execution.
+# Must be imported after approval_gate (shares control-plane/src sys.path entry).
+from control_plane.core.routing.model_router import ModelRouter  # noqa: E402
+from control_plane.core.routing.routing_config import load_routing_config  # noqa: E402
 from control_plane.domains.approval_gate import (  # noqa: E402
     ApprovalQueueError,
     ApprovalTier,
@@ -70,11 +74,6 @@ from control_plane.domains.evidence_management.services import (  # noqa: E402
     audit_validator_compliance,
 )
 
-# Model routing for cost-optimized task execution.
-# Must be imported after approval_gate (shares control-plane/src sys.path entry).
-from control_plane.core.routing.model_router import ModelRouter  # noqa: E402
-from control_plane.core.routing.routing_config import load_routing_config  # noqa: E402
-
 # Dedup store for fingerprint-based and semantic duplicate detection.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "mcp", "dedup-mcp", "src"))
 from dedup_mcp.store import DedupStore  # noqa: E402
@@ -82,6 +81,7 @@ from dedup_mcp.store import DedupStore  # noqa: E402
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_required(key: str) -> str:
     val = os.environ.get(key)
@@ -208,6 +208,7 @@ def _select_model(router: ModelRouter, agent_type: str) -> str:
 # DB helpers
 # ---------------------------------------------------------------------------
 
+
 async def _create_scan_job(
     conn: asyncpg.Connection,
     program_handle: str,
@@ -220,7 +221,10 @@ async def _create_scan_job(
         INSERT INTO scan_jobs (id, program_handle, platform, scope_jwt_jti, status, started_at)
         VALUES ($1, $2, $3, $4, 'queued', now())
         """,
-        job_id, program_handle, platform, scope_jwt_jti,
+        job_id,
+        program_handle,
+        platform,
+        scope_jwt_jti,
     )
     return job_id
 
@@ -271,7 +275,8 @@ async def _pending_tier_finding_ids(
     status_col = f"approval_pending_{tier.value.lower()}"
     rows = await conn.fetch(
         "SELECT id FROM findings WHERE job_id = $1 AND status = $2",
-        job_id, status_col,
+        job_id,
+        status_col,
     )
     return [str(r["id"]) for r in rows]
 
@@ -293,6 +298,7 @@ async def _count_by_status(conn: asyncpg.Connection, job_id: str) -> dict[str, i
 # Agent runner
 # ---------------------------------------------------------------------------
 
+
 async def _run_agent(
     agent_type: str,
     env_extras: dict[str, str],
@@ -307,7 +313,10 @@ async def _run_agent(
     if model_id:
         merged_env["CLAUDE_MODEL"] = model_id
     proc = await asyncio.create_subprocess_exec(
-        claude_cmd, "-p", prompt, "--dangerously-skip-permissions",
+        claude_cmd,
+        "-p",
+        prompt,
+        "--dangerously-skip-permissions",
         env=merged_env,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
@@ -336,20 +345,18 @@ async def _phase_recon(
     timeout_seconds: int,
     model_router: ModelRouter | None = None,
 ) -> None:
-    await conn.execute(
-        "UPDATE scan_jobs SET status = 'running' WHERE id = $1", job_id
-    )
+    await conn.execute("UPDATE scan_jobs SET status = 'running' WHERE id = $1", job_id)
     _log("launching recon-agent")
     model_id = _select_model(model_router, "recon") if model_router else None
     rc = await _run_agent(
         "recon",
         {
-            "SCOPE_JWT":      scope_jwt,
+            "SCOPE_JWT": scope_jwt,
             "PROGRAM_HANDLE": program_handle,
-            "PLATFORM":       platform,
-            "DATABASE_URL":   database_url,
-            "SCAN_JOB_ID":    job_id,
-            "TASK_STATUS":    "recon_complete",
+            "PLATFORM": platform,
+            "DATABASE_URL": database_url,
+            "SCAN_JOB_ID": job_id,
+            "TASK_STATUS": "recon_complete",
         },
         claude_cmd,
         model_id=model_id,
@@ -357,9 +364,7 @@ async def _phase_recon(
     if rc != 0:
         _log(f"WARNING: recon-agent exited {rc} — polling DB anyway")
 
-    status = await _wait_status(
-        conn, job_id, ("recon_complete", "recon_failed"), timeout_seconds
-    )
+    status = await _wait_status(conn, job_id, ("recon_complete", "recon_failed"), timeout_seconds)
     _log(f"recon finished: status={status}")
     if status != "recon_complete":
         _log(f"aborting — recon status={status}")
@@ -390,17 +395,15 @@ async def _phase_scanner(
         )
         return
 
-    await conn.execute(
-        "UPDATE scan_jobs SET status = 'running_scan' WHERE id = $1", job_id
-    )
+    await conn.execute("UPDATE scan_jobs SET status = 'running_scan' WHERE id = $1", job_id)
     _log("launching scanner-agent")
     model_id = _select_model(model_router, "scanner-agent") if model_router else None
     env_extras = {
-        "SCOPE_JWT":      scope_jwt,
+        "SCOPE_JWT": scope_jwt,
         "PROGRAM_HANDLE": program_handle,
-        "PLATFORM":       platform,
-        "DATABASE_URL":   database_url,
-        "SCAN_JOB_ID":    job_id,
+        "PLATFORM": platform,
+        "DATABASE_URL": database_url,
+        "SCAN_JOB_ID": job_id,
     }
     for passthrough in ("NUCLEI_TEMPLATE_DIR", "TIME_BUDGET_MIN"):
         if passthrough in os.environ:
@@ -450,15 +453,15 @@ async def _exploit_one(
 ) -> int:
     async with semaphore:
         env_extras: dict[str, str] = {
-            "SCOPE_JWT":         scope_jwt,
-            "PROGRAM_HANDLE":    program_handle,
-            "PLATFORM":          platform,
-            "DATABASE_URL":      database_url,
-            "FINDING_ID":        finding_id,
-            "SCAN_JOB_ID":       job_id,
-            "EVIDENCE_MCP_URL":  evidence_mcp_url,
-            "DEDUP_MCP_URL":     dedup_mcp_url,
-            "SANDBOX_MCP_URL":   sandbox_mcp_url,
+            "SCOPE_JWT": scope_jwt,
+            "PROGRAM_HANDLE": program_handle,
+            "PLATFORM": platform,
+            "DATABASE_URL": database_url,
+            "FINDING_ID": finding_id,
+            "SCAN_JOB_ID": job_id,
+            "EVIDENCE_MCP_URL": evidence_mcp_url,
+            "DEDUP_MCP_URL": dedup_mcp_url,
+            "SANDBOX_MCP_URL": sandbox_mcp_url,
         }
         if approval_token:
             env_extras["APPROVAL_TOKEN"] = approval_token
@@ -488,9 +491,7 @@ async def _enqueue_pending_tier(
             """,
             fid,
         )
-        poc_text = (
-            json.dumps(row["chain_steps"]) if row and row["chain_steps"] else None
-        )
+        poc_text = json.dumps(row["chain_steps"]) if row and row["chain_steps"] else None
         try:
             await queue_enqueue(conn, fid, tier, poc_text=poc_text)
             enqueued.append(fid_str)
@@ -526,28 +527,29 @@ _wait_t2_token = _wait_token
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main() -> None:  # noqa: PLR0912, PLR0915
     program_handle = _get_required("PROGRAM_HANDLE")
-    platform       = os.environ.get("PLATFORM", "hackerone")
-    scope_jwt      = _get_required("SCOPE_JWT")
-    database_url   = _get_required("DATABASE_URL")
+    platform = os.environ.get("PLATFORM", "hackerone")
+    scope_jwt = _get_required("SCOPE_JWT")
+    database_url = _get_required("DATABASE_URL")
 
-    oracle_mcp_url   = os.environ.get("ORACLE_MCP_URL",   "oracle-mcp")
+    oracle_mcp_url = os.environ.get("ORACLE_MCP_URL", "oracle-mcp")
     evidence_mcp_url = os.environ.get("EVIDENCE_MCP_URL", "evidence-mcp")
-    dedup_mcp_url    = os.environ.get("DEDUP_MCP_URL",    "dedup-mcp")
-    sandbox_mcp_url  = os.environ.get("SANDBOX_MCP_URL",  "sandbox-mcp")
+    dedup_mcp_url = os.environ.get("DEDUP_MCP_URL", "dedup-mcp")
+    sandbox_mcp_url = os.environ.get("SANDBOX_MCP_URL", "sandbox-mcp")
 
-    max_validators   = int(os.environ.get("MAX_VALIDATORS", "5"))
-    max_exploits     = int(os.environ.get("MAX_EXPLOITS",   "3"))
-    max_reporters    = int(os.environ.get("MAX_REPORTERS",  "3"))
-    recon_timeout    = int(os.environ.get("RECON_TIMEOUT",  "3600"))
-    scan_timeout     = int(os.environ.get("SCAN_TIMEOUT",   "7200"))
+    max_validators = int(os.environ.get("MAX_VALIDATORS", "5"))
+    max_exploits = int(os.environ.get("MAX_EXPLOITS", "3"))
+    max_reporters = int(os.environ.get("MAX_REPORTERS", "3"))
+    recon_timeout = int(os.environ.get("RECON_TIMEOUT", "3600"))
+    scan_timeout = int(os.environ.get("SCAN_TIMEOUT", "7200"))
     approval_timeout = int(os.environ.get("APPROVAL_TIMEOUT", str(24 * 3600)))
-    claude_cmd       = os.environ.get("CLAUDE_CMD", "claude")
+    claude_cmd = os.environ.get("CLAUDE_CMD", "claude")
 
     skip_exploit = _flag("SKIP_EXPLOIT")
-    skip_report  = _flag("SKIP_REPORT")
-    skip_idor    = _flag("SKIP_IDOR")
+    skip_report = _flag("SKIP_REPORT")
+    skip_idor = _flag("SKIP_IDOR")
 
     # Initialize model router for cost-optimized task execution.
     model_router = _init_model_router()
@@ -611,25 +613,27 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
             if hypo_ids:
                 exp_model_id = _select_model(model_router, "exploit-agent")
                 exp_sem = asyncio.Semaphore(max_exploits)
-                await asyncio.gather(*[
-                    _exploit_one(
-                        conn,
-                        finding_id=fid,
-                        job_id=job_id,
-                        program_handle=program_handle,
-                        platform=platform,
-                        scope_jwt=scope_jwt,
-                        database_url=database_url,
-                        evidence_mcp_url=evidence_mcp_url,
-                        dedup_mcp_url=dedup_mcp_url,
-                        sandbox_mcp_url=sandbox_mcp_url,
-                        approval_token=None,
-                        semaphore=exp_sem,
-                        claude_cmd=claude_cmd,
-                        model_id=exp_model_id,
-                    )
-                    for fid in hypo_ids
-                ])
+                await asyncio.gather(
+                    *[
+                        _exploit_one(
+                            conn,
+                            finding_id=fid,
+                            job_id=job_id,
+                            program_handle=program_handle,
+                            platform=platform,
+                            scope_jwt=scope_jwt,
+                            database_url=database_url,
+                            evidence_mcp_url=evidence_mcp_url,
+                            dedup_mcp_url=dedup_mcp_url,
+                            sandbox_mcp_url=sandbox_mcp_url,
+                            approval_token=None,
+                            semaphore=exp_sem,
+                            claude_cmd=claude_cmd,
+                            model_id=exp_model_id,
+                        )
+                        for fid in hypo_ids
+                    ]
+                )
 
                 # ── T2 approval ────────────────────────────────────────────
                 pending_t2 = await _t2_pending_finding_ids(conn, job_id)
@@ -683,15 +687,15 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                 rc = await _run_agent(
                     "validator",
                     {
-                        "SCOPE_JWT":        scope_jwt,
-                        "PROGRAM_HANDLE":   program_handle,
-                        "PLATFORM":         platform,
-                        "DATABASE_URL":     database_url,
-                        "FINDING_ID":       finding_id,
-                        "SCAN_JOB_ID":      job_id,
-                        "ORACLE_MCP_URL":   oracle_mcp_url,
+                        "SCOPE_JWT": scope_jwt,
+                        "PROGRAM_HANDLE": program_handle,
+                        "PLATFORM": platform,
+                        "DATABASE_URL": database_url,
+                        "FINDING_ID": finding_id,
+                        "SCAN_JOB_ID": job_id,
+                        "ORACLE_MCP_URL": oracle_mcp_url,
                         "EVIDENCE_MCP_URL": evidence_mcp_url,
-                        "DEDUP_MCP_URL":    dedup_mcp_url,
+                        "DEDUP_MCP_URL": dedup_mcp_url,
                     },
                     claude_cmd,
                     model_id=val_model_id,
@@ -723,15 +727,13 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                 if token is None:
                     _log(f"  T3 approval denied/expired for finding={fid} → archiving")
                     await conn.execute(
-                        "UPDATE findings SET status='archived', updated_at=now() "
-                        "WHERE id = $1",
+                        "UPDATE findings SET status='archived', updated_at=now() WHERE id = $1",
                         uuid.UUID(fid),
                     )
                     continue
                 _log(f"  T3 approved finding={fid} → promoting to validated for reporter")
                 await conn.execute(
-                    "UPDATE findings SET status='validated', updated_at=now() "
-                    "WHERE id = $1",
+                    "UPDATE findings SET status='validated', updated_at=now() WHERE id = $1",
                     uuid.UUID(fid),
                 )
 
@@ -755,20 +757,24 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                     nonlocal rep_failed
                     async with rep_semaphore:
                         reporter_env: dict[str, str] = {
-                            "SCOPE_JWT":        scope_jwt,
-                            "PROGRAM_HANDLE":   program_handle,
-                            "PLATFORM":         platform,
-                            "DATABASE_URL":     database_url,
-                            "FINDING_ID":       finding_id,
+                            "SCOPE_JWT": scope_jwt,
+                            "PROGRAM_HANDLE": program_handle,
+                            "PLATFORM": platform,
+                            "DATABASE_URL": database_url,
+                            "FINDING_ID": finding_id,
                             "EVIDENCE_MCP_URL": evidence_mcp_url,
                         }
                         for tok_var in (
-                            "H1_API_TOKEN", "BUGCROWD_API_TOKEN",
-                            "IMMUNEFI_API_TOKEN", "REPORTER_MODEL",
+                            "H1_API_TOKEN",
+                            "BUGCROWD_API_TOKEN",
+                            "IMMUNEFI_API_TOKEN",
+                            "REPORTER_MODEL",
                         ):
                             if tok_var in os.environ:
                                 reporter_env[tok_var] = os.environ[tok_var]
-                        rc = await _run_agent("reporter", reporter_env, claude_cmd, model_id=rep_model_id)
+                        rc = await _run_agent(
+                            "reporter", reporter_env, claude_cmd, model_id=rep_model_id
+                        )
                         if rc != 0:
                             rep_failed += 1
                         _log(f"reporter finding={finding_id} rc={rc}")
@@ -779,13 +785,9 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
         counts = await _count_by_status(conn, job_id)
         # Validator-spec compliance audit (build-plan §6.3 / Round 12).
         # Logs only — strict CI gates own the build/break decision.
-        compliance = await audit_validator_compliance(
-            conn, program_handle=program_handle
-        )
+        compliance = await audit_validator_compliance(conn, program_handle=program_handle)
         compliance_status = (
-            "ok"
-            if compliance.is_compliant
-            else f"{compliance.missing_fingerprint} missing"
+            "ok" if compliance.is_compliant else f"{compliance.missing_fingerprint} missing"
         )
         _log(
             f"complete — validated={counts.get('validated', 0)} "
@@ -805,5 +807,23 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
         await conn.close()
 
 
+async def trigger_heartbeat(message: str = "bs-heartbeat-ping") -> dict[str, str]:
+    """Thin seam: fire the Hatchet heartbeat task and await its result.
+
+    Proves the durable-execution trigger path from the orchestrator (plan
+    01-02) using the v1 async trigger ``aio_run``. Real agent tasks are
+    triggered from their own call sites in later plans; this is the wiring
+    reference. Imported lazily so the normal orchestrator path does not require
+    the Hatchet client environment to be present.
+    """
+    from control_plane.workflows.tasks import HeartbeatInput, heartbeat
+
+    return await heartbeat.aio_run(HeartbeatInput(message=message))
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    if len(sys.argv) > 1 and sys.argv[1] == "trigger-heartbeat":
+        _msg = sys.argv[2] if len(sys.argv) > 2 else "bs-heartbeat-ping"
+        print(asyncio.run(trigger_heartbeat(_msg)))
+    else:
+        asyncio.run(main())

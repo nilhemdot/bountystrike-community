@@ -24,12 +24,17 @@ x-defaults: &defaults
 services:
 
   # --------------------------------------------------------------------------
-  # postgres — pgvector/pgvector:pg17 (Postgres 17 + pgvector preinstalled)
+  # postgres — custom bs-postgres:pg17 image (Postgres 17 + pgvector +
+  # vectorscale + pg_search). Built from infra/docker/Dockerfile.postgres-bs.
+  # ParadeDB dropped pgvectorscale from its bundle — custom image required.
   # Mounts ../sql/*.sql via /docker-entrypoint-initdb.d (auto-runs on first boot)
   # --------------------------------------------------------------------------
   postgres:
     <<: *defaults
-    image: pgvector/pgvector:pg17
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.postgres-bs
+    image: bs-postgres:pg17
     container_name: bs-postgres
     restart: unless-stopped
     # Tuning for pgvector + Hatchet workload on a solo box.
@@ -51,6 +56,12 @@ services:
       - max_connections=100
       - -c
       - random_page_cost=1.1
+      # pg_search (ParadeDB) MUST be preloaded — its background worker + BM25
+      # index AM require the shared library at server start (Context7
+      # /paradedb/paradedb §self-hosted/extension). Without this, CREATE
+      # EXTENSION pg_search / BM25 indexes fail. Added for Phase 1 (01-01).
+      - -c
+      - shared_preload_libraries=pg_search
     environment:
       POSTGRES_USER: bs
       POSTGRES_DB: bountystrike
@@ -117,46 +128,88 @@ services:
       - bountystrike
 
   # --------------------------------------------------------------------------
-  # hatchet — workflow engine (Postgres-backed)
-  # Workflows: ScopeIngest, EVRanker, ScanJob, TriageJob, ReportJob
+  # hatchet-postgres — DEDICATED Postgres for the Hatchet engine.
+  # Isolated from `postgres` (bs-postgres, the application DB) per plan 01-02
+  # AC-8: engine state never shares a database with BountyStrike app data.
+  # Pinned to the version upstream hatchet-lite ships against (postgres:15.6).
+  # --------------------------------------------------------------------------
+  hatchet-postgres:
+    <<: *defaults
+    image: postgres:15.6
+    container_name: bs-hatchet-postgres
+    restart: unless-stopped
+    command: postgres -c 'max_connections=200'
+    environment:
+      POSTGRES_USER: hatchet
+      POSTGRES_PASSWORD: ${HATCHET_POSTGRES_PASSWORD:-hatchet}
+      POSTGRES_DB: hatchet
+    volumes:
+      - hatchet_lite_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d hatchet -U hatchet"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 512M }
+    networks:
+      - bountystrike
+
+  # --------------------------------------------------------------------------
+  # hatchet — self-hosted workflow engine (hatchet-lite, V1 engine).
+  # hatchet-lite bundles engine + REST API + dashboard in one container and uses
+  # its dedicated Postgres (hatchet-postgres) as BOTH data store and message
+  # queue — the documented minimal self-host topology. Engine data is fully
+  # isolated from bs-postgres (plan 01-02 AC-8). The full external-RabbitMQ
+  # topology is available upstream but unnecessary for solo mode.
+  # Workflows: ScopeIngest, EVRanker, ScanJob, TriageJob, ReportJob.
+  #
+  # PINNED to tag v0.86.18 (matches the prior engine pin in this repo). Bump +
+  # re-resolve a digest with:
+  #   docker buildx imagetools inspect \
+  #     ghcr.io/hatchet-dev/hatchet/hatchet-lite:<semver>
+  #
+  # The v1 Python SDK connects over insecure gRPC on :7077. The auth token
+  # (HATCHET_CLIENT_TOKEN) embeds SERVER_GRPC_BROADCAST_ADDRESS, so a host-run
+  # worker dials whatever that is set to. Default 127.0.0.1:7077 suits the solo-
+  # mode host worker; an in-network deploy overrides
+  # HATCHET_GRPC_BROADCAST=hatchet:7077.
   # --------------------------------------------------------------------------
   hatchet:
     <<: *defaults
-    # Image path corrected: the published package is
-    # `ghcr.io/hatchet-dev/hatchet/hatchet-engine` (org / repo / package),
-    # not the unsegmented `ghcr.io/hatchet-dev/hatchet-engine` that earlier
-    # versions of this file used (which 404s on pull).
-    #
-    # Pinned to v0.86.18 + multi-arch manifest-list digest for reproducible
-    # pulls. Bump tag + re-resolve digest with:
-    #   docker buildx imagetools inspect \
-    #     ghcr.io/hatchet-dev/hatchet/hatchet-engine:<semver>
-    image: ghcr.io/hatchet-dev/hatchet/hatchet-engine:v0.86.18@sha256:86db3f8ae2e2c2c8843327c33c16bbd39f0e882d4b79db856a7164651cde85c8
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.86.18
     container_name: bs-hatchet
     restart: unless-stopped
     depends_on:
-      postgres:
+      hatchet-postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://bs:${POSTGRES_PASSWORD}@postgres:5432/bountystrike?sslmode=disable
-      SERVER_GRPC_PORT: "7070"
-      SERVER_PORT: "8080"
-      SERVER_AUTH_COOKIE_SECRETS: ${HATCHET_COOKIE_SECRET:?HATCHET_COOKIE_SECRET must be set in .env}
-      SERVER_GRPC_BROADCAST_ADDRESS: hatchet:7070
+      DATABASE_URL: postgresql://hatchet:${HATCHET_POSTGRES_PASSWORD:-hatchet}@hatchet-postgres:5432/hatchet?sslmode=disable
+      SERVER_AUTH_COOKIE_DOMAIN: localhost
+      SERVER_AUTH_COOKIE_INSECURE: "t"
+      SERVER_GRPC_BIND_ADDRESS: "0.0.0.0"
+      SERVER_GRPC_INSECURE: "t"
+      SERVER_GRPC_BROADCAST_ADDRESS: ${HATCHET_GRPC_BROADCAST:-127.0.0.1:7077}
+      SERVER_GRPC_PORT: "7077"
+      SERVER_URL: http://localhost:8888
+      SERVER_AUTH_SET_EMAIL_VERIFIED: "t"
+      SERVER_DEFAULT_ENGINE_VERSION: "V1"
+      SERVER_INTERNAL_CLIENT_INTERNAL_GRPC_BROADCAST_ADDRESS: ${HATCHET_GRPC_BROADCAST:-127.0.0.1:7077}
     ports:
-      - "127.0.0.1:7070:7070"   # gRPC
-      - "127.0.0.1:8080:8080"   # HTTP
+      - "127.0.0.1:7077:7077"   # gRPC (worker connections)
+      - "127.0.0.1:8888:8888"   # HTTP API + dashboard
     volumes:
-      - hatchet_data:/var/lib/hatchet
-    # Healthcheck so caddy (and other consumers) wait for Hatchet to be
-    # accepting traffic before routing — avoids 502s during cold start.
-    # Uses /bin/sh + bash-style URL probe via wget (busybox in this image).
+      - hatchet_lite_config:/config
+    # Readiness probe endpoint verified empirically against the running
+    # hatchet-lite container at APPLY time (see 01-02 SUMMARY).
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8080/api/v1/readiness || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:8888/api/ready || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 18
+      start_period: 40s
     deploy:
       resources:
         limits: { cpus: '1.5', memory: 1G }
@@ -228,8 +281,10 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in .env}
-      # Hatchet client config — control-plane registers workflows on startup
-      HATCHET_CLIENT_GRPC_HOST: hatchet:7070
+      # Hatchet client config — control-plane registers workflows on startup.
+      # hatchet-lite serves gRPC on 7077 (V1 engine); in-network clients use
+      # the service name. A host-run worker uses HATCHET_CLIENT_TOKEN instead.
+      HATCHET_CLIENT_GRPC_HOST: hatchet:7077
       # JWT keypair paths for scope validation (auto-generated by entrypoint)
       SCOPE_JWT_PUBLIC_KEY_PATH: ${SCOPE_JWT_PUBLIC_KEY_PATH:-keys/scope_jwt_public.pem}
       # Evidence storage (local or r2; see .env.example §Evidence store)
@@ -610,7 +665,9 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  hatchet_data:
+  # hatchet-lite (engine + dedicated Postgres) durable state — plan 01-02.
+  hatchet_lite_postgres_data:
+  hatchet_lite_config:
   caddy_data:
   caddy_config:
 

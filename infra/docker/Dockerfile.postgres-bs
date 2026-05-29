@@ -1,0 +1,107 @@
+# syntax=docker/dockerfile:1.7
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# bs-postgres:pg17 — custom Postgres 17 image for BountyStrike Phase 1.
+# Bundles THREE extensions that no single upstream image provides together:
+#   - pgvector     (vector similarity, HNSW + ivfflat)
+#   - vectorscale  (pgvectorscale → registered as `vectorscale`; DiskANN index)
+#   - pg_search    (ParadeDB BM25 keyword/hybrid search)
+#
+# Why a custom image (CLAUDE.md trap #17/#18):
+#   ParadeDB dropped pgvectorscale from its bundled image, and pgvector/pgvector
+#   ships no vectorscale/pg_search. The only way to get all three in one PG17
+#   server is to build them ourselves.
+#
+# Base libc choice — glibc (Debian bookworm), NOT Alpine/musl:
+#   pgvectorscale (Rust/pgrx) documents only glibc build targets; musl is
+#   unverified upstream (plan AC-1/AC-4 fallback, audit note G4). Using the
+#   glibc base avoids a near-certain musl build failure. ParadeDB also ships
+#   prebuilt .deb artifacts only for glibc distros (bookworm/trixie/noble).
+#
+# All versions pinned (AC-7). The ARG block below is the single source of
+# truth — no floating or moving tags anywhere.
+
+ARG PG_MAJOR=17
+# PINNED extension versions (audit G3) — verified against upstream GitHub
+# releases on 2026-05-29: pgvector v0.8.0, pgvectorscale 0.9.0, pg_search v0.23.5.
+ARG PGVECTOR_TAG=v0.8.0
+ARG VECTORSCALE_TAG=0.9.0
+ARG PG_SEARCH_TAG=0.23.5
+# PINNED base — fixed major+distro tag, never a floating or moving major.
+# Resolved digest recorded in 01-01-SUMMARY.md for full reproducibility.
+ARG BASE_IMAGE=postgres:17-bookworm
+
+# ── builder: pgvector + vectorscale (need PG dev headers + Rust/cargo-pgrx) ──
+FROM ${BASE_IMAGE} AS builder
+ARG PG_MAJOR
+ARG PGVECTOR_TAG
+ARG VECTORSCALE_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PG_CONFIG=/usr/lib/postgresql/${PG_MAJOR}/bin/pg_config
+
+# Build toolchain + PG17 server dev headers (PGDG repo is preconfigured in the
+# official postgres image). clang/llvm are required by pgrx's bindgen step.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential git curl ca-certificates jq pkg-config \
+        clang llvm libssl-dev \
+        "postgresql-server-dev-${PG_MAJOR}" \
+    && rm -rf /var/lib/apt/lists/*
+
+# pgvector — build from source at pinned tag (deterministic vs apt's floating ver).
+RUN git clone --depth 1 --branch "${PGVECTOR_TAG}" \
+        https://github.com/pgvector/pgvector.git /tmp/pgvector \
+    && cd /tmp/pgvector \
+    && make PG_CONFIG="${PG_CONFIG}" OPTFLAGS="" \
+    && make PG_CONFIG="${PG_CONFIG}" install
+
+# Rust toolchain (rustup, stable).
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain stable --profile minimal
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# vectorscale — build from source at pinned tag with the cargo-pgrx version
+# that MATCHES the crate's pinned pgrx (audit G5). A mismatched cargo-pgrx
+# errors with a pgrx-version mismatch; `cargo pgrx init` is mandatory before
+# install. The extension registers itself as `vectorscale` (CLAUDE.md #17).
+RUN git clone --depth 1 --branch "${VECTORSCALE_TAG}" \
+        https://github.com/timescale/pgvectorscale.git /tmp/pgvectorscale
+WORKDIR /tmp/pgvectorscale/pgvectorscale
+RUN PGRX_VER="$(cargo metadata --format-version 1 \
+        | jq -r '.packages[] | select(.name=="pgrx") | .version' | head -1)" \
+    && echo "Matched pgrx version: ${PGRX_VER}" \
+    && cargo install --locked cargo-pgrx --version "${PGRX_VER}" \
+    && cargo pgrx init "--pg${PG_MAJOR}" "${PG_CONFIG}" \
+    && cargo pgrx install --release "--features=pg${PG_MAJOR}"
+
+# ── runtime ──────────────────────────────────────────────────────────────
+FROM ${BASE_IMAGE}
+ARG PG_MAJOR
+ARG PGVECTOR_TAG
+ARG VECTORSCALE_TAG
+ARG PG_SEARCH_TAG
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Copy pgvector + vectorscale artifacts (.so / .sql / .control) built above.
+# Both land under the standard pkglibdir + sharedir/extension paths.
+COPY --from=builder /usr/lib/postgresql/${PG_MAJOR}/lib/ /usr/lib/postgresql/${PG_MAJOR}/lib/
+COPY --from=builder /usr/share/postgresql/${PG_MAJOR}/extension/ /usr/share/postgresql/${PG_MAJOR}/extension/
+
+# pg_search (ParadeDB) — install the prebuilt glibc .deb at the pinned tag.
+# Asset name verified to exist for pg17+bookworm on 2026-05-29.
+RUN apt-get update && apt-get install -y --no-install-recommends wget ca-certificates \
+    && wget -qO /tmp/pg_search.deb \
+        "https://github.com/paradedb/paradedb/releases/download/v${PG_SEARCH_TAG}/postgresql-${PG_MAJOR}-pg-search_${PG_SEARCH_TAG}-1PARADEDB-bookworm_amd64.deb" \
+    && apt-get install -y --no-install-recommends /tmp/pg_search.deb \
+    && rm -f /tmp/pg_search.deb \
+    && apt-get purge -y wget \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# pg_search requires preloading its shared library (verified via Context7
+# /paradedb/paradedb §self-hosted/extension). docker-compose adds
+# `-c shared_preload_libraries=pg_search` to the postgres command; this LABEL
+# documents the hard runtime requirement for operators building the image
+# standalone (for example `docker run ... -c shared_preload_libraries=pg_search`).
+LABEL bountystrike.postgres.extensions="vector,vectorscale,pg_search"
+LABEL bountystrike.postgres.pins="pgvector=${PGVECTOR_TAG},vectorscale=${VECTORSCALE_TAG},pg_search=${PG_SEARCH_TAG}"
+LABEL bountystrike.postgres.requires="shared_preload_libraries=pg_search"

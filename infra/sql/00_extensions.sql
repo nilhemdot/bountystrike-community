@@ -12,7 +12,10 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Phase 1+ extensions (deferred — solo mode <500K vectors uses HNSW; SaaS migrates to DiskANN):
---   CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;  -- pgvectorscale DiskANN at 10M+ vectors
---   CREATE EXTENSION IF NOT EXISTS pg_search;            -- ParadeDB BM25 hybrid search
--- See research/00b-context7-extended.md §pgvectorscale and research/01-strategy-architecture.md §Storage Architecture.
+-- Phase 1 extensions (activated — custom bs-postgres:pg17 image required):
+--   vectorscale — Timescale DiskANN vector index. NOTE: the extension is named
+--                 'vectorscale' (CLAUDE.md trap #17); CASCADE pulls in vector.
+--   pg_search   — ParadeDB BM25 keyword/hybrid search (CREATE INDEX ... USING bm25).
+-- See research/00b-context7-extended.md and research/01-strategy-architecture.md §Storage Architecture.
+CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;  -- DiskANN vector index
+CREATE EXTENSION IF NOT EXISTS pg_search;            -- ParadeDB BM25 hybrid search
