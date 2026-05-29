@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 import aioboto3
+from botocore.config import Config
 from control_plane.domains.evidence_management.value_objects import R2Key
 
 
@@ -123,6 +124,18 @@ class R2BlobStore:
     # Internal client lifecycle
     # ------------------------------------------------------------------
 
+    # CLAUDE.md trap #5 — boto3 1.36.0 flipped the default checksum behavior
+    # (request_checksum_calculation defaults to "when_supported"), making
+    # put_object attach a CRC32 trailer that Cloudflare R2 rejects. Pinning both
+    # knobs to "when_required" restores R2 compatibility WITHOUT downgrading
+    # boto3 (lock is 1.40.61). This config object is the real trap-#5 gate — a
+    # passing moto round-trip does NOT prove it (moto does not reproduce R2's
+    # CRC-header rejection), so the test asserts these two values by introspection.
+    _CHECKSUM_CONFIG = Config(
+        request_checksum_calculation="when_required",
+        response_checksum_validation="when_required",
+    )
+
     @asynccontextmanager
     async def _client(self) -> AsyncIterator:
         """Yield an aioboto3 S3 client; closes it on exit."""
@@ -134,6 +147,7 @@ class R2BlobStore:
             aws_access_key_id=self._access_key_id,
             aws_secret_access_key=self._secret_access_key,
             region_name=self._region,
+            config=self._CHECKSUM_CONFIG,
         ) as client:
             yield client
 
@@ -161,9 +175,7 @@ class R2BlobStore:
                 await client.head_object(Bucket=self._bucket, Key=r2_key.key)
             except client.exceptions.ClientError as exc:
                 # head_object returns 404 → ClientError with Error.Code "404"
-                error = (
-                    exc.response.get("Error", {}) if hasattr(exc, "response") else {}
-                )
+                error = exc.response.get("Error", {}) if hasattr(exc, "response") else {}
                 if str(error.get("Code")) in {"404", "NoSuchKey"}:
                     return False
                 raise

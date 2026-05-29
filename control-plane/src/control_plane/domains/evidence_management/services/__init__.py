@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from .evidence_recording_service import MAX_RAW_BYTES, EvidenceRecordingService
 from .hash_chain_service import HashChainService
 from .validator_compliance import (
     ComplianceReport,
@@ -11,7 +12,9 @@ from .validator_compliance import (
 )
 
 __all__ = [
+    "MAX_RAW_BYTES",
     "ComplianceReport",
+    "EvidenceRecordingService",
     "HashChainService",
     "audit_validator_compliance",
 ]

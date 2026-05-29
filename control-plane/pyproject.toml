@@ -34,10 +34,19 @@ dev = [
     "mypy>=1.13",
     "respx>=0.21",
     "aiosqlite>=0.20",
+    # moto[server] gives ThreadedMotoServer — a real local S3 endpoint that
+    # aioboto3/aiobotocore reach over HTTP. moto's in-process mock_aws does NOT
+    # reliably intercept aiobotocore (it bypasses botocore's HTTP layer), so the
+    # R2 byte-fidelity round-trip (plan 01-03 AC-1) points the client at the
+    # threaded server instead.
+    "moto[server]>=5.0",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "integration: integration tests requiring live services (Postgres, OpenAI, R2)",
+]
 
 [build-system]
 requires = ["hatchling"]

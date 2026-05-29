@@ -46,6 +46,7 @@ Optional:
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import base64
 import json
@@ -821,9 +822,79 @@ async def trigger_heartbeat(message: str = "bs-heartbeat-ping") -> dict[str, str
     return await heartbeat.aio_run(HeartbeatInput(message=message))
 
 
+async def trigger_record_evidence(
+    *,
+    finding_id: str,
+    platform: str,
+    program_handle: str,
+    raw_bytes: bytes,
+    oracle_verdict: str,
+    oracle_method: str,
+    scope_token_jti: str,
+) -> dict[str, str]:
+    """Thin seam: fire the durable record-evidence task and await its result.
+
+    Mirrors :func:`trigger_heartbeat` (plan 01-03). The validator-agent triggers
+    this from its own call site in a later plan; this is the wiring reference and
+    the operator's manual hook. PoC bytes are base64-framed onto the gRPC payload.
+    Imported lazily so the normal orchestrator path needs no Hatchet client env.
+    """
+    from control_plane.workflows.tasks import RecordEvidenceInput, record_evidence
+
+    payload = RecordEvidenceInput(
+        finding_id=finding_id,
+        platform=platform,
+        program_handle=program_handle,
+        raw_bytes_b64=base64.b64encode(raw_bytes).decode("ascii"),
+        oracle_verdict=oracle_verdict,
+        oracle_method=oracle_method,
+        scope_token_jti=scope_token_jti,
+    )
+    return await record_evidence.aio_run(payload)
+
+
+def _cli_trigger_record_evidence(argv: list[str]) -> None:
+    """Parse the ``trigger-record-evidence`` subcommand and run it."""
+    parser = argparse.ArgumentParser(
+        prog="orchestrator.py trigger-record-evidence",
+        description="Trigger the durable Hatchet record-evidence task (plan 01-03).",
+    )
+    parser.add_argument("--finding-id", required=True)
+    parser.add_argument("--platform", required=True)
+    parser.add_argument("--program-handle", required=True)
+    parser.add_argument("--oracle-verdict", required=True)
+    parser.add_argument("--oracle-method", required=True)
+    parser.add_argument("--scope-token-jti", required=True)
+    poc = parser.add_mutually_exclusive_group(required=True)
+    poc.add_argument("--poc-text", help="PoC bytes as a UTF-8 string")
+    poc.add_argument("--poc-file", help="path to a file holding the PoC bytes")
+    args = parser.parse_args(argv)
+
+    if args.poc_file is not None:
+        with open(args.poc_file, "rb") as fh:
+            raw_bytes = fh.read()
+    else:
+        raw_bytes = args.poc_text.encode("utf-8")
+
+    result = asyncio.run(
+        trigger_record_evidence(
+            finding_id=args.finding_id,
+            platform=args.platform,
+            program_handle=args.program_handle,
+            raw_bytes=raw_bytes,
+            oracle_verdict=args.oracle_verdict,
+            oracle_method=args.oracle_method,
+            scope_token_jti=args.scope_token_jti,
+        )
+    )
+    print(result)
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "trigger-heartbeat":
         _msg = sys.argv[2] if len(sys.argv) > 2 else "bs-heartbeat-ping"
         print(asyncio.run(trigger_heartbeat(_msg)))
+    elif len(sys.argv) > 1 and sys.argv[1] == "trigger-record-evidence":
+        _cli_trigger_record_evidence(sys.argv[2:])
     else:
         asyncio.run(main())

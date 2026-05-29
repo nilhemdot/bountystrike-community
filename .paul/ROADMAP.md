@@ -57,13 +57,14 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - Recon agent full pipeline (subfinder → dnsx → httpx → naabu → katana)
 - One-line installer on Hetzner + Coolify; public AGPLv3 release
 
-**Plans:**
-- [ ] 01-01: DB Foundation (Postgres 17 + custom image: pgvector + vectorscale + pg_search; DiskANN + BM25 migrations) — planned 2026-05-29
-- [ ] 01-02: Hatchet v1 + evidence store (R2, SHA-256 content-addressable + hash-chain audit)
-- [ ] 01-03: Scope ingestion + RS256 JWT + scope-diff notifications
-- [ ] 01-04: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
-- [ ] 01-05: Recon agent pipeline + rate-limiting token bucket
-- [ ] 01-06: One-line installer + public release
+**Plans:** (01-02 line SPLIT 2026-05-29 → Hatchet and evidence are separate plans; downstream +1, now 7 plans)
+- [x] 01-01: DB Foundation (Postgres 17 + custom image: pgvector + vectorscale + pg_search; DiskANN + BM25 migrations) — done 2026-05-29
+- [x] 01-02: Hatchet v1 workflow runtime (hatchet-lite, isolated Postgres, @hatchet.task) — done 2026-05-29
+- [ ] 01-03: Evidence store (R2, SHA-256 content-addressable + hash-chain audit; R2-write inside a Hatchet task) — planned 2026-05-29
+- [ ] 01-04: Scope ingestion + RS256 JWT + scope-diff notifications
+- [ ] 01-05: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
+- [ ] 01-06: Recon agent pipeline + rate-limiting token bucket
+- [ ] 01-07: One-line installer + public release
 
 ### Phase 2: Full Agent Fleet, Anti-Slop & Benchmark
 
