@@ -48,6 +48,7 @@ from .services.jwt_issuer import (
     ScopeJWTIssuer,
     ScopeJWTValidator,
 )
+from .services.notification_service import ScopeNotificationPayload, deliver_pending
 from .value_objects.canonical_scope import CanonicalScope as CanonicalScopeVO
 from .value_objects.platform import Platform
 from .value_objects.targets import RateLimits, ScopeExclusions, ScopeTargets
@@ -72,6 +73,8 @@ __all__ = [
     "MAX_EXPIRY_SECONDS",
     "ScopeJWTIssuer",
     "ScopeJWTValidator",
+    "ScopeNotificationPayload",
+    "deliver_pending",
     "detect_scope_changes",
     "ingest_arkadiyt_all",
     "ingest_h1_org_assets",

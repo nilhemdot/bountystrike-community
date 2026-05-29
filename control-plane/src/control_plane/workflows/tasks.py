@@ -15,6 +15,7 @@ import os
 from datetime import UTC, datetime
 
 import asyncpg
+import structlog
 from hatchet_sdk import Context
 from pydantic import BaseModel
 
@@ -24,6 +25,8 @@ from control_plane.domains.evidence_management.services import (
     HashChainService,
 )
 from control_plane.workflows.client import hatchet
+
+logger = structlog.get_logger("control_plane.workflows.tasks")
 
 
 class HeartbeatInput(BaseModel):
@@ -130,7 +133,7 @@ async def scope_poll(input: ScopePollInput, ctx: Context) -> dict[str, int]:
         "bbscope": ingest_bbscope_all,
         "projectdiscovery": ingest_projectdiscovery_all,
     }
-    totals = {"programs": 0, "scopes": 0, "events": 0}
+    totals = {"programs": 0, "scopes": 0, "events": 0, "notified": 0, "pending": 0}
     engine = create_engine(get_database_url(), echo=False)
     try:
         factory = make_session_factory(engine)
@@ -140,8 +143,22 @@ async def scope_poll(input: ScopePollInput, ctx: Context) -> dict[str, int]:
                 if run is None:
                     continue
                 counts = await run(session)
-                for key in totals:
+                for key in ("programs", "scopes", "events"):
                     totals[key] += counts.get(key, 0)
+
+            # Deliver new scope-change events to the operator webhook (plan
+            # 01-05). Fail-open at the call site: a delivery or DB error must
+            # never discard the committed ingest totals. pending=-1 flags that
+            # delivery itself errored (distinct from a clean "0 pending").
+            from control_plane.domains.scope_management.services import deliver_pending
+
+            try:
+                delivery = await deliver_pending(session)
+                totals["notified"] = delivery["notified"]
+                totals["pending"] = delivery["pending"]
+            except Exception as exc:  # noqa: BLE001 — fail-open notification call
+                logger.warning("scope_poll.delivery_failed", error=type(exc).__name__)
+                totals["pending"] = -1
     finally:
         await engine.dispose()
     return totals

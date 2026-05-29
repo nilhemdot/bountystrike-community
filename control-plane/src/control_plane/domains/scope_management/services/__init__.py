@@ -16,6 +16,7 @@ from .jwt_issuer import (
     ScopeJWTIssuer,
     ScopeJWTValidator,
 )
+from .notification_service import ScopeNotificationPayload, deliver_pending
 
 __all__ = [
     "DEFAULT_EXPIRY_SECONDS",
@@ -23,6 +24,8 @@ __all__ = [
     "MAX_EXPIRY_SECONDS",
     "ScopeJWTIssuer",
     "ScopeJWTValidator",
+    "ScopeNotificationPayload",
+    "deliver_pending",
     "detect_scope_changes",
     "ingest_arkadiyt_all",
     "ingest_h1_org_assets",

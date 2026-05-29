@@ -121,6 +121,9 @@ class ScopeChange(Base):
     new_value: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     detected_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Delivery high-water mark (plan 01-05). NULL = not yet delivered to the
+    # operator webhook. See infra/sql/12_phase1_scope_notified.sql.
+    notified_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
 
 # ---------------------------------------------------------------------------
