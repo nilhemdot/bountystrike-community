@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 1.1d integration test — SSRF oracle TPR/FPR over the 10-target lab.
 
 Opt-in: skipped unless ``RUN_SSRF_FIELD_VALIDATION=1`` is set. The test

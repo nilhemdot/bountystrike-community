@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 2 W9-10 integration test — SQLi oracle TPR/FPR over the 40-target lab.
 
 Opt-in: skipped unless ``RUN_SQLI_FIELD_VALIDATION=1`` is set. The test

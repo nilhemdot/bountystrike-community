@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Integration test: full scan with routing enabled, cost <= $0.20/target.
 
 Simulates a complete orchestrator scan run by exercising every agent-to-model

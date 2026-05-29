@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """HuntOutcome value object — per-(program, operator, scan) confirmed-rate row.
 
 Persisted to hunt_outcomes via the repository layer; consumed by the

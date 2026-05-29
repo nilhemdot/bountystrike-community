@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """oracle-mcp — deterministic verification oracles for BountyStrike v5.
 
 Per build plan §5: 8 bug-class oracles (XSS, SSRF, SQLi, SSTI, IDOR,

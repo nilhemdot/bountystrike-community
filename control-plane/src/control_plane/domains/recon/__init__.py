@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Recon bounded context.
 
 Wraps the ProjectDiscovery toolchain (subfinder → httpx → katana) and

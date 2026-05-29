@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for kev-mcp.
 
 Exposes four tools (build-plan §4.7 prescribes ``kev_get_recent`` and

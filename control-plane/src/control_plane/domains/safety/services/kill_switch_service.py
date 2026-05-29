@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """High-level kill switch API.
 
 Wraps the :class:`KillSwitchStore` Protocol with the operator-facing

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the TokenBucketLimiter — deterministic, no real sleep.
 
 Tests inject a manual time source (``ManualClock``) and a no-op sleep

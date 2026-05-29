@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """BlobStore composition root.
 
 Picks a concrete :class:`BlobStore` implementation from environment

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for core/shared base classes."""
 
 from __future__ import annotations

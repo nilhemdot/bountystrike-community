@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Reconcile report_submissions → hunt_outcomes (Phase 3 calibration loop).
 
 For each scan_job whose findings have been confirmed/rejected by the bug

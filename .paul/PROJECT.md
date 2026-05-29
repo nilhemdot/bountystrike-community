@@ -14,8 +14,8 @@ Automated bug bounty hunting that produces only verified, non-duplicate findings
 |-----------|-------|
 | Type | Application |
 | Version | 0.0.0 |
-| Status | Initializing |
-| Last Updated | 2026-05-27 |
+| Status | Phase 0 Complete — Phase 1 In Progress |
+| Last Updated | 2026-05-29 |
 
 ## Requirements
 
@@ -36,18 +36,17 @@ Automated bug bounty hunting that produces only verified, non-duplicate findings
 - [x] T3 approval plumbing wired in orchestrator.py
 - [x] 5 field-validation suites (SSRF→IMDS, IDOR, RCE, SSTI, Open Redirect)
 - [x] Model routing cost optimization matrix
+- [x] Empirical corrections: DeepSeek pricing ($0.14/$0.0028/$0.28), HackerOne structured_scopes (READ current), competitive set pruned (Surf AI removed) — Phase 0 plan 00-01
+- [x] Hybrid monorepo scaffold: 3-root license split (AGPL-3.0/Apache-2.0/LicenseRef-Proprietary), pnpm/Turborepo layer, CONTRIBUTING.md + CLA stub — Phase 0 plan 00-02
+- [x] OpenFeature + custom Unleash Python provider: fail-closed tier=enterprise gate, no official provider workaround — Phase 0 plan 00-03
+- [x] SPDX header sweep: 250 source files stamped across 6 roots, idempotent script, CI import-linter community↔enterprise ban — Phase 0 plan 00-04
 
 ### Active (In Progress)
 None yet.
 
 ### Planned (Next)
 
-**Phase 0 — Truth-in-Claims & Foundation (Weeks 1–2)**
-- Fix 6 empirical soft spots (DeepSeek pricing, Anthropic refusal framing, XBOW N/A rate, HackerOne changelog, Welch's t-test framing, EV decay constants)
-- Correct competitive set (remove Surf AI, re-rank Bugcrowd post-Mayhem)
-- AGPLv3 + monorepo scaffold (bountystrike-core / bountystrike-community / bountystrike-enterprise)
-
-**Phase 1 — Community Edition MVP (Weeks 3–10)**
+**Phase 1 — Community Edition MVP (Weeks 3–10) — ACTIVE**
 - Federated scope ingestion (arkadiyt/bounty-targets-data, bbscope v2, projectdiscovery)
 - Deterministic verifier moat
 - One-line installer on Hetzner + Coolify; public AGPLv3 release
@@ -160,4 +159,4 @@ Quick Reference:
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-27*
+*Last updated: 2026-05-29 after Phase 0 (Truth-in-Claims & Foundation — 4/4 plans complete)*

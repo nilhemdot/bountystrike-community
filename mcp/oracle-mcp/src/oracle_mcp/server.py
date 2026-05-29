@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server entry point for oracle-mcp.
 
 Exposes eight MCP tools for the BountyStrike v5 validator-agent:

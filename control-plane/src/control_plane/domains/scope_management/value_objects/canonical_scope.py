@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Canonical scope record — platform-agnostic shape of a single scope row.
 
 The integration normalizers all return this :class:`TypedDict` so the rest of

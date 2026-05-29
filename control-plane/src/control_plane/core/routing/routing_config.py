@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Routing configuration with operator-specific model overrides.
 
 Per spec §6: Operators can override model selection for specific task types

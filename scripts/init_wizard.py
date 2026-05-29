@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Interactive onboarding wizard for BountyStrike v5 alpha testers.
 
 Guides new operators through:

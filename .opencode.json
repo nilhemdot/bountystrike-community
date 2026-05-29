@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "code-review-graph": {
+      "command": "uvx",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ],
+      "cwd": "/mnt/c/users/nilhem/Desktop/bountystrike-ai7",
+      "type": "stdio",
+      "env": []
+    }
+  }
+}

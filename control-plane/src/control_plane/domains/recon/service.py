@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Recon orchestrator — the only thing :file:`scripts/orchestrator.py`
 should need to invoke for a recon run.
 

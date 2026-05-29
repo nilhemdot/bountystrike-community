@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """CWE normalisation — accept varied input shapes; emit canonical ``CWE-NN``.
 
 Recon and oracle outputs use a mix of legacy slugs (``xss-candidate``,

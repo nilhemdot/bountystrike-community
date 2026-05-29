@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """CLI entrypoint for the recon-agent runtime container.
 
 Wraps :class:`ReconService` so an orchestrator-launched container can

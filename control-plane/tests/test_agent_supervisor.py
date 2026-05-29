@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Layer-3 kill-switch enforcer tests — :class:`AgentSupervisor`.
 
 Build-plan §10.4 exit criterion: kill switch must halt all running

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Validator-spec compliance audit.
 
 The validator-agent (`.claude/agents/validator.md` lines 159-169) is

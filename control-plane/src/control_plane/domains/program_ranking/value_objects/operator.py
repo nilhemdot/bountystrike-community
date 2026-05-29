@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """OperatorProfile value object — operator skill + budget profile feeding f_fit."""
 
 from __future__ import annotations

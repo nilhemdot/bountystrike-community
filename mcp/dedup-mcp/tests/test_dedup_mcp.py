@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for dedup-mcp — fingerprint + server logic (no live Postgres)."""
 
 from __future__ import annotations

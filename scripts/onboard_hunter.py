@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Alpha hunter onboarding (Phase 3 build-plan §10.5 objective: 3-5 hunters).
 
 Creates one ``operators`` row, issues a scope JWT for each program in

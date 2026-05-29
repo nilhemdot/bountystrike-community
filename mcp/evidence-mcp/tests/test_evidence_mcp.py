@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for evidence-mcp — blob store, audit chain, and MCP tool layer.
 
 All tests use real temporary directories (no mocks for I/O).

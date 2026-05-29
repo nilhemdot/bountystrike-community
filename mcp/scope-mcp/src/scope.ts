@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Target classification + scope-vs-target matching.
 // All matching mirrors the build-plan §4.9 semantics (recursive wildcard,
 // path exclusions, IPv4/IPv6 CIDR membership, ambiguous → requires_defer).

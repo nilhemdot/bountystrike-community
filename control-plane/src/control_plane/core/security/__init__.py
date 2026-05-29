@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Security primitives — path sanitization, input validation, deny-lists."""
 
 from .path import PathTraversalError, secure_path

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for evidence artifact storage and hash-chained audit logs.
 
 Exposes four MCP tools:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Kill switch state enum.
 
 Build-plan §6.6 escalating tiers (T1 → T3):

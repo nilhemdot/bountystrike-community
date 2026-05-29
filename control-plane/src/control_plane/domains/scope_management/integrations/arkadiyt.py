@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Federation L0 client — ``arkadiyt/bounty-targets-data``.
 
 Pulls JSON snapshots for HackerOne, Bugcrowd, Intigriti, YesWeHack and

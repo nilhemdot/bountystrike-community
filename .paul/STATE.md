@@ -2,29 +2,36 @@
 
 ## Project Reference
 
-See: .paul/PROJECT.md (updated 2026-05-27)
+See: .paul/PROJECT.md (updated 2026-05-29)
 
 **Core value:** Automated bug bounty hunting that produces only verified, non-duplicate findings
-**Current focus:** Project initialized — ready for planning
+**Current focus:** Phase 1 — Community Edition MVP: The Moat
 
 ## Current Position
 
 Milestone: v0.1 Community Edition MVP
-Phase: 0 of 6 (Truth-in-Claims & Foundation) — Planning
-Plan: 00-03 created + audited, ready for APPLY
-Status: PLAN audited (3 must-have security fixes applied). Phase 0 = 4 plans (00-01,02 done; 03 ready; 04 pending).
-Last activity: 2026-05-27 — Enterprise audit on 00-03 (flag≠authz, provider TLS/token integrity, untrusted context)
+Phase: 1 of 6 (Community Edition MVP: The Moat) — Not started
+Plan: 01-01 (not yet started)
+Status: Phase 0 COMPLETE (4/4 plans unified). Ready to plan Phase 1.
+Last activity: 2026-05-29 — UNIFY 00-04, Phase 0→1 transition
 
 Progress:
-- Milestone: [██░░░░░░░░] ~13%
-- Phase 0: [██████░░░░] ~60% (00-01 + 00-02 done; 00-03 planned; 00-04 pending)
+- Milestone: [███░░░░░░░] ~22% (1 of 6 phases complete)
+- Phase 0: [██████████] 100% (4/4 plans complete)
+- Phase 1: [░░░░░░░░░░] 0% (not started)
 
 ## Loop Position
 
-Current loop state (00-03):
+Phase 0 loop (00-04) — COMPLETE:
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ✓        ◉        ○     [Applying]
+  ✓        ✓        ✓     [Loop complete — Phase 0 transition executed]
+```
+
+Phase 1 loop — IDLE:
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ◉                       [Ready to plan 01-01]
 ```
 
 ## Accumulated Context
@@ -44,6 +51,7 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | 2026-05-27: Phase 0 split 2→3 plans (00-03 = OpenFeature + custom Unleash provider, separated due to no official Python provider per brief) | Phase 0 | Feature flags own plan |
 | 2026-05-27: Audit on 00-02 added license-text integrity (verbatim canonical), LICENSES.md code↔license map, AGPL §13 network-use clause | Phase 0 | License posture audit-defensible before code ships |
 | 2026-05-27: Audit on 00-03 — tier-enterprise flag is a config/rollout gate, NOT an authz boundary. Entitlement enforced server-side vs signed plan. Provider: TLS + secrets token + fail-closed on malformed response; context untrusted | Phase 0 | Prevents flag-as-authz privilege-escalation; sets the doctrine for all later tier gating |
+| 2026-05-29: Audit on 00-04 — 5 must-have + 6 strongly-rec applied; 4 deferred. Verdict: conditionally acceptable. Caught 2 release-blocking license defects (foreign/.venv AGPL-stamping; AGPL-vs-Apache root collision) + unsound import-ban canary test. Doctrine: SPDX sweep uses six-root ALLOW-LIST (not git-walk+deny), shebang/PEP-263-cookie ordering, byte-equality idempotency proof, canary inside contract source_modules w/ trap-cleanup | Phase 0 | License sweep audit-defensible; import-ban enforcement sound. Residual risk: APPLY must encode allow-list, not regress to git-walk |
 
 ### Deferred Issues
 
@@ -59,10 +67,10 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-27
-Stopped at: 00-02 loop complete (UNIFY done)
-Next action: /paul:plan 00-03 (OpenFeature + custom Unleash provider + SPDX headers) — last Phase 0 plan → triggers phase transition
-Resume file: .paul/phases/00-truth-in-claims-foundation/00-02-SUMMARY.md
+Last session: 2026-05-29
+Stopped at: Phase 0→1 transition complete (UNIFY 00-04 + phase commit)
+Next action: /paul:plan 01-01 (Phase 1, first plan — Community Edition MVP: The Moat)
+Resume file: .paul/phases/00-truth-in-claims-foundation/00-04-SUMMARY.md
 
 ---
 *STATE.md — Updated after every significant action*

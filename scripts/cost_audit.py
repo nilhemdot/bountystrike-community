@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Per-scan LLM cost audit (Phase 3 exit criterion #2: avg < $0.20).
 
 Queries the v_scan_cost_by_job view from migration 07 and prints a

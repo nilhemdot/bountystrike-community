@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """XSS oracle via Playwright DOM mutation.
 
 Injects a self-executing XSS probe and detects JS execution by reading a

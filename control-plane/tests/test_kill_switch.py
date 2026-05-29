@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the safety bounded context — kill switch."""
 
 from __future__ import annotations

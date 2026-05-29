@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for semantic dedup tier — embedder + tier classification + search.
 
 Live Postgres is not exercised; ``DedupStore.semantic_search`` is mocked.

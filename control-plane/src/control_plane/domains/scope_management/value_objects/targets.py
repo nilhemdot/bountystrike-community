@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Scope-target value objects used by the JWT issuer.
 
 Replaces the dataclasses originally living in ``control_plane.scope_jwt``; the

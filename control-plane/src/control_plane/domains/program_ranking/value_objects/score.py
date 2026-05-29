@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """ScoreBreakdown value object — per-program scoring decomposition.
 
 Persisted (one column per field) to ev_score_history via the repository layer.

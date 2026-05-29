@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Postgres persistence layer for the recon bounded context.
 
 Encapsulates all SQL writes against ``scan_jobs`` and ``findings`` so the

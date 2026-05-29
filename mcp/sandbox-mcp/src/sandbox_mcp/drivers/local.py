@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """LocalSubprocessDriver — DEV-ONLY subprocess driver.
 
 This driver provides NO isolation: the command runs as the host user in

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the three Phase 1.1b oracles: SSTI, Open Redirect, SSRF→IMDS.
 
 All httpx calls are fully mocked — no real network activity happens.

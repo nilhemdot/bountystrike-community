@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Platform value object — the typed enum of supported bug-bounty platforms.
 
 Both the JWT issuer and every integration client must agree on this set; we

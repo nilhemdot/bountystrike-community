@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """SSRF oracle via Interactsh OAST (Out-of-band Application Security Testing).
 
 Registers a unique callback token, injects the callback URL into the target

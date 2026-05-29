@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Standalone runner for the Phase 1.1d SSRF field-validation suite.
 
 Boots the OAST collector (port 5097) and SSRF lab (port 5098) if they

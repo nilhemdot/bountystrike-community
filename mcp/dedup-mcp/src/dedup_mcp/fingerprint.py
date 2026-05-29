@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Finding fingerprint — pure normalization + SHA-256."""
 
 from __future__ import annotations

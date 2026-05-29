@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Postgres loader for :class:`ProgramFeatures`.
 
 Queries the canonical ``programs`` + ``scopes`` tables (per

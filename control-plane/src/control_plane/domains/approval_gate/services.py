@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Services for the approval-gate bounded context.
 
 The :func:`classify_tier` function is the canonical mapping from a

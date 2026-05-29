@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Repositories for program_ranking — DB I/O lives here."""
 
 from __future__ import annotations

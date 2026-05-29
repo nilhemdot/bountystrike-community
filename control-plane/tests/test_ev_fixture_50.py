@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """EV formula validation over 50 synthetic programs.
 
 Tests in this file verify structural properties of the EV formula:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """CVSS v3.1 / v4.0 score computation via the ``cvss`` PyPI package.
 
 Why the third-party library: implementing CVSS v4 correctly is ~300 lines

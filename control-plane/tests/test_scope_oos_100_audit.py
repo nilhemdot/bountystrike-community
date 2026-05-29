@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 2 §10.4 exit criterion #5 — zero out-of-scope in 100-scan audit.
 
 Per the build plan exit criteria:

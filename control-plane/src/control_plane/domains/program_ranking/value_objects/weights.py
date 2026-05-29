@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """EV scoring weights and constants (research/02 §EV Formula + Weights).
 
 WEIGHTS_V2          -- relative importance of payout/saturation/ops/fit/cve_bonus

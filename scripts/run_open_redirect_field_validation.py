@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Standalone runner for the Phase 2 Open Redirect field-validation suite.
 
 Mirrors ``run_xss/ssrf/sqli_field_validation.py``. Boots the lab on

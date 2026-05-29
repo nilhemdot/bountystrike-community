@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Path sanitization — defense against directory traversal.
 
 Always use ``secure_path`` when an external string influences a filesystem path.

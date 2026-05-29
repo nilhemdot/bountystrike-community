@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for h1-mcp — client + server submission paths.
 
 Live H1 API is not exercised; httpx requests are mocked with respx.

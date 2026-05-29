@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Integration tests for the scope-ingest worker.
 
 We use SQLite (`sqlite+aiosqlite:///:memory:`) so no Postgres is required at

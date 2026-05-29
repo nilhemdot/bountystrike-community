@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """CWE→oracle mapping helper that mirrors validator-agent spec.
 
 Mirrors the table at ``.claude/agents/validator.md`` §CWE → Oracle Mapping.

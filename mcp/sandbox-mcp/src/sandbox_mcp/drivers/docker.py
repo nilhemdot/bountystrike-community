@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """DockerDriver — container-based sandbox driver (production-grade scaffold).
 
 Status: **GAP-deploy.** The class below ships the orchestration logic

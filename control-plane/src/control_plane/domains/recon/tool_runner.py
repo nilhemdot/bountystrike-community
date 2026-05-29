@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """ProjectDiscovery toolchain wrappers (subfinder, httpx, katana).
 
 Each wrapper shells out via :func:`asyncio.create_subprocess_exec`,

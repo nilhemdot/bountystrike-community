@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """SSTI oracle via math-eval across 7 template dialects.
 
 Injects a multiplication expression (a * b) into a query parameter and checks

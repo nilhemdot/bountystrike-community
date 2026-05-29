@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Embedding client for semantic dedup.
 
 Default backend: OpenAI ``text-embedding-3-large`` (1536 dims).

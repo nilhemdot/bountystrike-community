@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Driver protocol — every concrete driver implements this interface."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for sandbox-mcp — types, driver gates, server dispatch.
 
 The LocalSubprocessDriver is exercised end-to-end via real subprocess

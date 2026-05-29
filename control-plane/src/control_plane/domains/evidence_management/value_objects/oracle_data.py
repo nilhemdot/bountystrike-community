@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Typed oracle-data payload — populated by the verifier per oracle method.
 
 Replaces the loosely-typed ``oracle_data: dict`` in the build-plan dataclass

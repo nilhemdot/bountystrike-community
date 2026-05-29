@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Wildcard / CIDR / exclusion semantics for check_target.
 
 import { strict as assert } from "node:assert";

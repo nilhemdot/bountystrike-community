@@ -7,9 +7,15 @@
     "status": "in_progress"
   },
   "phase": {
-    "number": 0,
-    "name": "Truth-in-Claims & Foundation",
-    "status": "in_progress"
+    "number": 1,
+    "name": "Community Edition MVP: The Moat",
+    "status": "not_started",
+    "previous": {
+      "number": 0,
+      "name": "Truth-in-Claims & Foundation",
+      "status": "complete",
+      "completed_at": "2026-05-29"
+    }
   },
   "loop": {
     "plan": null,
@@ -17,7 +23,7 @@
   },
   "timestamps": {
     "created_at": "2026-05-27T00:00:00Z",
-    "updated_at": "2026-05-27T12:00:00Z"
+    "updated_at": "2026-05-29T00:00:00Z"
   },
   "satellite": {
     "groom": true

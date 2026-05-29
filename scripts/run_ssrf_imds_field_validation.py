@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Standalone runner for the Phase 2 SSRF→IMDS field-validation suite.
 
 Mirrors ``run_open_redirect_field_validation.py``. Boots the lab on

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """1.1f-deploy live R2 round-trip smoke.
 
 Asserts that the credentials in the current environment can put → exists

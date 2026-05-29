@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 2 §10.4 dedup-recall fixture + measurement runner.
 
 Produces a deterministic 1000-finding corpus with a labelled subset of

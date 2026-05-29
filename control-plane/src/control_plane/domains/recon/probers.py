@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Reflection-probe concrete implementations.
 
 The ``ReflectionProber`` Protocol lives in :mod:`.service` next to the

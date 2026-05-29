@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Program ranking bounded context — EV scoring engine.
 
 Public API:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Roundtrip tests for ev/writer.py against an in-memory SQLite (aiosqlite)."""
 
 from __future__ import annotations

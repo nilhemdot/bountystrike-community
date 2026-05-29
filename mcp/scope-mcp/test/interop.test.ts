@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Python ↔ TypeScript JWT interop. Verifies a token minted by
 // control_plane.scope_jwt (Python) validates with the TS verifier and that
 // the JTI follows the shared format `jwt_<unix_ts>_<16 hex>`.

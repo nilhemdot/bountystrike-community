@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Model router mapping task types to optimal models.
 
 Maps 16 task types to specific models based on complexity and cost optimization.

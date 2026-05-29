@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """sandbox-mcp — sandboxed PoC execution for the exploit + validator agents.
 
 Driver hierarchy:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """EV scoring service — pure functions over Pydantic-typed value objects.
 
 Aggregate normalized score:

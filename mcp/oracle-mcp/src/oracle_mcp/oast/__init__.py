@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """OAST (Out-of-band Application Security Testing) helpers.
 
 Single concrete client today: a simplified Interactsh stub

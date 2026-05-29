@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """HackerOne April-2026 org-assets API async client.
 
 Reference: ``docs/research/02-routing-ev.md`` §HackerOne (April 16 2026

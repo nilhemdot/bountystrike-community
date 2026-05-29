@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Layer-3 kill-switch enforcer — :class:`AgentSupervisor`.
 
 Polls :class:`KillSwitchService` and cancels registered worker tasks

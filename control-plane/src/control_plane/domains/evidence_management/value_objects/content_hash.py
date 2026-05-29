@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Content-addressable hash value object — SHA-256 over evidence bytes.
 
 The hash is the canonical *content address* for blob-store keys (R2/SeaweedFS)

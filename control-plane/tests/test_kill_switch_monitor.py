@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Kill switch state-transition monitor tests — :class:`KillSwitchMonitor`.
 
 Build-plan §10.4 observability requirement: monitoring alert must fire

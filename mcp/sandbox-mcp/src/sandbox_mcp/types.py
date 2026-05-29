@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Sandbox request/result schemas.
 
 Pure data — no I/O. Driver implementations consume ``RunRequest`` and

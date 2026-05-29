@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Generate RS256 key pair for BountyStrike v5 scope JWT signing
 #
 # Usage:

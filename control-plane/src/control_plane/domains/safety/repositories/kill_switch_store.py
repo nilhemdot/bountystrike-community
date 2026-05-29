@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Persistence layer for the kill switch flag.
 
 Layer 1 of the build-plan §6.6 design. The Protocol decouples the

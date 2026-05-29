@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for kev-mcp — CISA KEV loader, EPSS client, cache, server tools."""
 
 from __future__ import annotations

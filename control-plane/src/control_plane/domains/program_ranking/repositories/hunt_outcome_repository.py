@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Persistence layer for hunt_outcomes (Phase 3 calibration scaffolding).
 
 Mirrors infra/sql/07_phase3_calibration.sql:hunt_outcomes columns exactly:

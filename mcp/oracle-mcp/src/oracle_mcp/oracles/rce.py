@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """RCE oracle via benign command-output marker detection.
 
 Injects ONLY benign ``echo`` / ``Write-Output`` payloads into a URL parameter

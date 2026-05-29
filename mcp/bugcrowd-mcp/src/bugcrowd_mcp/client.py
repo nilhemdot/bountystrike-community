@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Bugcrowd submission client.
 
 API surface (verified against https://docs.bugcrowd.com/api/latest):

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for Phase 1.1c oracles: IDOR and RCE.
 
 All httpx calls are fully mocked — no real network activity occurs.

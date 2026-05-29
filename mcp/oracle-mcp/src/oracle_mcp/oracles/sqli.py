@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """SQLi timing oracle via Welch's t-test.
 
 Collects wall-clock response times for the original parameter (baseline)

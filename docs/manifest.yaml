@@ -1,0 +1,614 @@
+# ============================================================================
+# BountyStrike v6 — Master Task Manifest
+# ============================================================================
+# Version: 6.0.0
+# Date: 2026-05-21
+# Spans: Phase 0 through Phase 5 (task IDs 000-442 + phase gates)
+# Purpose: Single executable dependency DAG for one-shot Claude Code execution.
+#
+# EXECUTION CONTRACT (read before running):
+#   1. Lead agent loads this manifest and populates TodoWrite with every task id.
+#   2. Start in --permission-mode plan; switch to acceptEdits after review.
+#   3. Walk tasks in topological order of `depends_on`. A task is runnable
+#      only when ALL its dependencies are `completed`.
+#   4. Each task is idempotent: its script runs the `acceptance` check first
+#      and exits 0 immediately if already green. Re-running the graph is a no-op.
+#   5. A task is `completed` only when its acceptance command exits 0.
+#   6. A Stop hook blocks session completion until every task is `completed`,
+#      EXCEPT tasks marked `gate: external` or `gate: time` (see below).
+#   7. Full per-task spec (files_created, acceptance commands, prose) lives in
+#      tasks/<id>/task.yaml — this manifest is the DAG + metadata index.
+#
+# GATE TYPES:
+#   gate: none      -> normal automatable task (default)
+#   gate: time      -> blocked by a real-world clock, not by effort
+#   gate: external  -> blocked by a third-party/process window; agent prepares
+#                      artifacts but cannot force completion
+#   gate: human     -> requires explicit human sign-off at a checkpoint
+#
+# The one-shot will require human --resume checkpoints at every gate:time,
+# gate:external, and gate:human boundary. These are NOT failures; they are
+# designed pause points.
+# ============================================================================
+
+meta:
+  project: bountystrike-v6
+  total_tasks: 90
+  phase_gates: [099, 199, 299, 399, 499]
+  bands:
+    phase_0_1: "000-099 (foundation + CE MVP / verifier moat)"
+    phase_2:   "100-199 (full agent fleet, anti-slop, benchmarks)"
+    phase_3:   "200-299 (Solo SaaS / Cloud)"
+    phase_4:   "300-399 (Enterprise / AEV)"
+    phase_5:   "400-499 (Sovereign / Government)"
+
+# ----------------------------------------------------------------------------
+# CRITICAL PATH (longest real-world chain)
+# ----------------------------------------------------------------------------
+# The pure task-DAG critical path runs:
+#   000 -> 010 -> 023 -> 024 -> 040 -> 041 -> 100 -> 160 -> 170 -> 180 -> 184
+#       -> (210) -> 220 -> 221 -> 225 -> 299 -> 300 -> 340 -> 350 -> 399
+#       -> 410 -> 411 -> 412 -> 499
+#
+# BUT the binding real-world constraint is the SOC 2 TIME GATE, not task count:
+#   200-soc2-observation-start (Phase 3, ~Week 19)
+#     --> [3-month minimum observation window runs in background] -->
+#   310-soc2-report-delivery (Phase 4, ~Week 31+)
+#   This chain gates ALL enterprise sales. It is the true long pole.
+#   Mitigation: ship a SOC 2 Type I bridge report the moment controls exist,
+#   then deliver Type II when the window closes.
+#
+# NON-AUTOMATABLE GATES (require human --resume checkpoints):
+#   200  gate:time      SOC 2 observation window opens (engage auditor Wk19)
+#   310  gate:time      SOC 2 report lands after window closes
+#   320  gate:human     real enterprise IdP needed to test SSO end-to-end
+#   330  gate:human     tenant KMS key material needed
+#   400  gate:external  FedRAMP 20x Moderate window (targeted Q3 2026)
+#   440  gate:external  OSS maintainer partnership process (can start @ Phase 2)
+#   441  gate:external  maintainer agreements signed externally
+#   025  gate:human     interactsh server domain ownership / DNS delegation
+#   031  gate:human     interactsh OAST domain (shared with 025)
+# ----------------------------------------------------------------------------
+
+tasks:
+
+  # ===================== PHASE 0-1: FOUNDATION + CE MVP =====================
+  - id: 000-bootstrap
+    phase: 0
+    title: "Preflight: node, pnpm, python, docker, go toolchain checks"
+    depends_on: []
+    gate: none
+  - id: 001-monorepo
+    phase: 0
+    title: "pnpm workspaces + Turborepo 2.x three-root scaffold"
+    depends_on: [000-bootstrap]
+    gate: none
+  - id: 002-licenses
+    phase: 0
+    title: "Per-package LICENSE (Apache-2.0/AGPL-3.0/proprietary) + headers"
+    depends_on: [001-monorepo]
+    gate: none
+  - id: 003-feature-flags
+    phase: 0
+    title: "OpenFeature SDK + Unleash self-host (stub provider for Phase 1)"
+    depends_on: [001-monorepo]
+    gate: none
+  - id: 010-postgres-stack
+    phase: 1
+    title: "Custom pg17 image: pgvector + vectorscale (DiskANN) + pg_search (BM25)"
+    depends_on: [000-bootstrap]
+    gate: none
+  - id: 011-hatchet-lite
+    phase: 1
+    title: "Hatchet Lite single-binary Postgres-backed orchestration"
+    depends_on: [010-postgres-stack]
+    gate: none
+  - id: 012-litellm-proxy
+    phase: 1
+    title: "LiteLLM v1.86.1 proxy (corrected DeepSeek v4-flash pricing)"
+    depends_on: [000-bootstrap]
+    gate: none
+  - id: 013-r2-evidence
+    phase: 1
+    title: "Cloudflare R2 evidence store, content-addressable SHA-256 keys (boto3<1.36)"
+    depends_on: [000-bootstrap]
+    gate: none
+  - id: 014-audit-log
+    phase: 1
+    title: "Hash-chained PostgreSQL audit log"
+    depends_on: [010-postgres-stack]
+    gate: none
+  - id: 015-cost-meter
+    phase: 1
+    title: "Per-task budget tracking via LiteLLM hooks"
+    depends_on: [012-litellm-proxy]
+    gate: none
+  - id: 020-scope-arkadiyt-ingest
+    phase: 1
+    title: "arkadiyt/bounty-targets-data ingestion (30-min freshness floor)"
+    depends_on: [010-postgres-stack]
+    gate: none
+  - id: 021-scope-bbscope
+    phase: 1
+    title: "bbscope v2 wrapper (poll/db subcommands; multi-platform auth)"
+    depends_on: [010-postgres-stack]
+    gate: none
+  - id: 022-scope-projectdiscovery
+    phase: 1
+    title: "projectdiscovery dist/data.json ingestion (under 'programs' key)"
+    depends_on: [010-postgres-stack]
+    gate: none
+  - id: 023-scope-normalizer
+    phase: 1
+    title: "Canonical scope schema across H1/BC/IT/YWH/Immunefi"
+    depends_on: [020-scope-arkadiyt-ingest, 021-scope-bbscope, 022-scope-projectdiscovery]
+    gate: none
+  - id: 024-scope-jwt-issuer
+    phase: 1
+    title: "RS256 scope JWT issuance (PyJWT; structured_scopes + scope_exclusions merge)"
+    depends_on: [023-scope-normalizer]
+    gate: none
+  - id: 025-egress-enforcer
+    phase: 1
+    title: "Network-layer egress enforcement (iptables + JWT-aware proxy)"
+    depends_on: [024-scope-jwt-issuer]
+    gate: human   # interactsh/OAST domain ownership + DNS delegation
+  - id: 026-scope-diff-notifier
+    phase: 1
+    title: "Scope-diff change events + Slack/Discord/Telegram/webhook fan-out"
+    depends_on: [023-scope-normalizer]
+    gate: none
+  - id: 030-verifier-xss
+    phase: 1
+    title: "XSS oracle: Playwright headless dialog + DOM-mutation confirmation"
+    depends_on: [013-r2-evidence]
+    gate: none
+  - id: 031-verifier-ssrf-interactsh
+    phase: 1
+    title: "SSRF oracle: interactsh OAST callback correlation"
+    depends_on: [013-r2-evidence]
+    gate: human   # OAST domain ownership (shared with 025)
+  - id: 032-verifier-sqli-welch
+    phase: 1
+    title: "Blind SQLi oracle: Welch t-test on response-time distributions (calibrated)"
+    depends_on: [013-r2-evidence]
+    gate: none
+  - id: 033-verifier-open-redirect
+    phase: 1
+    title: "Open-redirect oracle (nonce Location/navigation match)"
+    depends_on: [013-r2-evidence]
+    gate: none
+  - id: 034-verifier-ssti
+    phase: 1
+    title: "SSTI oracle (engine-specific marker-expression evaluation)"
+    depends_on: [013-r2-evidence]
+    gate: none
+  - id: 035-no-verify-no-submit-trigger
+    phase: 1
+    title: "'No verification, no submission' CHECK constraint + INSERT trigger"
+    depends_on: [010-postgres-stack, 024-scope-jwt-issuer, 030-verifier-xss, 031-verifier-ssrf-interactsh, 032-verifier-sqli-welch, 033-verifier-open-redirect, 034-verifier-ssti]
+    gate: none
+  - id: 040-recon-mcp
+    phase: 1
+    title: "Custom recon-MCP (FastMCP, token bucket, scope-JWT verify)"
+    depends_on: [024-scope-jwt-issuer, 025-egress-enforcer]
+    gate: none
+  - id: 041-recon-subagent
+    phase: 1
+    title: "recon-agent.md subagent (claude-haiku-4-5)"
+    depends_on: [040-recon-mcp]
+    gate: none
+  - id: 042-recon-pipeline
+    phase: 1
+    title: "subfinder->dnsx->httpx->naabu->katana pipeline + provenance"
+    depends_on: [041-recon-subagent]
+    gate: none
+  - id: 099-phase01-gate
+    phase: 1
+    title: "PHASE 0-1 ACCEPTANCE: empty repo -> working AGPLv3 CE, E2E scan"
+    depends_on: [002-licenses, 003-feature-flags, 011-hatchet-lite, 014-audit-log, 015-cost-meter, 026-scope-diff-notifier, 035-no-verify-no-submit-trigger, 042-recon-pipeline]
+    gate: human   # public AGPLv3 release decision
+
+  # ===================== PHASE 2: AGENT FLEET + ANTI-SLOP ===================
+  - id: 100-orchestrator
+    phase: 2
+    title: "Supervisory orchestrator + scope-guard defer escalation"
+    depends_on: [099-phase01-gate]
+    gate: none
+  - id: 110-exploit-agent
+    phase: 2
+    title: "Exploit subagent, Firecracker-sandboxed PoC execution"
+    depends_on: [100-orchestrator]
+    gate: none
+  - id: 111-refusal-classifier
+    phase: 2
+    title: "Runtime refusal classifier (replaces unsourced refusal-rate claim)"
+    depends_on: [110-exploit-agent]
+    gate: none
+  - id: 112-payload-fallback
+    phase: 2
+    title: "LiteLLM fallback chain to open-weight payload models"
+    depends_on: [111-refusal-classifier, 012-litellm-proxy]
+    gate: none
+  - id: 120-validator-agent
+    phase: 2
+    title: "Validator subagent consuming the five deterministic oracles"
+    depends_on: [100-orchestrator, 030-verifier-xss, 031-verifier-ssrf-interactsh, 032-verifier-sqli-welch, 033-verifier-open-redirect, 034-verifier-ssti]
+    gate: none
+  - id: 130-dedup-agent
+    phase: 2
+    title: "Dedup subagent (orchestration layer)"
+    depends_on: [100-orchestrator, 010-postgres-stack]
+    gate: none
+  - id: 131-pgvector-embedder
+    phase: 2
+    title: "Semantic embedding layer (DiskANN cosine similarity)"
+    depends_on: [130-dedup-agent]
+    gate: none
+  - id: 132-fingerprint-index
+    phase: 2
+    title: "Structural fingerprint + program cross-check index"
+    depends_on: [131-pgvector-embedder]
+    gate: none
+  - id: 140-ai-vuln-hunter
+    phase: 2
+    title: "OWASP LLM Top 10 specialist subagent"
+    depends_on: [100-orchestrator, 040-recon-mcp]
+    gate: none
+  - id: 141-garak-mcp
+    phase: 2
+    title: "Garak MCP server"
+    depends_on: [140-ai-vuln-hunter]
+    gate: none
+  - id: 142-promptfoo-mcp
+    phase: 2
+    title: "Promptfoo MCP server"
+    depends_on: [141-garak-mcp]
+    gate: none
+  - id: 143-pyrit-mcp
+    phase: 2
+    title: "PyRIT MCP server"
+    depends_on: [141-garak-mcp]
+    gate: none
+  - id: 150-cloud-recon
+    phase: 2
+    title: "Cloud surface specialist subagent"
+    depends_on: [100-orchestrator, 040-recon-mcp]
+    gate: none
+  - id: 151-cloud-mcp
+    phase: 2
+    title: "Cloud MCP (cloud_enum/S3Scanner/Prowler/ScoutSuite)"
+    depends_on: [150-cloud-recon]
+    gate: none
+  - id: 160-reporter-agent
+    phase: 2
+    title: "Reporter subagent (sonnet-4-6, report-quality prose)"
+    depends_on: [120-validator-agent, 130-dedup-agent]
+    gate: none
+  - id: 161-platform-formatters
+    phase: 2
+    title: "Per-platform formatters (H1/BC/IT/YWH/Immunefi)"
+    depends_on: [160-reporter-agent]
+    gate: none
+  - id: 162-approval-tiers
+    phase: 2
+    title: "T0-T3 submission approval tiers"
+    depends_on: [161-platform-formatters]
+    gate: none
+  - id: 170-antislop-slo
+    phase: 2
+    title: "Anti-slop SLO framework (>70% confirmed-rate gate)"
+    depends_on: [160-reporter-agent]
+    gate: none
+  - id: 171-confirmed-rate-meter
+    phase: 2
+    title: "Confirmed-rate instrumentation + alert"
+    depends_on: [170-antislop-slo]
+    gate: none
+  - id: 172-killswitch
+    phase: 2
+    title: "Three-layer kill switch (budget / confirmed-rate / panic)"
+    depends_on: [170-antislop-slo]
+    gate: none
+  - id: 173-anypoc-guards
+    phase: 2
+    title: "Reward-hacking countermeasures (4 AnyPoC failure modes)"
+    depends_on: [110-exploit-agent, 120-validator-agent]
+    gate: none
+  - id: 180-benchmark-harness
+    phase: 2
+    title: "XBOW benchmark harness (both variants, variant-tagged)"
+    depends_on: [173-anypoc-guards, 162-approval-tiers]
+    gate: none
+  - id: 181-xbow-blackbox
+    phase: 2
+    title: "Full black-box benchmark run (~85% XBOW reference)"
+    depends_on: [180-benchmark-harness]
+    gate: none
+  - id: 182-xbow-whitebox
+    phase: 2
+    title: "Full white-box benchmark run (Shannon 100/104 reference, labeled easier)"
+    depends_on: [180-benchmark-harness]
+    gate: none
+  - id: 183-cost-attribution
+    phase: 2
+    title: "Per-challenge cost attribution (reconciles within 5% of ledger)"
+    depends_on: [181-xbow-blackbox, 182-xbow-whitebox, 015-cost-meter]
+    gate: none
+  - id: 184-benchmark-publish
+    phase: 2
+    title: "Reproducible public benchmark report (3rd-party reproducibility gate)"
+    depends_on: [183-cost-attribution]
+    gate: none
+  - id: 199-phase2-gate
+    phase: 2
+    title: "PHASE 2 ACCEPTANCE: 9 agents, >70% confirmed-rate, published benchmarks"
+    depends_on: [112-payload-fallback, 132-fingerprint-index, 143-pyrit-mcp, 151-cloud-mcp, 162-approval-tiers, 171-confirmed-rate-meter, 172-killswitch, 173-anypoc-guards, 184-benchmark-publish]
+    gate: none
+
+  # ===================== PHASE 3: SOLO SAAS / CLOUD =========================
+  - id: 200-soc2-observation-start
+    phase: 3
+    title: "Engage SOC 2 auditor + begin Type II observation (Week 19)"
+    depends_on: [210-multitenant-core]   # deployable state only, NOT feature-complete
+    gate: time   # 3-month minimum observation window; START ASAP
+  - id: 210-multitenant-core
+    phase: 3
+    title: "Multi-tenant control plane skeleton (tenant_id first-class)"
+    depends_on: [199-phase2-gate]
+    gate: none
+  - id: 211-temporal-migration
+    phase: 3
+    title: "Temporal Cloud durable multi-tenant workflows (Hatchet stays for solo)"
+    depends_on: [210-multitenant-core]
+    gate: none
+  - id: 212-postgres-rls
+    phase: 3
+    title: "Row-Level Security on all tenant-scoped tables"
+    depends_on: [210-multitenant-core]
+    gate: none
+  - id: 213-turbopuffer-namespaces
+    phase: 3
+    title: "Per-tenant Turbopuffer namespaces (past ~1M findings/tenant)"
+    depends_on: [212-postgres-rls, 131-pgvector-embedder]
+    gate: none
+  - id: 214-microvm-pool
+    phase: 3
+    title: "E2B/Firecracker per-job microVM pool (scope-JWT egress allowlist)"
+    depends_on: [210-multitenant-core, 110-exploit-agent]
+    gate: none
+  - id: 215-workos-authkit
+    phase: 3
+    title: "WorkOS AuthKit (foundation for SSO/SCIM in Phase 4)"
+    depends_on: [210-multitenant-core]
+    gate: none
+  - id: 220-dashboard
+    phase: 3
+    title: "Next.js 16 + shadcn/ui dashboard shell"
+    depends_on: [215-workos-authkit]
+    gate: none
+  - id: 221-agent-stream-sse
+    phase: 3
+    title: "Live agent-reasoning stream (SSE; Cursor/Vercel pattern)"
+    depends_on: [220-dashboard, 211-temporal-migration]
+    gate: none
+  - id: 222-evidence-inspector
+    phase: 3
+    title: "Evidence inspector w/ replay (Stripe drill-down; presigned R2 URLs)"
+    depends_on: [220-dashboard, 013-r2-evidence]
+    gate: none
+  - id: 223-command-palette
+    phase: 3
+    title: "Cmd+K command palette (Linear pattern)"
+    depends_on: [220-dashboard]
+    gate: none
+  - id: 224-cost-meter-ui
+    phase: 3
+    title: "Cost meter + budget alarms ('scan paused, top up')"
+    depends_on: [220-dashboard, 015-cost-meter, 172-killswitch]
+    gate: none
+  - id: 225-ctem-stage-viz
+    phase: 3
+    title: "CTEM five-stage progress visualization (the UX differentiator)"
+    depends_on: [221-agent-stream-sse]
+    gate: none
+  - id: 230-billing
+    phase: 3
+    title: "Billing core"
+    depends_on: [210-multitenant-core, 015-cost-meter]
+    gate: none
+  - id: 231-stripe-metering
+    phase: 3
+    title: "Stripe usage metering (within 5% of LLM ledger)"
+    depends_on: [230-billing]
+    gate: none
+  - id: 232-byok
+    phase: 3
+    title: "BYOK option (OpenRouter 1M free BYOK req/mo default path)"
+    depends_on: [231-stripe-metering, 012-litellm-proxy]
+    gate: none
+  - id: 233-onboarding-upgrade-flow
+    phase: 3
+    title: "Self-serve onboarding + Community->Cloud upgrade funnel"
+    depends_on: [232-byok, 220-dashboard]
+    gate: none
+  - id: 299-phase3-gate
+    phase: 3
+    title: "PHASE 3 ACCEPTANCE: multi-tenant isolation pentest, SOC2 clock running"
+    depends_on: [200-soc2-observation-start, 211-temporal-migration, 212-postgres-rls, 213-turbopuffer-namespaces, 214-microvm-pool, 221-agent-stream-sse, 222-evidence-inspector, 223-command-palette, 224-cost-meter-ui, 225-ctem-stage-viz, 233-onboarding-upgrade-flow]
+    gate: human   # external penetration test sign-off
+
+  # ===================== PHASE 4: ENTERPRISE / AEV =========================
+  - id: 300-feature-flag-gating
+    phase: 4
+    title: "tier=enterprise flag gate at subagent boundary (AST scan, no forks)"
+    depends_on: [003-feature-flags, 233-onboarding-upgrade-flow]
+    gate: none
+  - id: 301-ctem-stage-mapping
+    phase: 4
+    title: "Map 9 subagents onto 5 CTEM stages"
+    depends_on: [300-feature-flag-gating]
+    gate: none
+  - id: 302-tier-enforcement
+    phase: 4
+    title: "Runtime tier enforcement"
+    depends_on: [301-ctem-stage-mapping]
+    gate: none
+  - id: 303-flag-boundary-tests
+    phase: 4
+    title: "Tier boundary integration suite"
+    depends_on: [302-tier-enforcement]
+    gate: none
+  - id: 310-soc2-report-delivery
+    phase: 4
+    title: "SOC 2 report delivery (Type I bridge first, Type II when window closes)"
+    depends_on: [200-soc2-observation-start, 300-feature-flag-gating]
+    gate: time   # blocked by observation window from task 200
+  - id: 320-sso-saml-oidc
+    phase: 4
+    title: "SSO via SAML 2.0 / OIDC (WorkOS, per-tenant connections)"
+    depends_on: [215-workos-authkit, 300-feature-flag-gating]
+    gate: human   # real enterprise IdP needed for end-to-end test
+  - id: 321-scim-provisioning
+    phase: 4
+    title: "SCIM 2.0 provisioning/deprovisioning"
+    depends_on: [320-sso-saml-oidc]
+    gate: none
+  - id: 322-audit-log-export
+    phase: 4
+    title: "Append-only audit export (CEF/JSONL, SIEM-ready, tamper-evident)"
+    depends_on: [320-sso-saml-oidc, 014-audit-log]
+    gate: none
+  - id: 330-byok-kms
+    phase: 4
+    title: "BYOK with AWS KMS (evidence encryption-at-rest)"
+    depends_on: [232-byok, 320-sso-saml-oidc]
+    gate: human   # tenant KMS key material needed
+  - id: 331-vault-integration
+    phase: 4
+    title: "HashiCorp Vault integration"
+    depends_on: [330-byok-kms]
+    gate: none
+  - id: 340-integrations
+    phase: 4
+    title: "Mobilization integrations core"
+    depends_on: [302-tier-enforcement, 160-reporter-agent]
+    gate: none
+  - id: 341-jira
+    phase: 4
+    title: "Jira issue creation from verified findings"
+    depends_on: [340-integrations]
+    gate: none
+  - id: 342-servicenow
+    phase: 4
+    title: "ServiceNow incident creation"
+    depends_on: [341-jira]
+    gate: none
+  - id: 343-soar-webhook
+    phase: 4
+    title: "SOAR playbook trigger via webhook"
+    depends_on: [342-servicenow]
+    gate: none
+  - id: 350-aev-ctem-reports
+    phase: 4
+    title: "AEV/CTEM compliance report (CISO-facing)"
+    depends_on: [340-integrations, 301-ctem-stage-mapping]
+    gate: none
+  - id: 351-exposure-scoring
+    phase: 4
+    title: "Exposure score over time"
+    depends_on: [350-aev-ctem-reports]
+    gate: none
+  - id: 352-mobilization-export
+    phase: 4
+    title: "Mobilization-stage export"
+    depends_on: [350-aev-ctem-reports]
+    gate: none
+  - id: 360-cra-companion
+    phase: 4
+    title: "Free EU CRA Companion (Article 14 draft generator)"
+    depends_on: [350-aev-ctem-reports]
+    gate: none
+  - id: 361-article14-templates
+    phase: 4
+    title: "24h/72h/14d notification templates (legal-review-only)"
+    depends_on: [360-cra-companion]
+    gate: none
+  - id: 362-enisa-srp-format
+    phase: 4
+    title: "ENISA Single Reporting Platform format (Sept 11 2026 go-live)"
+    depends_on: [361-article14-templates]
+    gate: none
+  - id: 399-phase4-gate
+    phase: 4
+    title: "PHASE 4 ACCEPTANCE: AEV positioning, SSO/SCIM, SOC2 report, 3 pilots"
+    depends_on: [303-flag-boundary-tests, 310-soc2-report-delivery, 321-scim-provisioning, 322-audit-log-export, 331-vault-integration, 343-soar-webhook, 351-exposure-scoring, 352-mobilization-export, 362-enisa-srp-format]
+    gate: human   # first 3 enterprise pilots signed
+
+  # ===================== PHASE 5: SOVEREIGN / GOVERNMENT ====================
+  - id: 400-fedramp-pilot-application
+    phase: 5
+    title: "FedRAMP 20x Moderate pilot (prepare now, submit when window opens)"
+    depends_on: [410-airgap-deployment]
+    gate: external   # FedRAMP 20x Moderate window, targeted Q3 2026
+  - id: 410-airgap-deployment
+    phase: 5
+    title: "Fully air-gapped on-prem deployment (zero external egress)"
+    depends_on: [399-phase4-gate]
+    gate: none
+  - id: 411-self-hosted-models
+    phase: 5
+    title: "Self-hosted models via vLLM (Foundation-Sec-8B/Deep Hat V2/WhiteRabbitNeo V3/Pentest-R1)"
+    depends_on: [410-airgap-deployment]
+    gate: none
+  - id: 412-zero-egress-validation
+    phase: 5
+    title: "Zero-egress validation harness (network monitor confirms)"
+    depends_on: [411-self-hosted-models]
+    gate: none
+  - id: 420-vault-isolation
+    phase: 5
+    title: "Full on-prem secrets isolation (no external KMS dependency)"
+    depends_on: [411-self-hosted-models]
+    gate: none
+  - id: 430-per-test-pricing
+    phase: 5
+    title: "Hadrian-style per-test pricing (procurement-friction-free)"
+    depends_on: [231-stripe-metering, 350-aev-ctem-reports]
+    gate: none
+  - id: 440-expert-guided-program
+    phase: 5
+    title: "AISLE-style expert-guided-AI program charter (CAN START @ PHASE 2)"
+    depends_on: [184-benchmark-publish]
+    gate: external   # OSS maintainer partnership process
+  - id: 441-maintainer-partnerships
+    phase: 5
+    title: "5-10 OSS maintainer partnerships (zero-invalid-report bar)"
+    depends_on: [440-expert-guided-program]
+    gate: external   # external agreements
+  - id: 442-case-study
+    phase: 5
+    title: "Published case study w/ named maintainer endorsement (anti-slop proof)"
+    depends_on: [441-maintainer-partnerships]
+    gate: human   # maintainer approval to publish
+  - id: 499-phase5-gate
+    phase: 5
+    title: "PHASE 5 ACCEPTANCE: air-gap validated, FedRAMP submitted, case study live"
+    depends_on: [400-fedramp-pilot-application, 412-zero-egress-validation, 420-vault-isolation, 430-per-test-pricing, 442-case-study]
+    gate: human   # 1+ sovereign/gov/finance design partner
+
+# ----------------------------------------------------------------------------
+# PARALLELIZATION NOTES (for an agent that can fan out)
+# ----------------------------------------------------------------------------
+# Within Phase 0-1, three independent subtrees can run concurrently after 010:
+#   (a) scope chain    020/021/022 -> 023 -> 024 -> 025 -> 040 -> 041 -> 042
+#   (b) verifier chain 030/031/032/033/034 (all parallel) -> 035
+#   (c) infra chain    011, 012->015, 013, 014
+# Phase 2: the six subagent subtrees (110,120,130,140,150,160) fan out from 100.
+# Phase 3: 211/212/214/215 fan out from 210; dashboard tree serializes on 220.
+# Phase 4: SSO tree (320->321/322/330->331) parallel to integrations tree
+#          (340->341->342->343->350->...) once 300/302 land.
+# Phase 5: 420 and 412 parallel after 411; 430 parallel to the airgap chain.
+# The expert-guided program (440->441->442) runs in parallel with EVERYTHING
+# from Phase 2 onward and should be kicked off the moment 184 is green.
+# ----------------------------------------------------------------------------

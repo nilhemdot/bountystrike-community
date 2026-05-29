@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Roundtrip + boundary tests for scope_jwt module."""
 
 from __future__ import annotations

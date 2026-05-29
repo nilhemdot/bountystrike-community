@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // In-memory mock store for Phase 0c. Postgres-backed implementation lands in
 // Phase 1; tables programs/scopes/scope_changes are defined in
 // infra/sql/01_schema.sql.

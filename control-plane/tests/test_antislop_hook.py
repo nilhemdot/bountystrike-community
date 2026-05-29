@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the .claude/hooks/pretool_antislop.py PreToolUse hook.
 
 The hook is a standalone script (no control-plane PYTHONPATH dependency

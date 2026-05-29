@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for `control_plane.integrations.h1_client`.
 
 We use `respx` to mock the HackerOne API. Three pages exercise the pagination

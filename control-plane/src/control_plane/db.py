@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Deprecated compat shim — re-exports from `control_plane.infrastructure.database`.
 
 The async engine, sessionmaker, Base, and ORM models (Program, Scope,

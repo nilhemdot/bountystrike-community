@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """IDOR oracle via cross-account resource access matrix.
 
 Verifies Insecure Direct Object Reference by confirming that account B

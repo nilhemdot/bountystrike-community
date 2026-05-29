@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Scope management bounded context.
 
 Owns the lifecycle of bug-bounty *programs* and their *scopes*: ingestion from

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Helper script to run schema-Pydantic contract test with Postgres setup
 # Usage: ./scripts/run-schema-contract-test.sh
 

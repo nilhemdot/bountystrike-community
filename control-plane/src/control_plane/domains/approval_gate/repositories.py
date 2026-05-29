@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Repositories for the approval-gate bounded context.
 
 Production callers will swap :class:`InMemoryApprovalRequestStore` for

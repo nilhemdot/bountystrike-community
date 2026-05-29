@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Scope-change domain events.
 
 Replaces the magic-string ``event_type ∈ {scope_added, scope_removed,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Base domain event — emitted by aggregates when state transitions occur.
 
 Events carry: unique id, aggregate id (the entity that emitted), timestamp,

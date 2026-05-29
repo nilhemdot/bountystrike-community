@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Post-scanner FP filter — drops unreflected xss-candidate hypothesis rows.
 
 The recon-stage reflection probe (control_plane.domains.recon.service)

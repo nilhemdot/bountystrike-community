@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # BountyStrike v5 — End-to-End Deployment Verification
 #
 # Purpose:

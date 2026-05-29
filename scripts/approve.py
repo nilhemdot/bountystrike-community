@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Operator CLI for the T2/T3 approval queue (Phase 2 W7-8).
 
 Subcommands:

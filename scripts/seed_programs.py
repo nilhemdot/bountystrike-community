@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Seed/refresh the ``programs`` + ``scopes`` tables from arkadiyt feeds.
 
 Pulls the public ``arkadiyt/bounty-targets-data`` JSON snapshots for

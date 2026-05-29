@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Persistence layer for ev_score_history (only file in this package with DB calls).
 
 Mirrors infra/sql/01_schema.sql:ev_score_history columns exactly:

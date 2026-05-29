@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Freshness decay + CVE opportunity score (research/02 §Freshness decay, §CVE opportunity score).
 
 Pure functions — no I/O, no DB. All math via stdlib `math.exp`.

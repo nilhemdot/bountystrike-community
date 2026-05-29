@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """HackerOne hacker-side submission client.
 
 API surface used:

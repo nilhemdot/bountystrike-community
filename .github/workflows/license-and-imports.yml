@@ -1,0 +1,50 @@
+---
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# CI: SPDX header sweep (check mode) + import-linter forbidden-import ban
+#
+# Runs on every pull request and on push to master/main.
+# Both gates are blocking — neither uses continue-on-error.
+
+name: license-and-imports
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  license-check:
+    name: SPDX header sweep (check mode)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.x"
+
+      - name: Check SPDX headers
+        run: uv run python scripts/add_spdx_headers.py --check
+
+  import-ban:
+    name: Import-linter forbidden contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.7.x"
+
+      - name: Install dev dependencies (import-linter~=2.3)
+        run: uv sync --group dev
+
+      - name: Assert control_plane resolves (non-vacuous guard)
+        run: uv run python -c "import control_plane; print('OK:', control_plane.__file__)"
+
+      - name: Run import-linter (community/core must not import enterprise)
+        run: uv run lint-imports

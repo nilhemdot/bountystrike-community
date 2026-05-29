@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 3 exit-criteria dashboard (build-plan §10.5 §Exit criteria).
 
 Prints a one-shot health snapshot of the five Phase 3 gates:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Value objects for the scope_management bounded context.
 
 All VOs are immutable (`ValueObject` = frozen Pydantic). They model the

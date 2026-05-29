@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Pure-domain math for program_ranking — no I/O, no DB, no external deps."""
 
 from __future__ import annotations

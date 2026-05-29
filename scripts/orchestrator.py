@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """BountyStrike v5 pipeline orchestrator.
 
 Runs one full scan cycle for a single program:

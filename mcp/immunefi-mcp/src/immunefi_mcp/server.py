@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for immunefi-mcp.
 
 Exposes one MCP tool: submit_report — POST {base_url}/v1/reports (or

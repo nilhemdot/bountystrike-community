@@ -1,0 +1,57 @@
+# Completion documents — load only when explicitly requested
+.claude/completions/**
+
+# Session files — load only when explicitly requested
+.claude/sessions/**
+
+# Archived documentation — load only when explicitly requested
+docs/archive/**
+
+# Python artifacts
+**/__pycache__/**
+**/.venv/**
+**/*.pyc
+**/.mypy_cache/**
+**/.ruff_cache/**
+**/.pytest_cache/**
+
+# Node (scope-mcp)
+mcp/scope-mcp/node_modules/**
+mcp/scope-mcp/dist/**
+
+# Build outputs
+dist/**
+build/**
+
+# Git
+.git/**
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+keys/**
+
+# Logs and reports
+*.log
+logs/**
+reports/**
+
+# IDE
+.vscode/**
+.idea/**
+
+# OS
+.DS_Store
+
+# Lock files (large, rarely useful in context)
+uv.lock
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+GEMINI.md
+AGENTS.md
+.cursorrules
+.windsurfrules
+.clinerules
+.roomodes

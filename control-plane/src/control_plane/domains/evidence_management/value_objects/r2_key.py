@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """R2 / blob-store key value object.
 
 Per build plan §5.3 the canonical evidence key is::

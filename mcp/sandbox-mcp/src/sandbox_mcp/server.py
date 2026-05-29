@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for sandbox-mcp.
 
 Exposes three MCP tools:

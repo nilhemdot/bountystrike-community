@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Approval gate bounded context — build-plan §6.3 evidence tiers.
 
 Computes the approval tier (T0-T3) for a validated finding from its

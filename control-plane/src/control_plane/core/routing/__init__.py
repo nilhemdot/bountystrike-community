@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Model routing system for cost-optimized task execution.
 
 Maps 16 task types to 4 cost tiers (frontier/mid/fast/minimal) to balance

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Kill switch state-transition monitor.
 
 Polls :class:`KillSwitchService` and emits structured log alerts when

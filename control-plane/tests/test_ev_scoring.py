@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """EV scoring + ranking tests over fixtures/programs.json."""
 
 from __future__ import annotations

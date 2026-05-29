@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Composition root for the kill switch store.
 
 Picks an implementation from environment variables. Call once at

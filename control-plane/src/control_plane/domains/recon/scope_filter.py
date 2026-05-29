@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Scope-aware allow/deny filter parsed from a scope JWT's claims.
 
 The filter is the single authority on whether a host or URL path may be

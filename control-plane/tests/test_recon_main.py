@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the recon container CLI entrypoint."""
 
 from __future__ import annotations

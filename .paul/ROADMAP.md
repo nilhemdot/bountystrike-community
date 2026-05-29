@@ -8,14 +8,14 @@ Six dependency-ordered phases over 48 weeks: fix empirical soft spots and split 
 
 **v0.1 Community Edition MVP** (v0.1.0)
 Status: In progress
-Phases: 0 of 6 complete
+Phases: 1 of 6 complete
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 0 | Truth-in-Claims & Foundation | 4 | In progress | - |
-| 1 | Community Edition MVP: The Moat | TBD | Not started | - |
+| 0 | Truth-in-Claims & Foundation | 4 | Complete | 2026-05-29 |
+| 1 | Community Edition MVP: The Moat | TBD | Active (next) | - |
 | 2 | Full Agent Fleet, Anti-Slop & Benchmark | TBD | Not started | - |
 | 3 | Solo SaaS (Cloud) | TBD | Not started | - |
 | 4 | Enterprise / AEV | TBD | Not started | - |
@@ -39,8 +39,8 @@ Phases: 0 of 6 complete
 **Plans:**
 - [x] 00-01: Empirical corrections + competitive set fix — done 2026-05-27 (required FIX cycle for DeepSeek pricing)
 - [x] 00-02: Hybrid scaffold — 3-root license split + pnpm/Turborepo over uv + CONTRIBUTING/CLA — done 2026-05-27
-- [ ] 00-03: OpenFeature SDK + custom Unleash provider (no official Python provider — brief), fail-closed tier=enterprise gate
-- [ ] 00-04: SPDX license-header sweep across 243 existing source files (mechanical, scriptable) + CI import-ban enforcement
+- [x] 00-03: OpenFeature SDK + custom Unleash provider (no official Python provider — brief), fail-closed tier=enterprise gate — done 2026-05-29
+- [x] 00-04: SPDX license-header sweep across 250 source files (6-root allow-list, idempotent script) + CI import-ban enforcement — done 2026-05-29
 
 Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo is a hybrid layer (00-02). (2) feature-flag SDK its own plan due to OpenFeature→Unleash Python gap (00-03). (3) 243-file SPDX header sweep split from 00-03 to keep design vs. mechanical-sweep separate (00-04). Completing 00-04 triggers Phase 0→1 transition.
 
@@ -136,4 +136,4 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 
 ---
 *Roadmap created: 2026-05-27*
-*Last updated: 2026-05-27*
+*Last updated: 2026-05-29 — Phase 0 complete (4/4 plans), Phase 1 active*

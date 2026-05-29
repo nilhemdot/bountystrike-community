@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Defence-in-depth checks for caller-supplied URLs.
 
 The submission MCP attaches a Bearer token to every outbound request when

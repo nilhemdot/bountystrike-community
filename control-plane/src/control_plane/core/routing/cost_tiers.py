@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Cost tier definitions for model routing.
 
 Four-tier system maps task types to models by cost/capability:

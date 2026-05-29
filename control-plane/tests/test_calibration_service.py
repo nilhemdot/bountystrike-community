@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Unit tests for the EV calibration service (Phase 3 §10.5).
 
 Pure-function coverage — no DB, no scipy mocking. We feed in synthetic

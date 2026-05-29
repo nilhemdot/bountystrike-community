@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Pure normalizers — convert raw platform JSON into the canonical scope dict.
 
 Each function returns a :class:`CanonicalScope` mapping suitable for upserting

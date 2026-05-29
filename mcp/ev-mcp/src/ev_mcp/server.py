@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for ev-mcp.
 
 Exposes the two tools named in build-plan §4.x for ev-mcp:

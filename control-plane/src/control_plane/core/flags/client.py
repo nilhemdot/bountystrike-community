@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """OpenFeature client wrapper with a fail-closed tier gate.
 
 Default provider is in-memory (offline) so solo/CI need no Unleash server. When
@@ -14,8 +16,8 @@ import os
 
 import structlog
 from openfeature import api
-from openfeature.contrib.provider.in_memory import InMemoryFlag, InMemoryProvider
 from openfeature.evaluation_context import EvaluationContext
+from openfeature.provider.in_memory_provider import InMemoryFlag, InMemoryProvider
 
 from control_plane.core.flags.provider import UnleashProvider
 
@@ -31,7 +33,13 @@ _COMMUNITY_DEFAULT_FLAGS: dict[str, bool] = {
 def _in_memory_provider(flags: dict[str, bool] | None = None) -> InMemoryProvider:
     source = flags if flags is not None else _COMMUNITY_DEFAULT_FLAGS
     return InMemoryProvider(
-        {key: InMemoryFlag(str(val), {"on": True, "off": False}) for key, val in source.items()}
+        {
+            key: InMemoryFlag(
+                default_variant="on" if val else "off",
+                variants={"on": True, "off": False},
+            )
+            for key, val in source.items()
+        }
     )
 
 

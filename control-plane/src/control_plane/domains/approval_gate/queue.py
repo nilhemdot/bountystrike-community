@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Operator-side T2/T3 approval queue (Phase 2 W7-8).
 
 Backs the exploit-agent's Step-5 T2 gate (`.claude/agents/exploit-agent.md`):

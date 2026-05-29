@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """StateStore — read/write API over the findings + evidence_artifacts schema.
 
 Why an MCP wrapper exists at all when ``findings`` is a simple Postgres

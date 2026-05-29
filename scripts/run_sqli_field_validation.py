@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Standalone runner for the Phase 2 SQLi field-validation suite.
 
 Bypasses pytest. Boots the lab if not running, executes the 20-target

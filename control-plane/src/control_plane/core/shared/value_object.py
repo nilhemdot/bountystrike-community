@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Base value object — immutable, equality by value (not identity).
 
 Pydantic v2 with frozen=True gives us hashing + structural equality for free.

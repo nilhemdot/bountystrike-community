@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the three Phase 1.1a oracles: XSS, SSRF, SQLi.
 
 Playwright and httpx calls are fully mocked — no real network or browser

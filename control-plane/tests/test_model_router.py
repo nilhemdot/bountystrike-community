@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for model routing cost optimization matrix.
 
 Covers the full routing matrix (16 task types x 4 cost tiers), model

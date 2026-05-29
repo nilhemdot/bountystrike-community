@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Oracle functions exposed by oracle-mcp.
 
 Phase 1.1a: XSS, SSRF, SQLi.

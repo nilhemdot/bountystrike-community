@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """FastMCP server for intigriti-mcp.
 
 Exposes one MCP tool: submit_report — POST /core/researcher/v1/submissions.

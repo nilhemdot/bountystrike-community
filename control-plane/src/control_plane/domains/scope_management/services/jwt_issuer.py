@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """RS256 scope JWT issuer + validator.
 
 Per build plan §4.9: 4096-bit RSA keypair, max 168h expiry, claims include

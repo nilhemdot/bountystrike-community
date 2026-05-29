@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for yeswehack-mcp — client + server submission paths.
 
 Live YWH API is not exercised; httpx requests are mocked with respx.

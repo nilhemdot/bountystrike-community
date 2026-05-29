@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // scope-mcp — BountyStrike v5 scope-enforcement MCP server (Phase 0c).
 // Seven tools: check_target, list_in_scope_assets, get_program_rules,
 // issue_scope_jwt, revoke_scope_jwt, get_scope_changes, rank_programs.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Intigriti submission client.
 
 **IMPORTANT — Intigriti has no public researcher submission API.**

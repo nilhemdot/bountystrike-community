@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # cost_report.sh — BountyStrike cost-report alias.
 #
 # Thin wrapper over scripts/cost_audit.py --by-task-type so operators can

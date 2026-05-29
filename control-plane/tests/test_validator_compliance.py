@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Unit tests for ``audit_validator_compliance`` with a fake asyncpg
 connection. Exercises the SQL surface and the
 :class:`ComplianceReport` invariants without needing a live Postgres.

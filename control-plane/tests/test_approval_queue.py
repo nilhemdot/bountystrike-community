@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for approval_gate.queue — operator-side T2/T3 queue.
 
 Uses a hand-rolled in-memory fake of the asyncpg.Connection surface we

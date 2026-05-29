@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Input validation helpers — used at system boundaries.
 
 Pydantic v2 already validates fields by type. These helpers cover the cases

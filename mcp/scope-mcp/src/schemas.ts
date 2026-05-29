@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // Zod schemas + TypeScript types shared between MCP boundary and internals.
 // Mirrors control-plane/scope_jwt.py claim shape exactly.
 

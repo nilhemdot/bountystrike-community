@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # Health check script for BountyStrike v5 Solo Mode deployment
 #
 # Usage:

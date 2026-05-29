@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Infrastructure layer — shared adapters across bounded contexts.
 
 Holds cross-cutting persistence concerns (engine, sessionmaker, ORM models

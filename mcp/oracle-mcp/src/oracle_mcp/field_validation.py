@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 1 field-validation runner for the deterministic oracles.
 
 Loads a fixture file describing N (URL, parameter, expected_verdict) tuples,

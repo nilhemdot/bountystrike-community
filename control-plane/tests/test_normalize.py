@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Per-platform normalizer tests using realistic fixture JSON."""
 
 from __future__ import annotations

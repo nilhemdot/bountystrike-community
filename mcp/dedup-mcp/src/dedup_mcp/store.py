@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """DedupStore — asyncpg-backed Postgres deduplication state."""
 
 from __future__ import annotations

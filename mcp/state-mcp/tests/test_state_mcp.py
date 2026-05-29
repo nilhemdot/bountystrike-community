@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for state-mcp — store + server with mocked Postgres pool.
 
 Live Postgres is not exercised; the asyncpg pool is mocked. An

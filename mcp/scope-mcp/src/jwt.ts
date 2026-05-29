@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 // RS256 scope-JWT issuer + verifier — TypeScript mirror of
 // control-plane/src/control_plane/scope_jwt.py. Claim shape is identical so
 // tokens minted by either side validate on the other.

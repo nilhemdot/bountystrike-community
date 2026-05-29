@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Standalone runner for the Phase 2 RCE field-validation suite.
 
 Mirrors the open-redirect / SSTI runners. Boots the lab on port 5093 if

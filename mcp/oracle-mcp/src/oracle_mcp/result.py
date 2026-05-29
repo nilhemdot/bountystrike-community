@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """OracleResult — uniform return type for all 8 oracles.
 
 Per build plan §5.2: every oracle returns a verdict in

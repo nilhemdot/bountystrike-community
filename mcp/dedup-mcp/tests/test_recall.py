@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Phase 2 §10.4 last exit criterion — semantic-dedup recall ≥ 0.90 over a
 1000-finding test set with known duplicate pairs.
 

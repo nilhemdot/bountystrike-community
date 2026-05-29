@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Per-finding approval status cache.
 
 The PreToolUse approval-gate hook fires at every `mcp__*__submit_*`

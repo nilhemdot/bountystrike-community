@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """SQLAlchemy 2.0 async engine + session factory + ORM models.
 
 Mirrors the subset of `infra/sql/01_schema.sql` that Phase 0d touches:

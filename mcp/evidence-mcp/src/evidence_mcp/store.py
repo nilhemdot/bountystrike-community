@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Storage backends for evidence artifacts and hash-chained audit logs.
 
 BlobStore  — content-addressed blob storage on disk.

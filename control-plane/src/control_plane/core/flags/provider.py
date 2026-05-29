@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Custom OpenFeature provider backed by Unleash.
 
 No official OpenFeature -> Unleash Python provider exists (Unleash/unleash#3912),

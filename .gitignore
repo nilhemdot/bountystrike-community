@@ -44,3 +44,5 @@ reports/exploit_poc_*.txt
 
 # Auto Claude data directory
 .auto-claude/
+# Added by code-review-graph
+.code-review-graph/

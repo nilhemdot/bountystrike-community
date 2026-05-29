@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Defense-in-depth: reject destructive payloads before they hit any target.
 
 Mirrors ``control_plane.core.security.reject_destructive_payload``. The

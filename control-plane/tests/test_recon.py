@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the recon bounded context.
 
 Covers ScopeFilter logic, the BinaryRunner Protocol contract via a fake

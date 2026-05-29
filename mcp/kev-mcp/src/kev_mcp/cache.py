@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """TTL-bounded in-memory cache for the KEV catalog.
 
 The catalog updates daily on the CISA side; refresh hourly is plenty.

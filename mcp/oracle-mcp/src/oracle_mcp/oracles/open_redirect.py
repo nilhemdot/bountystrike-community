@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Open Redirect oracle via HTTP redirect following.
 
 Injects a target URL into a query parameter and follows all redirects.

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Generate (or reuse) RS256 key pair and issue a BountyStrike v5 scope JWT.
 
 Usage:

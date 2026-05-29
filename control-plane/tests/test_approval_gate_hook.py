@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Tests for the .claude/hooks/pretool_approval_gate.py PreToolUse hook
 + the FindingStatusCache integration in ApprovalGateService.
 """

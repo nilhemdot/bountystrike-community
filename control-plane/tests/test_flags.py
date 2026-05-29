@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Unit tests for control_plane.core.flags.
 
 Covers: in-memory enabled/disabled, tier-enterprise default-False, fail-closed on
@@ -10,11 +12,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-from openfeature.flag_evaluation import Reason
-
 from control_plane.core.flags import client as flags_client
 from control_plane.core.flags import configure_flags, is_enabled
 from control_plane.core.flags.provider import UnleashProvider
+from openfeature.flag_evaluation import Reason
 
 
 @pytest.fixture(autouse=True)
@@ -25,6 +26,7 @@ def _reset_to_inmemory():
 
 
 # --- in-memory client ---
+
 
 def test_inmemory_flag_enabled_when_set_true():
     # Arrange
@@ -47,6 +49,7 @@ def test_tier_enterprise_defaults_false_community():
 
 # --- fail closed ---
 
+
 def test_is_enabled_fails_closed_on_client_error(monkeypatch):
     # Arrange: force the OpenFeature client to raise
     broken = MagicMock()
@@ -66,6 +69,7 @@ def test_caller_context_cannot_flip_gate_on_its_own():
 
 
 # --- UnleashProvider contract (mocked client) ---
+
 
 def _provider_with_mock(mock_client) -> UnleashProvider:
     p = UnleashProvider("https://unleash.example", "bountystrike", "tok")

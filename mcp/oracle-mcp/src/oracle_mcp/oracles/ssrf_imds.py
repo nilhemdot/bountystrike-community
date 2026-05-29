@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """SSRF→IMDS oracle via cloud instance metadata service endpoints.
 
 Injects cloud metadata service URLs into a query parameter.  If the target

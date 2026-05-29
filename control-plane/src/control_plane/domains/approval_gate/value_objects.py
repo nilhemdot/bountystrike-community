@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Value objects for the approval-gate bounded context.
 
 Build-plan §6.3 fixes the four tiers and their entry conditions; we

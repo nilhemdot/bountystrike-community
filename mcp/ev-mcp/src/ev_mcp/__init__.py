@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """ev-mcp — Expected Value-ranked program scoring via FastMCP.
 
 Thin transport layer over

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """EV calibration service — Spearman ρ between predicted EV rank and actual find-rate.
 
 Phase 3 build-plan §10.5 calibration activity #1:

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Application services for program_ranking — orchestrate VOs + domain math."""
 
 from __future__ import annotations

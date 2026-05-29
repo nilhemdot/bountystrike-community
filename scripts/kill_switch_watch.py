@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Kill-switch watcher — Phase 3 §10.5 #4 oracle FP guard.
 
 Polls v_oracle_fp_rate every --interval seconds. When any oracle's

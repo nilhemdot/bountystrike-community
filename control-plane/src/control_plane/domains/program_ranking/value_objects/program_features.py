@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """ProgramFeatures value object — materialized program signals consumed by score_program()."""
 
 from __future__ import annotations

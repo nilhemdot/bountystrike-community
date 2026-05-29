@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """kev-mcp — CISA KEV + EPSS v4 lookups via FastMCP.
 
 Build-plan §4.7 specifies three sources (CISA KEV, EPSS, VulnCheck KEV).

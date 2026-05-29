@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """Base aggregate root — entity that owns a consistency boundary and emits events.
 
 Aggregates are the only writable units in the domain. Repositories load and save

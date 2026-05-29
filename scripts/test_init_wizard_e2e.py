@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 """End-to-end test for the init wizard (scripts/bs init).
 
 Simulates a fresh environment and verifies:
