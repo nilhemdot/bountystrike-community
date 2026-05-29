@@ -57,14 +57,17 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - Recon agent full pipeline (subfinder → dnsx → httpx → naabu → katana)
 - One-line installer on Hetzner + Coolify; public AGPLv3 release
 
-**Plans:** (01-02 line SPLIT 2026-05-29 → Hatchet and evidence are separate plans; downstream +1, now 7 plans)
+**Plans:** (01-02 line SPLIT 2026-05-29 → +1; 01-04 line SPLIT 2026-05-29 → +1, now 8 plans)
 - [x] 01-01: DB Foundation (Postgres 17 + custom image: pgvector + vectorscale + pg_search; DiskANN + BM25 migrations) — done 2026-05-29
 - [x] 01-02: Hatchet v1 workflow runtime (hatchet-lite, isolated Postgres, @hatchet.task) — done 2026-05-29
-- [ ] 01-03: Evidence store (R2, SHA-256 content-addressable + hash-chain audit; R2-write inside a Hatchet task) — planned 2026-05-29
-- [ ] 01-04: Scope ingestion + RS256 JWT + scope-diff notifications
-- [ ] 01-05: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
-- [ ] 01-06: Recon agent pipeline + rate-limiting token bucket
-- [ ] 01-07: One-line installer + public release
+- [x] 01-03: Evidence store (R2, SHA-256 content-addressable + hash-chain audit; R2-write inside a Hatchet task) — done 2026-05-29
+- [ ] 01-04: Scope ingestion completion — bbscope v2 + projectdiscovery integrations + Hatchet scheduled poll + reconcile (RS256 JWT already built in v5 carryover → verify-only) — planned 2026-05-29
+- [ ] 01-05: Scope-diff notification delivery (channel for ScopeChanged events; carved out of old 01-04)
+- [ ] 01-06: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
+- [ ] 01-07: Recon agent pipeline + rate-limiting token bucket
+- [ ] 01-08: One-line installer + public release
+
+Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: arkadiyt/hackerone clients, RS256 jwt_issuer, ingest_service, scope_events). Real Phase-1 work = 2 missing federation sources (bbscope v2, projectdiscovery) + scheduled poll + reconcile vs 01-01 schema. Notification delivery became its own plan (01-05).
 
 ### Phase 2: Full Agent Fleet, Anti-Slop & Benchmark
 

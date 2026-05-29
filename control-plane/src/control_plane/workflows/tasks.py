@@ -89,3 +89,59 @@ async def record_evidence(input: RecordEvidenceInput, ctx: Context) -> dict[str,
         )
     finally:
         await pool.close()
+
+
+class ScopePollInput(BaseModel):
+    """Input schema for the scheduled scope-poll task.
+
+    ``sources`` selects which federation feeds to ingest; the default drives
+    all three. Unknown source names are skipped (forward-compatible).
+    """
+
+    sources: list[str] = ["arkadiyt", "bbscope", "projectdiscovery"]
+
+
+@hatchet.task(
+    name="scope-poll",
+    input_validator=ScopePollInput,
+    on_crons=["17 */6 * * *"],
+    execution_timeout="15m",
+)
+async def scope_poll(input: ScopePollInput, ctx: Context) -> dict[str, int]:
+    """Periodically ingest every federated scope source + emit diff events.
+
+    Runs each selected ``ingest_*_all`` over one async session (each commits
+    its own work, so a mid-run failure leaves prior sources durably committed
+    and the next poll reconciles). Scope-diff events fire for free inside the
+    shared upsert path. Returns ``{programs, scopes, events}`` totals.
+
+    Engine/session setup lives in-handler (Phase-1 volume); reads
+    ``DATABASE_URL`` via ``get_database_url``.
+    """
+    from control_plane.db import create_engine, get_database_url, make_session_factory
+    from control_plane.domains.scope_management.services.ingest_service import (
+        ingest_arkadiyt_all,
+        ingest_bbscope_all,
+        ingest_projectdiscovery_all,
+    )
+
+    runners = {
+        "arkadiyt": ingest_arkadiyt_all,
+        "bbscope": ingest_bbscope_all,
+        "projectdiscovery": ingest_projectdiscovery_all,
+    }
+    totals = {"programs": 0, "scopes": 0, "events": 0}
+    engine = create_engine(get_database_url(), echo=False)
+    try:
+        factory = make_session_factory(engine)
+        async with factory() as session:
+            for src in input.sources:
+                run = runners.get(src)
+                if run is None:
+                    continue
+                counts = await run(session)
+                for key in totals:
+                    totals[key] += counts.get(key, 0)
+    finally:
+        await engine.dispose()
+    return totals

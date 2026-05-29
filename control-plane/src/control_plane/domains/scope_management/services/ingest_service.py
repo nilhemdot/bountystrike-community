@@ -24,8 +24,10 @@ Usage
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlparse
 
 import structlog
 from sqlalchemy import select
@@ -47,6 +49,7 @@ from ..integrations.arkadiyt import (
     ArkadiytClient,
     FederationProgram,
 )
+from ..integrations.bbscope import BbscopeClient
 from ..integrations.hackerone import H1Asset, HackerOneClient
 from ..integrations.normalize import (
     normalize_bugcrowd_target,
@@ -55,6 +58,7 @@ from ..integrations.normalize import (
     normalize_intigriti_scope,
     normalize_yeswehack_program,
 )
+from ..integrations.projectdiscovery import PDProgram, ProjectDiscoveryClient
 from ..value_objects.canonical_scope import CanonicalScope
 from ..value_objects.platform import Platform
 
@@ -177,6 +181,122 @@ async def ingest_arkadiyt_all(
     return counts
 
 
+async def ingest_bbscope_all(
+    session: AsyncSession,
+    *,
+    client: BbscopeClient | None = None,
+) -> dict[str, int]:
+    """Pull authenticated per-program scopes via bbscope v2 and upsert all.
+
+    Reuses the shared federation upsert path; events are tagged
+    ``source="bbscope"``. Intigriti out-of-scope rows arrive as
+    ``in_scope=False`` and are persisted as exclusions.
+    """
+    client = client or BbscopeClient()
+    all_feeds = await client.fetch_all()
+
+    counts = {"programs": 0, "scopes": 0, "events": 0}
+    for platform, programs in all_feeds.items():
+        for fp in programs:
+            stats = await _ingest_federation_program(session, platform, fp, source="bbscope")
+            counts["programs"] += 1
+            counts["scopes"] += stats["scopes"]
+            counts["events"] += stats["events"]
+
+    await session.commit()
+    logger.info("bbscope.ingest_complete", **counts)
+    return counts
+
+
+async def ingest_projectdiscovery_all(
+    session: AsyncSession,
+    *,
+    client: ProjectDiscoveryClient | None = None,
+) -> dict[str, int]:
+    """Pull the projectdiscovery VDP list and upsert each program.
+
+    VDP programs have no payout. They are stored under
+    ``platform="projectdiscovery"`` with a ``vdp`` tag on every asset, and use
+    ``pd-`` handle namespacing to avoid colliding with authenticated-platform
+    program handles on the ``programs`` primary key. Reuses the shared upsert +
+    diff helpers (``_upsert_program`` / ``_upsert_scopes`` /
+    ``detect_scope_changes``); events are tagged ``source="projectdiscovery"``.
+    """
+    owns_client = client is None
+    client = client or ProjectDiscoveryClient()
+    try:
+        programs = await client.fetch_programs()
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    counts = {"programs": 0, "scopes": 0, "events": 0}
+    for prog in programs:
+        handle = _pd_handle(prog)
+        if not handle:
+            continue
+        await _upsert_program(
+            session,
+            handle=handle,
+            platform="projectdiscovery",
+            name=prog.name,
+            last_modified_at=None,
+            raw=prog.model_dump(),
+            payout_min=None,
+            payout_max=None,
+        )
+        canonical = _normalize_projectdiscovery(prog, handle)
+        before = await _load_scope_state(session, handle)
+        await _upsert_scopes(session, canonical, raw_lookup=None)
+        after = _state_from_canonical(canonical)
+        events = await detect_scope_changes(
+            session,
+            before,
+            after,
+            program_handle=handle,
+            platform="projectdiscovery",
+            source="projectdiscovery",
+        )
+        counts["programs"] += 1
+        counts["scopes"] += len(canonical)
+        counts["events"] += events
+
+    await session.commit()
+    logger.info("projectdiscovery.ingest_complete", **counts)
+    return counts
+
+
+def _pd_handle(prog: PDProgram) -> str:
+    """Derive a stable, namespaced handle from a VDP program name/url."""
+    base = (prog.name or "").strip().lower()
+    if not base and prog.url:
+        base = urlparse(prog.url).netloc
+    slug = re.sub(r"[^a-z0-9]+", "-", base).strip("-")
+    return f"pd-{slug}" if slug else ""
+
+
+def _normalize_projectdiscovery(prog: PDProgram, handle: str) -> list[CanonicalScope]:
+    """Map a VDP program's domains to in-scope web-application CanonicalScopes."""
+    out: list[CanonicalScope] = []
+    seen: set[str] = set()
+    for domain in prog.domains:
+        identifier = str(domain).strip()
+        if not identifier or identifier in seen:
+            continue
+        seen.add(identifier)
+        out.append(
+            CanonicalScope(
+                program_handle=handle,
+                asset_type="web-application",
+                identifier=identifier,
+                in_scope=True,
+                exclusion_reason=None,
+                tags=["vdp"],
+            )
+        )
+    return out
+
+
 async def detect_scope_changes(
     session: AsyncSession,
     before_state: ScopeState,
@@ -281,6 +401,8 @@ async def _ingest_federation_program(
     session: AsyncSession,
     platform: Platform,
     fp: FederationProgram,
+    *,
+    source: str = "arkadiyt",
 ) -> dict[str, int]:
     """Upsert a single federation program + all its in-scope assets."""
     if not fp.handle:
@@ -311,22 +433,18 @@ async def _ingest_federation_program(
         after,
         program_handle=fp.handle,
         platform=platform,
-        source="arkadiyt",
+        source=source,
     )
     return {"scopes": len(canonical), "events": events}
 
 
-def _normalize_federation(
-    platform: Platform, fp: FederationProgram
-) -> list[CanonicalScope]:
+def _normalize_federation(platform: Platform, fp: FederationProgram) -> list[CanonicalScope]:
     out: list[CanonicalScope] = []
     handle = fp.handle
 
     if platform == "hackerone":
         for t in fp.targets_in_scope:
-            asset_type = (
-                t.get("asset_type") or t.get("asset_identifier_type") or "URL"
-            )
+            asset_type = t.get("asset_type") or t.get("asset_identifier_type") or "URL"
             payload = {
                 "identifier": t.get("asset_identifier") or t.get("identifier"),
                 "asset_type": asset_type,
@@ -570,5 +688,7 @@ def _event_to_row(event: ScopeChangedEvent) -> ScopeChange:
 __all__ = [
     "detect_scope_changes",
     "ingest_arkadiyt_all",
+    "ingest_bbscope_all",
     "ingest_h1_org_assets",
+    "ingest_projectdiscovery_all",
 ]
