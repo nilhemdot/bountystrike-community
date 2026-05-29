@@ -10,10 +10,10 @@ See: .paul/PROJECT.md (updated 2026-05-29)
 ## Current Position
 
 Milestone: v0.1 Community Edition MVP
-Phase: 1 of 6 (Community Edition MVP: The Moat) — Not started
-Plan: 01-01 (not yet started)
-Status: Phase 0 COMPLETE (4/4 plans unified). Ready to plan Phase 1.
-Last activity: 2026-05-29 — UNIFY 00-04, Phase 0→1 transition
+Phase: 1 of 6 (Community Edition MVP: The Moat) — Planning
+Plan: 01-01 created + audited (DB Foundation), awaiting approval
+Status: PLAN created + audited (01-01 = DB foundation slice; Phase 1 split to 6 plans). Audit applied 4 must-have + 4 strongly-rec; conditionally acceptable. Ready for APPLY.
+Last activity: 2026-05-29 — Enterprise audit on 01-01 PLAN (4 must-have + 4 strongly-rec applied, 3 deferred)
 
 Progress:
 - Milestone: [███░░░░░░░] ~22% (1 of 6 phases complete)
@@ -28,10 +28,10 @@ PLAN ──▶ APPLY ──▶ UNIFY
   ✓        ✓        ✓     [Loop complete — Phase 0 transition executed]
 ```
 
-Phase 1 loop — IDLE:
+Phase 1 loop (01-01):
 ```
 PLAN ──▶ APPLY ──▶ UNIFY
-  ◉                       [Ready to plan 01-01]
+  ✓        ○        ○     [Plan created, awaiting approval]
 ```
 
 ## Accumulated Context
@@ -52,6 +52,8 @@ PLAN ──▶ APPLY ──▶ UNIFY
 | 2026-05-27: Audit on 00-02 added license-text integrity (verbatim canonical), LICENSES.md code↔license map, AGPL §13 network-use clause | Phase 0 | License posture audit-defensible before code ships |
 | 2026-05-27: Audit on 00-03 — tier-enterprise flag is a config/rollout gate, NOT an authz boundary. Entitlement enforced server-side vs signed plan. Provider: TLS + secrets token + fail-closed on malformed response; context untrusted | Phase 0 | Prevents flag-as-authz privilege-escalation; sets the doctrine for all later tier gating |
 | 2026-05-29: Audit on 00-04 — 5 must-have + 6 strongly-rec applied; 4 deferred. Verdict: conditionally acceptable. Caught 2 release-blocking license defects (foreign/.venv AGPL-stamping; AGPL-vs-Apache root collision) + unsound import-ban canary test. Doctrine: SPDX sweep uses six-root ALLOW-LIST (not git-walk+deny), shebang/PEP-263-cookie ordering, byte-equality idempotency proof, canary inside contract source_modules w/ trap-cleanup | Phase 0 | License sweep audit-defensible; import-ban enforcement sound. Residual risk: APPLY must encode allow-list, not regress to git-walk |
+| 2026-05-29: Phase 1 split — 01-01 line (5 subsystems) split into 01-01 DB foundation (PG17 custom image pgvector+vectorscale+pg_search) + 01-02 Hatchet v1 + evidence store; downstream plans renumbered +1 (now 6 plans). Matches PAUL 2-3 task sizing | Phase 1 | Single-concern plans; DB foundation isolated from workflow/evidence wiring |
+| 2026-05-29: Enterprise audit on 01-01 (DB foundation). Applied 4 must-have + 4 strongly-rec; deferred 3. Verdict: conditionally acceptable (was not-acceptable as written). Caught 2 release-blocking SQL defects — BM25 migration indexed non-existent findings.title/description cols, and used the DEPRECATED `paradedb.create_bm25()` API (current = `CREATE INDEX … USING bm25 … WITH (key_field='id')`, verified Context7). Also: zero version pins despite "reproducible" claim (pinned pgvector 0.8.0 / vectorscale 0.9.0 / pg_search v0.23.x + fixed base tag); Alpine/musl build unverified (added glibc bookworm fallback, AC-1 = empirical gate); incomplete cargo-pgrx invocation (match version + `pgrx init`); CONCURRENTLY in initpath → plain CREATE INDEX (INVALID-index masking); added AC-7 pins, AC-8 idempotency-on-re-apply, AC-3 functional .so smoke. Doctrine: migrations must target verified-existing columns; pg_search uses CREATE INDEX USING bm25 (not legacy CALL); pin all extensions+base; first-boot init = no CONCURRENTLY; verify extensions functionally not by catalog row | Phase 1 | DB foundation audit-defensible + reproducible; plan can now satisfy its own ACs at apply time |
 
 ### Deferred Issues
 
@@ -63,14 +65,21 @@ PLAN ──▶ APPLY ──▶ UNIFY
 
 ### Blockers/Concerns
 
-None yet.
+| Blocker | Origin | Status |
+|---------|--------|--------|
+| No container runtime in WSL distro — `docker`/`docker-compose` resolve only to Docker Desktop Windows bins; daemon DOWN, no socket, podman/nerdctl absent. Blocks ALL empirical ACs in 01-01 (AC-1/2/3/4/5/8 need docker build/compose/exec). | APPLY 01-01 (2026-05-29) | OPEN — resolving via Docker Desktop WSL integration toggle (route A). Fallback: native engine via get.docker.com (route B, sudo-gated). |
 
 ## Session Continuity
 
 Last session: 2026-05-29
-Stopped at: Phase 0→1 transition complete (UNIFY 00-04 + phase commit)
-Next action: /paul:plan 01-01 (Phase 1, first plan — Community Edition MVP: The Moat)
-Resume file: .paul/phases/00-truth-in-claims-foundation/00-04-SUMMARY.md
+Stopped at: APPLY 01-01 BLOCKED — no Docker in WSL distro. No files written (writing unbuildable Dockerfile = false-completion vs empirical AC-1 gate). Survey done; clean slate.
+Next action: Enable Docker (route A: Docker Desktop WSL integration toggle → `docker info` UP), then re-run /paul:apply 01-01 from Task 1.
+Resume file: .paul/HANDOFF-2026-05-29.md
+Resume context:
+- 01-01 = DB foundation: PG17 custom image (pgvector 0.8.0 / vectorscale 0.9.0 / pg_search v0.23.x, pinned + glibc bookworm).
+- 4 auto tasks, no checkpoints. files_modified listed in plan frontmatter.
+- BM25 = CREATE INDEX USING bm25 WITH (key_field='id'), target existing cols only; init = no CONCURRENTLY.
+- Loop: PLAN ✓, APPLY ◐ (blocked), UNIFY ○.
 
 ---
 *STATE.md — Updated after every significant action*

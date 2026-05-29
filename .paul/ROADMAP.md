@@ -58,11 +58,12 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - One-line installer on Hetzner + Coolify; public AGPLv3 release
 
 **Plans:**
-- [ ] 01-01: Foundation (Postgres + pgvectorscale + ParadeDB + Hatchet + evidence store)
-- [ ] 01-02: Scope ingestion + RS256 JWT + scope-diff notifications
-- [ ] 01-03: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
-- [ ] 01-04: Recon agent pipeline + rate-limiting token bucket
-- [ ] 01-05: One-line installer + public release
+- [ ] 01-01: DB Foundation (Postgres 17 + custom image: pgvector + vectorscale + pg_search; DiskANN + BM25 migrations) — planned 2026-05-29
+- [ ] 01-02: Hatchet v1 + evidence store (R2, SHA-256 content-addressable + hash-chain audit)
+- [ ] 01-03: Scope ingestion + RS256 JWT + scope-diff notifications
+- [ ] 01-04: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
+- [ ] 01-05: Recon agent pipeline + rate-limiting token bucket
+- [ ] 01-06: One-line installer + public release
 
 ### Phase 2: Full Agent Fleet, Anti-Slop & Benchmark
 
@@ -136,4 +137,4 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 
 ---
 *Roadmap created: 2026-05-27*
-*Last updated: 2026-05-29 — Phase 0 complete (4/4 plans), Phase 1 active*
+*Last updated: 2026-05-29 — Phase 1 plan list split (01-01 DB foundation; Hatchet+evidence → 01-02); 6 plans*
