@@ -103,10 +103,12 @@ else
     fail "Only $HEALTH_COUNT healthchecks found (expected ≥4)"
 fi
 
-# Verify logging defaults
-LOGGING_COUNT=$(grep -c "logging:" "$COMPOSE_FILE" || true)
+# Verify logging defaults. Logging is centralized in the `x-defaults` YAML anchor
+# (json-file driver + rotation) and inherited by every service via `<<: *defaults`,
+# so count anchor merges — a literal `logging:` grep only sees the single anchor.
+LOGGING_COUNT=$(grep -c "<<: \*defaults" "$COMPOSE_FILE" || true)
 if [[ $LOGGING_COUNT -ge 6 ]]; then
-    ok "Logging config on $LOGGING_COUNT services"
+    ok "Logging config on $LOGGING_COUNT services (via <<: *defaults anchor)"
 else
     warn "Only $LOGGING_COUNT services with logging config"
 fi
@@ -156,7 +158,8 @@ fi
 PUBLIC_KEY="$KEYS_DIR/scope_jwt_public.pem"
 if [[ -f "$PUBLIC_KEY" ]]; then
     PUBLIC_SIZE=$(wc -c < "$PUBLIC_KEY")
-    if [[ $PUBLIC_SIZE -gt 800 ]]; then
+    # RSA-4096 SPKI public key PEM is exactly 800 bytes; RSA-2048 is ~451.
+    if [[ $PUBLIC_SIZE -ge 800 ]]; then
         ok "Public key exists ($PUBLIC_SIZE bytes)"
     else
         warn "Public key small ($PUBLIC_SIZE bytes)"
@@ -298,12 +301,16 @@ else
     fail ".env.example missing BYOK emphasis"
 fi
 
-# Check fail-loud syntax
-FAILLOUD_COUNT=$(grep -c '\${.*:?.*}' "$ENV_FILE" || true)
+# Check fail-loud guards on required secrets. These belong in entrypoint.sh, not
+# .env.example — docker-compose `env_file` parses values literally, so `${VAR:?msg}`
+# shell-default syntax would never expand there. entrypoint.sh fails loud via
+# `log_fatal` on missing required vars (DATABASE_URL, openssl, etc.).
+ENTRYPOINT_FILE="$REPO_ROOT/infra/docker/entrypoint.sh"
+FAILLOUD_COUNT=$(grep -cE 'log_fatal|:\?[^}]+\}' "$ENTRYPOINT_FILE" || true)
 if [[ $FAILLOUD_COUNT -ge 3 ]]; then
-    ok "Fail-loud syntax used ($FAILLOUD_COUNT vars)"
+    ok "Fail-loud guards in entrypoint ($FAILLOUD_COUNT)"
 else
-    warn "Only $FAILLOUD_COUNT fail-loud vars (expected ≥3)"
+    warn "Only $FAILLOUD_COUNT fail-loud guards in entrypoint (expected ≥3)"
 fi
 
 # Check cost transparency
