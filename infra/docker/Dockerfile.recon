@@ -148,9 +148,14 @@ RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000,sharing=lo
 # --- Layer B: full control-plane source + workspace install ---
 # Source COPY invalidates only this layer + below on .py edits;
 # Layer A's third-party install stays cached. The second `uv sync`
-# only needs to (re-)editable-install the local workspace member,
-# which is fast because every wheel it would otherwise re-download
-# is already in Layer A's `.venv`.
+# editable-installs the control-plane member plus the workspace
+# packages it depends on (oracle-mcp, politeness-mcp).
+#
+# The whole `mcp/` tree is copied because uv must read every member
+# manifest in the root [tool.uv.workspace] to build a valid install
+# plan; members recon does not depend on are resolved but not installed.
+# control-plane source is copied last so .py edits invalidate only it.
+COPY --chown=recon:recon mcp /home/recon/app/mcp
 COPY --chown=recon:recon control-plane /home/recon/app/control-plane
 RUN --mount=type=cache,target=/home/recon/.cache/uv,uid=1000,gid=1000,sharing=locked \
     cd /home/recon/app/control-plane && uv sync --frozen --no-dev

@@ -19,6 +19,26 @@
 #     bs-control-plane:dev
 
 # ============================================================================
+# Stage: bbscope build — federation L1 scope client (sw33tLie/bbscope v2).
+# ============================================================================
+# bbscope publishes no tagged releases or checksum assets, so we pin the exact
+# commit and let the Go module checksum database (sum.golang.org transparency
+# log) cryptographically verify the source before compilation. This is the
+# integrity gate: GOFLAGS keeps the checksum DB enabled (GONOSUMCHECK unset),
+# so a tampered module fails the build. CGO_ENABLED=0 yields a static binary
+# that runs in the slim runtime with no libc surprises.
+FROM golang:1.24-alpine AS bbscope-build
+ENV CGO_ENABLED=0 GOOS=linux GOFLAGS=-trimpath
+# git is required for go to fetch a commit pseudo-version from VCS.
+RUN apk add --no-cache git
+# Pinned commit (HEAD of master @ 2026-05-31). Bump deliberately, never to a
+# floating ref — an unpinned bbscope would violate the build-integrity rule.
+# No error mask: if the module checksum fails to verify or compilation breaks,
+# the build MUST fail rather than ship a missing/unverified binary.
+RUN go install github.com/sw33tLie/bbscope/v2@2d3bae66eeaa9c75d16af99af58b96a0c76a14dc \
+    && test -x /go/bin/bbscope
+
+# ============================================================================
 # Runtime: slim Python with control-plane FastAPI service.
 # ============================================================================
 FROM python:3.12-slim AS runtime
@@ -33,6 +53,10 @@ COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /usr/local/bin/uv
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates tini \
     && rm -rf /var/lib/apt/lists/*
+
+# bbscope static binary from the build stage — root-owned, world-executable,
+# on PATH. The verify-finding worker invokes it as `bbscope poll`/`bbscope db`.
+COPY --from=bbscope-build /go/bin/bbscope /usr/local/bin/bbscope
 
 # Non-root user — control-plane has no business writing outside its working
 # directory and the orchestrator mounts state via env, not a volume.
@@ -68,12 +92,34 @@ RUN --mount=type=cache,target=/home/controlplane/.cache/uv,uid=1000,gid=1000 \
 # --- Layer B: full control-plane source + workspace install ---
 # Source COPY invalidates only this layer + below on .py edits;
 # Layer A's third-party install stays cached. The second `uv sync`
-# only needs to (re-)editable-install the local workspace member,
-# which is fast because every wheel it would otherwise re-download
-# is already in Layer A's `.venv`.
+# editable-installs the control-plane member and the two workspace
+# packages it depends on (oracle-mcp, politeness-mcp).
+#
+# The whole `mcp/` tree is copied because uv must read every member
+# manifest listed in the root [tool.uv.workspace] to build a valid
+# install plan; the 14 members control-plane does not depend on are
+# resolved but not installed. control-plane source is copied last so
+# .py edits invalidate only this layer.
+COPY --chown=controlplane:controlplane mcp /home/controlplane/app/mcp
 COPY --chown=controlplane:controlplane control-plane /home/controlplane/app/control-plane
 RUN --mount=type=cache,target=/home/controlplane/.cache/uv,uid=1000,gid=1000 \
     cd /home/controlplane/app/control-plane && uv sync --frozen --no-dev
+
+# --- Bake Playwright + Chromium (verify-finding worker browser oracle) ---
+# Playwright is pinned to 1.58.0 in uv.lock; `playwright install chromium`
+# downloads the exact Chromium revision that release embeds — never a floating
+# "latest" — so the browser version is reproducible from the lockfile alone.
+# OS-level browser deps need apt (root); the browser binary is fetched as the
+# controlplane user so it lands in that user's cache and stays readable at run.
+USER root
+RUN cd /home/controlplane/app/control-plane && \
+    uv run --no-sync playwright install-deps chromium
+USER controlplane
+# No uv cache mount here: mounting it makes ~/.cache root-owned, which blocks
+# the controlplane user from creating ~/.cache/ms-playwright (EACCES). Browser
+# download is one-shot, so the cache buys nothing anyway.
+RUN cd /home/controlplane/app/control-plane && \
+    uv run --no-sync playwright install chromium
 
 # Sanity check: the control_plane module must be importable in the final image.
 RUN cd control-plane && uv run python -c \

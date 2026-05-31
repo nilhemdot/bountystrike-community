@@ -57,7 +57,7 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - Recon agent full pipeline (subfinder → dnsx → httpx → naabu → katana)
 - One-line installer on Hetzner + Coolify; public AGPLv3 release
 
-**Plans:** (01-02 line SPLIT 2026-05-29 → +1; 01-04 line SPLIT 2026-05-29 → +1, now 8 plans)
+**Plans:** (01-02 line SPLIT 2026-05-29 → +1; 01-04 line SPLIT 2026-05-29 → +1; 01-08 line SPLIT 2026-05-31 → +1, now 9 plans)
 - [x] 01-01: DB Foundation (Postgres 17 + custom image: pgvector + vectorscale + pg_search; DiskANN + BM25 migrations) — done 2026-05-29
 - [x] 01-02: Hatchet v1 workflow runtime (hatchet-lite, isolated Postgres, @hatchet.task) — done 2026-05-29
 - [x] 01-03: Evidence store (R2, SHA-256 content-addressable + hash-chain audit; R2-write inside a Hatchet task) — done 2026-05-29
@@ -65,7 +65,12 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - [~] 01-05: Scope-diff notification delivery — generic webhook (Slack/Discord-compatible) + notified_at marker, delivered inline in scope_poll — planned 2026-05-29
 - [~] 01-06: Deterministic verifier — operationalize the 5 oracles (XSS+SSRF+SQLi+open-redirect+SSTI) into a Hatchet verify-finding task (cwe→oracle dispatch → evidence → findings FSM). Oracles already built+field-validated in oracle-mcp (v5 carryover) → WIRE not build. — planned 2026-05-29
 - [~] 01-07: Recon rate-limiting token bucket — wire existing politeness-mcp TokenBucketLimiter (per-host bucket + 429 backoff) into recon's in-process reflection-prober egress; activate dead rps_for_host. Pipeline (subfinder→httpx→katana) already built+tested (v5 carryover) → WIRE not build. Scope="token-bucket only" (dnsx/naabu pipeline stages deferred to Phase 2) — planned 2026-05-31
-- [ ] 01-08: One-line installer + public release
+- [~] 01-08: One-line installer — autonomous `scripts/install.sh` (curl|bash) chaining ensure-Docker → unattended secret-gen (.env from .env.example + openssl) → RS256 keypair → `docker compose up -d --build` → healthcheck-wait → next-steps; idempotent + offline test harness; Coolify recipe doc. All pieces pre-built (v5 carryover) → ORCHESTRATE not build. — planned 2026-05-31
+- [~] 01-09: Live deploy-gate closure — bake bbscope + chromium into images, run the parked live smokes (verify-finding/scope_poll/record-evidence worker triggers, recon→scan, webhook POST) against a LOCAL Docker stack, + repo-wide CRLF→LF sweep + .gitattributes. Human-action (HATCHET token + webhook sink + scope JWT) + human-verify checkpoints. /e2e skill required. — planned 2026-05-31
+- [ ] 01-10: Public AGPLv3 release — version bump + README release section + git tag + GitHub repo creation/push + GitHub release. Pure release mechanics (human-action). Its UNIFY triggers Phase 1→2.
+
+Note: 01-08 SPLIT 2026-05-31 — original "installer + public release" bundled 4 concerns (install.sh, Dockerfile gate-enablement, live smoke, release). The installer (a) is autonomously buildable + offline-testable; (b)+(c)+(d) need a live host + human checkpoints. Split: 01-08 = autonomous installer; 01-09 = live gates + release. Confirmed via AskUserQuestion (install.sh primary + Coolify docs; unattended auto-gen secrets).
+Note: 01-09 SPLIT 2026-05-31 — live smokes target LOCAL Docker (not remote Hetzner; Coolify stays a doc recipe). Release mechanics peeled into 01-10 (pure human-action). Downstream +1 → 10 plans (01-01..01-10). 01-10 UNIFY (not 01-09) now triggers Phase 1→2. Confirmed via AskUserQuestion.
 
 Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: arkadiyt/hackerone clients, RS256 jwt_issuer, ingest_service, scope_events). Real Phase-1 work = 2 missing federation sources (bbscope v2, projectdiscovery) + scheduled poll + reconcile vs 01-01 schema. Notification delivery became its own plan (01-05).
 

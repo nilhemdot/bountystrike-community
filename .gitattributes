@@ -1,5 +1,36 @@
-# Force LF on hook + shell scripts so shebangs don't break under WSL/Windows.
-# A CRLF shebang resolves to "python3\r" -> env: No such file or directory.
+# Normalize all text to LF in-repo; a CRLF shebang resolves to "python3\r"
+# -> env: No such file or directory, and breaks bash -n inside containers.
+* text=auto eol=lf
+
+# First-party text executed in Linux/Docker — keep LF explicit.
 .claude/hooks/** text eol=lf
-*.sh text eol=lf
-*.py text eol=lf
+*.sh   text eol=lf
+*.bash text eol=lf
+*.py   text eol=lf
+*.ts   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+*.sql  text eol=lf
+Dockerfile* text eol=lf
+
+# Binary / never-normalize: crypto material + images corrupt under EOL xlate.
+*.pem  -text
+*.key  -text
+*.der  -text
+*.p12  -text
+*.pfx  -text
+*.png  -text
+*.jpg  -text
+*.jpeg -text
+*.gif  -text
+*.ico  -text
+*.pdf  -text
+*.gz   -text
+*.zip  -text
+*.tar  -text
+*.whl  -text
+keys/** -text
