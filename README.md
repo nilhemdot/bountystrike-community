@@ -2,7 +2,19 @@
 
 Claude Code-native autonomous bug bounty platform. Recon, exploit hypothesis, deterministic verification, hash-chained evidence, tiered approval, and platform submission — all driven by Claude agents under hard scope-JWT and rate-limit boundaries.
 
-**Status:** Phase 1 (Community Edition MVP) in progress — 8 of 9 build plans shipped: DB foundation, Hatchet v1 runtime, hash-chained evidence store, federated scope ingestion, scope-diff notifications, deterministic verifier wiring, recon rate-limiting, and the one-line installer. Remaining: 01-09 live deploy-gate smokes (bbscope + chromium image bake, worker triggers, recon→scan, webhook POST) + the public AGPLv3 release.
+**Status:** **v0.1.0 — Community Edition MVP released** (2026-05-31). Phase 1 complete: DB foundation, Hatchet v1 runtime, hash-chained evidence store, federated scope ingestion, scope-diff notifications, deterministic verifier wiring, recon rate-limiting, one-line installer, and live deploy-gate smokes (bbscope + chromium image bake, worker triggers, recon→scan, webhook POST).
+
+## Release — v0.1.0
+
+[![version](https://img.shields.io/badge/version-0.1.0-blue.svg)](CHANGELOG.md) · AGPL-3.0-or-later
+
+First public Community Edition release. See the full release notes in
+[`CHANGELOG.md`](CHANGELOG.md). Licensed under [AGPL-3.0](LICENSE-AGPL) — third-party
+license posture in [`LICENSES.md`](LICENSES.md). Self-host in one line:
+
+```bash
+bash scripts/install.sh
+```
 
 ## Highlights
 

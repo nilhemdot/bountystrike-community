@@ -13,9 +13,9 @@ Automated bug bounty hunting that produces only verified, non-duplicate findings
 | Attribute | Value |
 |-----------|-------|
 | Type | Application |
-| Version | 0.0.0 |
-| Status | Phase 0 Complete — Phase 1 In Progress |
-| Last Updated | 2026-05-29 |
+| Version | 0.1.0 |
+| Status | Phase 1 Complete — Community Edition v0.1.0 released |
+| Last Updated | 2026-05-31 |
 
 ## Requirements
 
