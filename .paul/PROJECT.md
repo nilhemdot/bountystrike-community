@@ -40,9 +40,19 @@ Automated bug bounty hunting that produces only verified, non-duplicate findings
 - [x] Hybrid monorepo scaffold: 3-root license split (AGPL-3.0/Apache-2.0/LicenseRef-Proprietary), pnpm/Turborepo layer, CONTRIBUTING.md + CLA stub — Phase 0 plan 00-02
 - [x] OpenFeature + custom Unleash Python provider: fail-closed tier=enterprise gate, no official provider workaround — Phase 0 plan 00-03
 - [x] SPDX header sweep: 250 source files stamped across 6 roots, idempotent script, CI import-linter community↔enterprise ban — Phase 0 plan 00-04
+- [x] DB foundation: PG17 + pgvector + vectorscale + pg_search, 6 migrations — Phase 1 plan 01-01
+- [x] Hatchet v1 workflow runtime: function-based @hatchet.task(), Pydantic inputs, aio_ async — Phase 1 plan 01-02
+- [x] Hash-chained evidence store: Cloudflare R2 write path, SHA-256 per-artifact chain — Phase 1 plan 01-03
+- [x] Federated scope ingestion: bbscope v2 (poll/db) + projectdiscovery, H1 scope_exclusions merge — Phase 1 plan 01-04
+- [x] Scope-diff notification delivery: webhook POST on scope change, URL redacted to scheme+host — Phase 1 plan 01-05
+- [x] Deterministic verifier: CWE→oracle dispatch + verify-finding task (5 oracles wired) — Phase 1 plan 01-06
+- [x] Recon politeness: per-program token-bucket rate limiting on recon egress — Phase 1 plan 01-07
+- [x] One-line installer: idempotent scripts/install.sh, never overwrites .env, no curl|sh to root — Phase 1 plan 01-08
+- [x] Live deploy-gate closure: bbscope+chromium baked (pinned+integrity-verified), CRLF→LF sweep, scope-JWT-gated smokes — Phase 1 plan 01-09
+- [x] Public AGPLv3 v0.1.0 release: version reconciled, CHANGELOG+README, BLOCKING secret-scan gate, tag+push+GitHub Release on nilhemdot/bountystrike-community — Phase 1 plan 01-10
 
 ### Active (In Progress)
-None yet.
+None — v0.1 Community Edition MVP milestone complete. Next: Phase 2 planning.
 
 ### Planned (Next)
 
@@ -97,6 +107,7 @@ None yet.
 | Deterministic verifier as moat (not raw AI output) | curl shut HackerOne program; HackerOne logged 210% spike in AI vuln reports; raw AI too noisy | 2026-05-21 | Active |
 | Temporal Cloud replaces Hatchet for multi-tenant SaaS | Hatchet fine for solo; Temporal required for durable multi-tenant workflows | 2026-05-21 | Planned (Phase 3) |
 | Position as AEV inside Gartner CTEM (not "bug bounty tool") | Competes with Pentera/NodeZero/Picus/Cymulate; undercuts NodeZero entry pricing | 2026-05-21 | Active |
+| Ship public AGPLv3 Community Edition v0.1.0 (nilhemdot/bountystrike-community) | "Credible alternative to noisy AI submissions" only matters once people can clone+run it; BLOCKING machine secret-scan gate + operator-confirmed public slug guard the irreversible push | 2026-05-31 | Shipped |
 
 ## Success Metrics
 
@@ -159,4 +170,4 @@ Quick Reference:
 
 ---
 *PROJECT.md — Updated when requirements or context change*
-*Last updated: 2026-05-29 after Phase 0 (Truth-in-Claims & Foundation — 4/4 plans complete)*
+*Last updated: 2026-05-31 after Phase 1 (Community Edition MVP: The Moat — 10/10 plans complete; v0.1.0 released). v0.1 milestone complete.*

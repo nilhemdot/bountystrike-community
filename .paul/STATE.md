@@ -10,18 +10,25 @@ See: .paul/PROJECT.md (updated 2026-05-29)
 ## Current Position
 
 Milestone: v0.1 Community Edition MVP
-Phase: 1 of 6 (Community Edition MVP: The Moat) — In Progress (9 of 10 plans complete; 01-09 UNIFIED/loop-closed, 01-10 release remains). Plan list grew 9→10 (01-09 split: gates→01-09, release→01-10).
-Plan: 01-10 (Public AGPLv3 v0.1.0 release) — PLAN created + AUDITED, awaiting approval. 01-09 COMPLETE (loop closed, committed 10c655b). Commits: 37f5257=01-08, 10c655b=01-09.
+Phase: 2 of 6 (Full Agent Fleet, Anti-Slop & Benchmark) — NOT STARTED (ready to plan). Phase 1 COMPLETE (10/10 plans). v0.1 Community Edition MVP MILESTONE COMPLETE — released 2026-05-31.
+Plan: none active — loop IDLE. 01-10 CLOSED (UNIFY ran phase-transition). Release commit 3709c08, tag v0.1.0 (3bdf41f) on PUBLIC repo nilhemdot/bountystrike-community.
 01-10 SHAPE: STANDARD, 3 tasks, autonomous=FALSE (T3 = checkpoint:human-action — public push + GitHub release needs operator GitHub auth + target-repo decision). depends_on=[01-08,01-09]. files_modified= .paul/paul.json, .paul/PROJECT.md, CHANGELOG.md(new), README.md (metadata+docs ONLY — no code/schema/dep/license-text). T1 reconcile version 0.0.0→0.1.0 in paul.json+PROJECT.md (pyproject ×2 ALREADY 0.1.0) + CHANGELOG.md [0.1.0] (SUMMARY-backed, no invented features) + README release section. T2 SECRET-SAFETY GATE (M1, BLOCKING): scan tree AND git history for .env/keys/*.pem/*.jwt/RS256-priv/HATCHET_CLIENT_TOKEN/SCOPE_WEBHOOK_URL/discord webhook/sk-ant-/AKIA — LEAK→ABORT (no tag/push), redact value, surface to operator; history-rewrite is operator-approved follow-up NEVER auto. Confirm LICENSE+LICENSE-AGPL at root. T3 human-action: operator confirms PUBLIC repo slug (origin=itsallinthethrees/ai5 NOT writable/NOT target; fork=nilhemdot/ai7 personal) → tag v0.1.0 annotated + push + gh release create. RELEASE FACTS: LICENSE/AGPL/APACHE/LICENSES.md present; no CHANGELOG yet; no tracked .env/.pem/.jwt (the *token* hits = hook scripts + test fixture, not secrets).
 Status: 01-09 LOOP CLOSED. All 7 ACs PASS LIVE on local Docker. SHIPPED: Dockerfile.control-plane (bbscope v2 pinned-commit @2d3bae66 + Go-checksum-DB integrity gate; chromium/Playwright 1.58.0 baked, pinned by uv.lock) + Dockerfile.recon (COPY mcp/ fix for workspace members; subfinder/httpx/katana confirmed) + .gitattributes (new, `* text=auto eol=lf` + LF first-party + -text binaries/keys) + scripts/live_smoke.sh (new, scope-JWT-gated smoke runner, M1/M3 enforced). LIVE smoke results: AC-1 bbscope invocable + chromium 145.0.7632.6 on RUNNING worker; AC-2 chromium executed injected script in-container (XSS oracle live); AC-3 worker registered 0 errors; AC-4 webhook POST→HTTP 204 (redacted); AC-5 passive subfinder→50 subdomains of *.spotify.com (rps=2, JWT-derived); AC-6 working-tree CRLF=0; AC-7 target derived from scope JWT ONLY, abort-on-invalid enforced. Security invariants held: M1 (recon target from JWT only), M2 (bbscope pinned+checksum-verified, chromium pinned by lockfile), M3 (token/webhook never echoed/committed, webhook redacted scheme+host, seeded recon_assets rows dropped on exit). Human-action checkpoint resolved: operator regen'd HATCHET_CLIENT_TOKEN, set Discord canary SCOPE_WEBHOOK_URL, named authorized program (pd-spotify *.spotify.com, JWT keys/scope_smoke.jwt). DEVIATIONS: recon image 1st build failed (uv sync exit 2, same workspace-member miss as control-plane) → COPY mcp/ fix; one transient proxy.golang.org TLS timeout on a recon rebuild (network, not code) → retry succeeded. SKILL AUDIT GAP: /e2e (SPECIAL-FLOWS required for Task 3) not formally loaded as a skill this session — live_smoke.sh IS the recon→scan→validate→report pipeline smoke (functionally satisfied), but the skill command was not invoked. Warn-only, non-blocking. 6 pre-existing integration failures (SubagentSimulator model_id drift, orchestrator.py:352) remain OUT of plan scope.
 Last activity: 2026-05-31 — committed 01-08 (37f5257) + 01-09 (10c655b); created + AUDITED 01-10 PLAN (public AGPLv3 v0.1.0 release). Audit applied 4 must-have + 4 strongly-recommended upgrades (machine exit-code secret gate, tag-collision preflight, partial-push recovery, operator payload review, license-name reconcile, .env.example scan, AC-4 release audit evidence). AUDIT.md written. Next: /paul:apply 01-10-PLAN.md.
 
 Progress:
-- Milestone: [████░░░░░░] ~38% (1 of 6 phases complete + Phase 1 90% done)
+- Milestone v0.1 Community Edition MVP: [██████████] 100% COMPLETE (Phase 0 + Phase 1; v0.1.0 released 2026-05-31)
 - Phase 0: [██████████] 100% (4/4 plans complete)
-- Phase 1: [█████████░] 90% (9 of 10 done — 01-01..01-09; 01-10 release remains)
+- Phase 1: [██████████] 100% (10/10 done — 01-01..01-10; v0.1.0 PUBLIC release shipped)
+- Phase 2: [░░░░░░░░░░] 0% (not started — next)
 
 ## Loop Position
+
+Phase 1 loop (01-10) — COMPLETE + PHASE TRANSITION:
+```
+PLAN ──▶ APPLY ──▶ UNIFY
+  ✓        ✓        ✓     [Loop closed — Phase 1→2 transition executed; v0.1 milestone complete]
+```
 
 Phase 0 loop (00-04) — COMPLETE:
 ```
@@ -140,8 +147,8 @@ Note: 01-04 line SPLIT (2026-05-29) — old single 01-04 (ingestion + RS256 + no
 ## Session Continuity
 
 Last session: 2026-05-31
-Stopped at: 01-08 + 01-09 committed (37f5257, 10c655b); 01-10 PLAN created (public AGPLv3 v0.1.0 release). Phase 1 at 9/10 done + 01-10 planned. 01-10 is the last Phase-1 plan; its UNIFY triggers the Phase 1→2 transition (MANDATORY transition-phase workflow).
-Next action: /paul:audit .paul/phases/01-community-edition-mvp/01-10-PLAN.md (recommended — enterprise_plan_audit ENABLED), then /paul:apply. APPLY is interactive (autonomous=false): T3 human-action needs operator to confirm the PUBLIC repo slug + GitHub auth. T2 secret-scan is a BLOCKING gate — a tree/history leak ABORTS the release. Resume file: .paul/phases/01-community-edition-mvp/01-10-PLAN.md.
+Stopped at: PHASE 1 COMPLETE + Phase 1→2 transition executed. 01-10 audited→applied→unified. v0.1.0 PUBLIC release shipped: nilhemdot/bountystrike-community (release commit 3709c08, annotated tag v0.1.0=3bdf41f, GitHub Release published). Secret-scan gate CLEAN (machine exit 0). v0.1 Community Edition MVP milestone 100% complete.
+Next action: /paul:plan for Phase 2 (Full Agent Fleet, Anti-Slop & Benchmark) — depends on Phase 1 verifier + evidence chain. Phase 2 plan list TBD. Resume file: .paul/ROADMAP.md.
 PRIOR (01-09, now closed):
 Next action: (1) COMMIT the uncommitted Phase-1 work — 01-08 installer + 01-09 image-bake/CRLF/smoke + .paul. Recent commits show 374f6a6 = 01-07; so 01-08 AND 01-09 are uncommitted. Suggested: `feat(phase-1): ship 01-08 one-line installer` then `feat(phase-1): ship 01-09 live deploy-gate closure (bbscope+chromium bake, CRLF sweep, scope-gated smokes)`. (2) /paul:plan 01-10 (release mechanics: version bump 0.1.0, README, git tag, GitHub release). DO NOT transition Phase 1→2 yet — 01-10 not done.
 SKILL-AUDIT GAP (01-09): /e2e was SPECIAL-FLOWS-required for Task 3 but not formally invoked as a skill this session. live_smoke.sh executed the equivalent recon→scan→validate→report pipeline checks live (functionally satisfied) — gap is procedural, non-blocking. Review whether to formally run /e2e in 01-10 or accept the smoke-runner as the e2e surface.

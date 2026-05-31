@@ -7,15 +7,17 @@ Six dependency-ordered phases over 48 weeks: fix empirical soft spots and split 
 ## Current Milestone
 
 **v0.1 Community Edition MVP** (v0.1.0)
-Status: In progress
-Phases: 1 of 6 complete
+Status: ✅ Complete — released 2026-05-31 (nilhemdot/bountystrike-community, PUBLIC)
+Phases: 2 of 6 complete (Phase 0 + Phase 1)
+Next: Phase 2 — Full Agent Fleet, Anti-Slop & Benchmark
 
 ## Phases
 
 | Phase | Name | Plans | Status | Completed |
 |-------|------|-------|--------|-----------|
-| 0 | Truth-in-Claims & Foundation | 4 | Complete | 2026-05-29 |
-| 1 | Community Edition MVP: The Moat | TBD | Active (next) | - |
+| 0 | Truth-in-Claims & Foundation | 4 | ✅ Complete | 2026-05-29 |
+| 1 | Community Edition MVP: The Moat | 10 | ✅ Complete | 2026-05-31 |
+| 2 | Full Agent Fleet, Anti-Slop & Benchmark | TBD | 🔵 Active (next) | - |
 | 2 | Full Agent Fleet, Anti-Slop & Benchmark | TBD | Not started | - |
 | 3 | Solo SaaS (Cloud) | TBD | Not started | - |
 | 4 | Enterprise / AEV | TBD | Not started | - |
@@ -67,7 +69,7 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - [~] 01-07: Recon rate-limiting token bucket — wire existing politeness-mcp TokenBucketLimiter (per-host bucket + 429 backoff) into recon's in-process reflection-prober egress; activate dead rps_for_host. Pipeline (subfinder→httpx→katana) already built+tested (v5 carryover) → WIRE not build. Scope="token-bucket only" (dnsx/naabu pipeline stages deferred to Phase 2) — planned 2026-05-31
 - [~] 01-08: One-line installer — autonomous `scripts/install.sh` (curl|bash) chaining ensure-Docker → unattended secret-gen (.env from .env.example + openssl) → RS256 keypair → `docker compose up -d --build` → healthcheck-wait → next-steps; idempotent + offline test harness; Coolify recipe doc. All pieces pre-built (v5 carryover) → ORCHESTRATE not build. — planned 2026-05-31
 - [~] 01-09: Live deploy-gate closure — bake bbscope + chromium into images, run the parked live smokes (verify-finding/scope_poll/record-evidence worker triggers, recon→scan, webhook POST) against a LOCAL Docker stack, + repo-wide CRLF→LF sweep + .gitattributes. Human-action (HATCHET token + webhook sink + scope JWT) + human-verify checkpoints. /e2e skill required. — planned 2026-05-31
-- [~] 01-10: Public AGPLv3 v0.1.0 release — version reconcile (0.0.0→0.1.0 in paul.json+PROJECT.md; pyproject ×2 already 0.1.0) + CHANGELOG.md + README release section + BLOCKING secret-scan gate (tree+history, M1) + annotated tag v0.1.0 + push to operator-confirmed PUBLIC repo + GitHub Release. standard, autonomous=false (T3 human-action). PLAN created 2026-05-31. Its UNIFY triggers Phase 1→2.
+- [x] 01-10: Public AGPLv3 v0.1.0 release — version reconcile (0.0.0→0.1.0 in paul.json+PROJECT.md; pyproject ×2 already 0.1.0) + CHANGELOG.md + README release section + BLOCKING secret-scan gate (tree+history, M1) + annotated tag v0.1.0 + push to operator-confirmed PUBLIC repo + GitHub Release. standard, autonomous=false (T3 human-action). PLAN created 2026-05-31. Its UNIFY triggers Phase 1→2.
 
 Note: 01-08 SPLIT 2026-05-31 — original "installer + public release" bundled 4 concerns (install.sh, Dockerfile gate-enablement, live smoke, release). The installer (a) is autonomously buildable + offline-testable; (b)+(c)+(d) need a live host + human checkpoints. Split: 01-08 = autonomous installer; 01-09 = live gates + release. Confirmed via AskUserQuestion (install.sh primary + Coolify docs; unattended auto-gen secrets).
 Note: 01-09 SPLIT 2026-05-31 — live smokes target LOCAL Docker (not remote Hetzner; Coolify stays a doc recipe). Release mechanics peeled into 01-10 (pure human-action). Downstream +1 → 10 plans (01-01..01-10). 01-10 UNIFY (not 01-09) now triggers Phase 1→2. Confirmed via AskUserQuestion.
@@ -146,4 +148,4 @@ Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: 
 
 ---
 *Roadmap created: 2026-05-27*
-*Last updated: 2026-05-29 — Phase 1 plan list split (01-01 DB foundation; Hatchet+evidence → 01-02); 6 plans*
+*Last updated: 2026-05-31 — Phase 1 COMPLETE (10/10 plans; v0.1.0 released on nilhemdot/bountystrike-community). v0.1 milestone complete. Phase 2 next.*

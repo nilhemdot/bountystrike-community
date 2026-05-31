@@ -4,17 +4,18 @@
   "milestone": {
     "name": "v0.1 Community Edition MVP",
     "version": "0.1.0",
-    "status": "in_progress"
+    "status": "complete",
+    "completed_at": "2026-05-31"
   },
   "phase": {
-    "number": 1,
-    "name": "Community Edition MVP: The Moat",
-    "status": "in_progress",
+    "number": 2,
+    "name": "Full Agent Fleet, Anti-Slop & Benchmark",
+    "status": "not_started",
     "previous": {
-      "number": 0,
-      "name": "Truth-in-Claims & Foundation",
+      "number": 1,
+      "name": "Community Edition MVP: The Moat",
       "status": "complete",
-      "completed_at": "2026-05-29"
+      "completed_at": "2026-05-31"
     }
   },
   "loop": {
