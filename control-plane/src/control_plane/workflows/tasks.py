@@ -24,6 +24,7 @@ from control_plane.domains.evidence_management.services import (
     EvidenceRecordingService,
     HashChainService,
 )
+from control_plane.domains.validation import VerifyFindingService
 from control_plane.workflows.client import hatchet
 
 logger = structlog.get_logger("control_plane.workflows.tasks")
@@ -162,3 +163,34 @@ async def scope_poll(input: ScopePollInput, ctx: Context) -> dict[str, int]:
     finally:
         await engine.dispose()
     return totals
+
+
+class VerifyFindingInput(BaseModel):
+    """Input schema for the verify-finding task: one ``finding_id`` to verify."""
+
+    finding_id: str
+
+
+@hatchet.task(name="verify-finding", input_validator=VerifyFindingInput)
+async def verify_finding(input: VerifyFindingInput, ctx: Context) -> dict[str, str]:
+    """Durably verify one finding: claim → dispatch oracle → evidence/FSM (plan 01-06).
+
+    The deterministic-verifier moat. Resource setup (asyncpg pool, blob store)
+    lives in-handler at Phase-1 volume; reads ``DATABASE_URL`` and the
+    ``EVIDENCE_BACKEND`` / R2 env consumed by ``make_blob_store``. Oracles are
+    invoked in-process via the validation domain (no MCP stdio). The pool is
+    sized for the brief overlap of the verify connection and the evidence
+    service's own re-acquire.
+    """
+    dsn = os.environ["DATABASE_URL"].replace("+asyncpg", "")
+    pool = await asyncpg.create_pool(dsn, min_size=1, max_size=4)
+    try:
+        evidence = EvidenceRecordingService(
+            blob_store=make_blob_store(),
+            pool=pool,
+            hash_chain_service=HashChainService(),
+        )
+        service = VerifyFindingService(pool=pool, evidence_service=evidence)
+        return await service.verify(input.finding_id)
+    finally:
+        await pool.close()

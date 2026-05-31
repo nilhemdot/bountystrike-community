@@ -11,14 +11,19 @@ environment.
 from __future__ import annotations
 
 from control_plane.workflows.client import hatchet
-from control_plane.workflows.tasks import heartbeat, record_evidence, scope_poll
+from control_plane.workflows.tasks import (
+    heartbeat,
+    record_evidence,
+    scope_poll,
+    verify_finding,
+)
 
 
 def main() -> None:
     worker = hatchet.worker(
         "bs-worker",
         slots=1,
-        workflows=[heartbeat, record_evidence, scope_poll],
+        workflows=[heartbeat, record_evidence, scope_poll, verify_finding],
     )
     worker.start()
 

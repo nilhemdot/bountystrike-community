@@ -22,6 +22,9 @@ dependencies = [
     # PINNED per pin-doctrine. v1 `@hatchet.task` API is the 1.x line
     # (0.x = legacy class-decorator API); CLAUDE.md trap #2 requires >=1.33.5.
     "hatchet-sdk==1.33.6",
+    # Deterministic-verifier oracles, invoked in-process (plan 01-06). Resolved
+    # from the root [tool.uv.sources] workspace map; needs `uv sync --all-packages`.
+    "oracle-mcp",
 ]
 
 [project.optional-dependencies]

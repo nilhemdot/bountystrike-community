@@ -890,11 +890,37 @@ def _cli_trigger_record_evidence(argv: list[str]) -> None:
     print(result)
 
 
+async def trigger_verify_finding(finding_id: str) -> dict[str, str]:
+    """Thin seam: fire the durable verify-finding task and await its result (plan 01-06).
+
+    Mirrors :func:`trigger_record_evidence`. The validator-agent triggers this
+    from its own call site in a later plan; this is the wiring reference and the
+    operator's manual hook. Imported lazily so the normal orchestrator path needs
+    no Hatchet client env.
+    """
+    from control_plane.workflows.tasks import VerifyFindingInput, verify_finding
+
+    return await verify_finding.aio_run(VerifyFindingInput(finding_id=finding_id))
+
+
+def _cli_trigger_verify_finding(argv: list[str]) -> None:
+    """Parse the ``trigger-verify-finding`` subcommand and run it."""
+    parser = argparse.ArgumentParser(
+        prog="orchestrator.py trigger-verify-finding",
+        description="Trigger the durable Hatchet verify-finding task (plan 01-06).",
+    )
+    parser.add_argument("--finding-id", required=True)
+    args = parser.parse_args(argv)
+    print(asyncio.run(trigger_verify_finding(finding_id=args.finding_id)))
+
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "trigger-heartbeat":
         _msg = sys.argv[2] if len(sys.argv) > 2 else "bs-heartbeat-ping"
         print(asyncio.run(trigger_heartbeat(_msg)))
     elif len(sys.argv) > 1 and sys.argv[1] == "trigger-record-evidence":
         _cli_trigger_record_evidence(sys.argv[2:])
+    elif len(sys.argv) > 1 and sys.argv[1] == "trigger-verify-finding":
+        _cli_trigger_verify_finding(sys.argv[2:])
     else:
         asyncio.run(main())

@@ -63,7 +63,7 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - [x] 01-03: Evidence store (R2, SHA-256 content-addressable + hash-chain audit; R2-write inside a Hatchet task) — done 2026-05-29
 - [ ] 01-04: Scope ingestion completion — bbscope v2 + projectdiscovery integrations + Hatchet scheduled poll + reconcile (RS256 JWT already built in v5 carryover → verify-only) — planned 2026-05-29
 - [~] 01-05: Scope-diff notification delivery — generic webhook (Slack/Discord-compatible) + notified_at marker, delivered inline in scope_poll — planned 2026-05-29
-- [ ] 01-06: Deterministic verifier oracles (XSS + SSRF + SQLi + open-redirect + SSTI)
+- [~] 01-06: Deterministic verifier — operationalize the 5 oracles (XSS+SSRF+SQLi+open-redirect+SSTI) into a Hatchet verify-finding task (cwe→oracle dispatch → evidence → findings FSM). Oracles already built+field-validated in oracle-mcp (v5 carryover) → WIRE not build. — planned 2026-05-29
 - [ ] 01-07: Recon agent pipeline + rate-limiting token bucket
 - [ ] 01-08: One-line installer + public release
 
