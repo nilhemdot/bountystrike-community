@@ -26,6 +26,7 @@ members = [
 
 [tool.uv.sources]
 oracle-mcp = { workspace = true }
+politeness-mcp = { workspace = true }
 
 [tool.ruff]
 line-length = 100

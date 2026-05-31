@@ -39,6 +39,8 @@ from pathlib import Path
 from typing import Any
 
 import asyncpg
+import structlog
+from politeness_mcp.bucket import TokenBucketLimiter
 
 from control_plane.domains.recon import (
     RealBinaryRunner,
@@ -60,29 +62,25 @@ _REQUIRED_ENV = (
     "SCAN_JOB_ID",
 )
 
+log = structlog.get_logger(__name__)
+
 
 def _require_env(env: dict[str, str]) -> dict[str, str]:
     missing = [k for k in _REQUIRED_ENV if not env.get(k)]
     if missing:
-        raise SystemExit(
-            f"missing required env vars: {', '.join(missing)}"
-        )
+        raise SystemExit(f"missing required env vars: {', '.join(missing)}")
     return {k: env[k] for k in _REQUIRED_ENV}
 
 
 def _validate_scope_jwt(token: str, public_key_path: str) -> dict[str, Any]:
     if not Path(public_key_path).exists():
-        raise SystemExit(
-            f"SCOPE_JWT_PUBLIC_KEY_PATH not found: {public_key_path}"
-        )
+        raise SystemExit(f"SCOPE_JWT_PUBLIC_KEY_PATH not found: {public_key_path}")
     validator = ScopeJWTValidator(public_key_path=public_key_path)
     return validator.validate(token)
 
 
 async def _run(env: dict[str, str]) -> int:
-    public_key_path = env.get(
-        "SCOPE_JWT_PUBLIC_KEY_PATH", "keys/scope_jwt_public.pem"
-    )
+    public_key_path = env.get("SCOPE_JWT_PUBLIC_KEY_PATH", "keys/scope_jwt_public.pem")
     claims = _validate_scope_jwt(env["SCOPE_JWT"], public_key_path)
     scope_filter = ScopeFilter.from_jwt_claims(claims)
 
@@ -92,7 +90,16 @@ async def _run(env: dict[str, str]) -> int:
         katana_bin=env.get("KATANA_BIN", "katana"),
     )
     persistence = ScanPersistence()
-    prober: ReflectionProber = HttpxReflectionProber()
+    # One limiter per recon run so all in-process reflection GETs share per-host
+    # bucket state (single-process scope by design — see bucket.py). Injecting
+    # scope_filter.rps_for_host activates the per-host relaxed_hosts override
+    # (plan 01-07). The out-of-process ProjectDiscovery binaries keep their own
+    # `-rate-limit` self-limit; this layer gates the prober's egress only.
+    limiter = TokenBucketLimiter(default_rps=float(scope_filter.default_rps))
+    log.info("recon.politeness.enabled", default_rps=scope_filter.default_rps)
+    prober: ReflectionProber = HttpxReflectionProber(
+        limiter=limiter, rps_for_host=scope_filter.rps_for_host
+    )
     service = ReconService(runner, persistence, scope_filter, prober=prober)
 
     dsn = env["DATABASE_URL"].replace("+asyncpg", "")
@@ -105,9 +112,7 @@ async def _run(env: dict[str, str]) -> int:
             platform=env["PLATFORM"],
         )
     except Exception as exc:  # service already marked recon_failed
-        sys.stderr.write(
-            f"recon failed: {type(exc).__name__}: {exc}\n"
-        )
+        sys.stderr.write(f"recon failed: {type(exc).__name__}: {exc}\n")
         return 2
     finally:
         await conn.close()

@@ -25,6 +25,9 @@ dependencies = [
     # Deterministic-verifier oracles, invoked in-process (plan 01-06). Resolved
     # from the root [tool.uv.sources] workspace map; needs `uv sync --all-packages`.
     "oracle-mcp",
+    # Per-host token-bucket politeness gate, in-process (plan 01-07). Resolved
+    # from the root [tool.uv.sources] workspace map; needs `uv sync --all-packages`.
+    "politeness-mcp",
 ]
 
 [project.optional-dependencies]

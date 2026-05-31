@@ -64,7 +64,7 @@ Note: Phase 0 grew 2→4 plans. (1) repo was already a uv workspace → monorepo
 - [ ] 01-04: Scope ingestion completion — bbscope v2 + projectdiscovery integrations + Hatchet scheduled poll + reconcile (RS256 JWT already built in v5 carryover → verify-only) — planned 2026-05-29
 - [~] 01-05: Scope-diff notification delivery — generic webhook (Slack/Discord-compatible) + notified_at marker, delivered inline in scope_poll — planned 2026-05-29
 - [~] 01-06: Deterministic verifier — operationalize the 5 oracles (XSS+SSRF+SQLi+open-redirect+SSTI) into a Hatchet verify-finding task (cwe→oracle dispatch → evidence → findings FSM). Oracles already built+field-validated in oracle-mcp (v5 carryover) → WIRE not build. — planned 2026-05-29
-- [ ] 01-07: Recon agent pipeline + rate-limiting token bucket
+- [~] 01-07: Recon rate-limiting token bucket — wire existing politeness-mcp TokenBucketLimiter (per-host bucket + 429 backoff) into recon's in-process reflection-prober egress; activate dead rps_for_host. Pipeline (subfinder→httpx→katana) already built+tested (v5 carryover) → WIRE not build. Scope="token-bucket only" (dnsx/naabu pipeline stages deferred to Phase 2) — planned 2026-05-31
 - [ ] 01-08: One-line installer + public release
 
 Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: arkadiyt/hackerone clients, RS256 jwt_issuer, ingest_service, scope_events). Real Phase-1 work = 2 missing federation sources (bbscope v2, projectdiscovery) + scheduled poll + reconcile vs 01-01 schema. Notification delivery became its own plan (01-05).
