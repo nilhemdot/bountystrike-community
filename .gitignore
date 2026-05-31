@@ -1,6 +1,7 @@
 keys/
 .env
 .env.local
+.env.backup*
 node_modules/
 .turbo/
 __pycache__/

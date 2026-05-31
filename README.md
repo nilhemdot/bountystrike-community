@@ -2,7 +2,7 @@
 
 Claude Code-native autonomous bug bounty platform. Recon, exploit hypothesis, deterministic verification, hash-chained evidence, tiered approval, and platform submission — all driven by Claude agents under hard scope-JWT and rate-limit boundaries.
 
-**Status:** Phase 1 signed off 2026-05-01 (4/6 PASS, 2 GAP-deploy). Phase 2 W7-8 sprint closed same day: scanner+exploit wired into orchestrator, T2/T3 approval queue + CLI shipped, T3 plumbing wired (`7001be1`), and 5 new oracle field-validation suites at TPR=1.0/FPR=0.0 — SSRF→IMDS (`e9b4b77`), IDOR (`65fe921`), RCE (`5493eea`), SSTI (`6ef4858`), Open Redirect (`1b6eb64`). 7 of 8 oracles now field-validated; SQLi suite is the W9-10 gate. See [`docs/signoffs/phase1_signoff.md`](docs/signoffs/phase1_signoff.md) Rounds 4-6.
+**Status:** Phase 1 (Community Edition MVP) in progress — 8 of 9 build plans shipped: DB foundation, Hatchet v1 runtime, hash-chained evidence store, federated scope ingestion, scope-diff notifications, deterministic verifier wiring, recon rate-limiting, and the one-line installer. Remaining: 01-09 live deploy-gate smokes (bbscope + chromium image bake, worker triggers, recon→scan, webhook POST) + the public AGPLv3 release.
 
 ## Highlights
 
@@ -33,6 +33,28 @@ operator → JWT →  │   recon  approval_gate  evidence  EV    │ ← Postgr
                                           yeswehack/immunefi,
                                           normalize, politeness, sandbox
 ```
+
+## One-line install
+
+Take a fresh Ubuntu/Hetzner host from clone → running stack with one command. The
+installer is idempotent (safe to re-run) and never overwrites an existing `.env`
+or keypair. It auto-generates the infra secrets, generates the RS256 scope keypair,
+brings the compose stack up, and waits for healthchecks.
+
+```bash
+git clone <repo> bountystrike-ai7 && cd bountystrike-ai7
+bash scripts/install.sh --unattended
+```
+
+- `--no-up` — provision `.env` + scope keypair only, skip `docker compose up`.
+- `--install-docker` — opt-in to auto-install Docker (only with `--unattended`).
+  The installer never pipes `curl | sh` to a root shell unless you explicitly ask.
+
+Fill in your BYOK keys (`ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, …) and platform
+credentials in `.env` afterwards — the installer leaves those blank for you.
+
+> A hosted `curl … | bash` one-liner will be published with the public AGPLv3
+> release; until then use the `git clone` form above.
 
 ## Quickstart (solo mode)
 

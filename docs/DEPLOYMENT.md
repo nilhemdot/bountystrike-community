@@ -227,6 +227,40 @@ The orchestrator phases are: **recon → scanner → exploit → T2 approval →
 
 ---
 
+## Deploy via Coolify
+
+[Coolify](https://coolify.io) (v4.1.0+) can run BountyStrike's compose stack as a
+managed resource — it handles TLS, restarts, and log aggregation while the compose
+internals stay exactly as shipped. This is a recipe, not a code dependency; the
+`bash scripts/install.sh` one-liner remains the primary path.
+
+1. **Add a Docker Compose resource.** In your Coolify project, create a new
+   *Docker Compose* resource and point it at `infra/docker/docker-compose.yml`
+   from this repository (Git source or uploaded compose file). Do not edit the
+   compose file — Coolify consumes it unchanged.
+2. **Provide the environment.** Generate the infra secrets locally first:
+   ```bash
+   bash scripts/seed_env.sh        # fills .env with random infra secrets (0600)
+   ```
+   Then paste the resulting `.env` values into Coolify's **Environment Variables**
+   UI (or upload the `.env` file). Fill your BYOK keys (`ANTHROPIC_API_KEY`, …) and
+   platform credentials there too — they are intentionally left blank by the seeder.
+   Generate the scope keypair with `bash scripts/generate_keys.sh` and mount/persist
+   `keys/` (or let the container entrypoint generate it on first boot).
+3. **Expose the entrypoint.** The `caddy` service (ports 80/443) is the public
+   front door — map it to your Coolify domain. Coolify terminates/forwards TLS;
+   Caddy continues to reverse-proxy the internal services. Leave the other services
+   on the internal compose network (no public ports).
+4. **Deploy.** Coolify runs `docker compose up -d --build` for you, manages restarts,
+   and streams logs. Use the same health signals as the CLI flow
+   (`scripts/health_check.sh` logic / per-service healthchecks).
+
+> Coolify replaces the *orchestration* of `install.sh` (bring-up, restart, TLS),
+> not its *provisioning* — you still run `seed_env.sh` / `generate_keys.sh` to
+> produce `.env` and the keypair. Nothing about the compose topology changes.
+
+---
+
 ## Configuration Reference
 
 Full env var reference (every variable, default, and where it's read) is in [`docs/runbooks/configuration-guide.md`](runbooks/configuration-guide.md). The table below covers the essentials required to stand up solo mode.
