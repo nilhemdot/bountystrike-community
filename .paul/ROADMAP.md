@@ -8,8 +8,8 @@ Six dependency-ordered phases over 48 weeks: fix empirical soft spots and split 
 
 **v0.1 Community Edition MVP** (v0.1.0)
 Status: ✅ Complete — released 2026-05-31 (nilhemdot/bountystrike-community, PUBLIC)
-Phases: 2 of 6 complete (Phase 0 + Phase 1)
-Next: Phase 2 — Full Agent Fleet, Anti-Slop & Benchmark
+Phases: 2 of 6 complete (Phase 0 + Phase 1); Phase 2 in progress (3/6 plans)
+Next: Phase 2 — 02-04 ai-vuln-hunter + cloud-recon + reporter
 
 ## Phases
 
@@ -17,8 +17,7 @@ Next: Phase 2 — Full Agent Fleet, Anti-Slop & Benchmark
 |-------|------|-------|--------|-----------|
 | 0 | Truth-in-Claims & Foundation | 4 | ✅ Complete | 2026-05-29 |
 | 1 | Community Edition MVP: The Moat | 10 | ✅ Complete | 2026-05-31 |
-| 2 | Full Agent Fleet, Anti-Slop & Benchmark | TBD | 🔵 Active (next) | - |
-| 2 | Full Agent Fleet, Anti-Slop & Benchmark | TBD | Not started | - |
+| 2 | Full Agent Fleet, Anti-Slop & Benchmark | 6 | 🔵 In progress (3/6 — 02-04 next) | - |
 | 3 | Solo SaaS (Cloud) | TBD | Not started | - |
 | 4 | Enterprise / AEV | TBD | Not started | - |
 | 5 | Sovereign / Government | TBD | Not started | - |
@@ -88,10 +87,14 @@ Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: 
 - Published benchmark: XBOW black-box (~85% reference) + white-box/source-aware (Shannon 100/104)
 
 **Plans:**
-- [ ] 02-01: Exploit + validator + dedup agents
-- [ ] 02-02: ai-vuln-hunter + cloud-recon + reporter agents
-- [ ] 02-03: Anti-slop gates + confirmed-rate SLO instrumentation
-- [ ] 02-04: Benchmark run + publication (both variants + cost)
+- [x] 02-01: Validator + dedup tail (3-layer dedup completion + recall≥95% gate + duplicate status + wire dedup into verifier) — done 2026-05-31
+- [x] 02-02: Sandboxed PoC runner — docker-driver substrate (DockerDriver.run + iptables egress-gate sidecar + hardened bs5/sandbox-runtime image + infra/sandbox + hermetic tests; fail-closed; SANDBOX_DRIVER=docker). Firecracker→Phase 3 task 214. Done 2026-05-31 — AC-1..AC-6 PASS, 40 tests, live egress-block proof approved.
+- [x] 02-03: Exploit-agent wiring — exploit_failed_* enum migration (13_*.sql) + exploit-agent.md spec reconcile (Firecracker→docker, result.status→verdict, +6 mcp__* tool grants) + orchestrator SANDBOX_DRIVER=docker handoff onto the 02-02 substrate. AC-1..AC-6 PASS; 44 tests; live dry-run GREEN (ALLOWED→exploit_pending_validation, DENIED→exploit_failed_oos). Unplanned fix: register-before-start 409 (driver pins static --ip at create + gate IPAMConfig fallback). 02-03-SUMMARY.md.
+- [ ] 02-04: ai-vuln-hunter + cloud-recon + reporter agents
+- [ ] 02-05: Anti-slop gates + confirmed-rate SLO instrumentation + 3-layer killswitch + AnyPoC reward-hacking guards
+- [ ] 02-06: XBOW benchmark run + publication (black-box ~85% ref + white-box; with cost)
+
+Note: ROADMAP's original 02-01 (exploit+validator+dedup bundled) RE-SLICED 2026-05-31 → 5 plans. Recon found validator ~80% built (01-06 verify_service+dispatch+5 oracles) and dedup ~75% built (dedup-mcp: fingerprint+embedding+store+server+tests, v5 carryover); exploit ~20% (spec only, no runner/Firecracker). validator+dedup are coupled (validator registers dedup fingerprint) + low-risk WIRE → 02-01. exploit = heavy research-gated BUILD → 02-02. Decisions (AskUserQuestion 2026-05-31): docker-driver sandbox for community (Firecracker→Phase 3 per ultraplan task 214); keep repo layout (control-plane/domains + mcp/, NOT packages/community/); refusal open-weight fallback stays ARCHIVED (A4 verdict) — in-process retry-once only.
 
 ### Phase 3: Solo SaaS (Cloud)
 
@@ -148,4 +151,4 @@ Note: 01-04 SPLIT — scope_management domain was ~70% pre-built (v5 carryover: 
 
 ---
 *Roadmap created: 2026-05-27*
-*Last updated: 2026-05-31 — Phase 1 COMPLETE (10/10 plans; v0.1.0 released on nilhemdot/bountystrike-community). v0.1 milestone complete. Phase 2 next.*
+*Last updated: 2026-06-01 — Phase 2 02-03 (exploit-agent wiring) loop closed; live exploit FSM proven + register-before-start gate defect fixed; Phase 2 at 3/6 plans. Next: 02-04 ai-vuln-hunter + cloud-recon + reporter.*

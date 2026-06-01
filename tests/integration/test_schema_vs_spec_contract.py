@@ -192,7 +192,8 @@ def _agent_statements() -> list[tuple[str, int, str]]:
     "spec,fence_idx,statement",
     _agent_statements(),
     ids=lambda v: (
-        v if isinstance(v, str) and "/" in v
+        v
+        if isinstance(v, str) and "/" in v
         else (str(v) if not isinstance(v, str) else v[:60].replace("\n", " "))
     ),
 )
@@ -203,7 +204,7 @@ async def test_agent_spec_sql_parses_against_live_schema(
     the migrated schema. Failure surfaces drift before it bites
     production (the Bug-2 detection mechanism)."""
     import asyncpg  # local import — keeps unit tests below importable
-                    # without asyncpg installed in dev-only environments.
+    # without asyncpg installed in dev-only environments.
 
     rewritten, _ = _substitute_named_params(statement)
     conn = await asyncpg.connect(_DSN)
@@ -226,22 +227,41 @@ async def test_agent_spec_sql_parses_against_live_schema(
         await conn.close()
 
 
+@_skip_if_no_dsn
+@pytest.mark.asyncio
+async def test_finding_status_enum_has_exploit_failed_values() -> None:
+    """Migration 13 must add the three exploit_failed_* statuses the
+    exploit-agent spec (Step 6 status table) writes. Without them the
+    spec's ``UPDATE ... SET status='exploit_failed_oos'`` raises an
+    invalid-enum error against the live DB (the 02-03 blocker)."""
+    import asyncpg  # local import — keeps unit tests below importable.
+
+    conn = await asyncpg.connect(_DSN)
+    try:
+        rows = await conn.fetch("SELECT unnest(enum_range(NULL::finding_status))::text AS v")
+        values = {r["v"] for r in rows}
+    finally:
+        await conn.close()
+
+    required = {
+        "exploit_failed_oos",
+        "exploit_failed_timeout",
+        "exploit_failed_crash",
+    }
+    missing = required - values
+    assert not missing, (
+        f"finding_status ENUM missing {sorted(missing)} — apply migration "
+        f"13_phase2_exploit_failed_status.sql"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Unit tests — extractor / normaliser. No Postgres required.
 # ---------------------------------------------------------------------------
 
 
 def test_extract_sql_blocks_returns_each_fence_in_order() -> None:
-    md = (
-        "header\n"
-        "```sql\n"
-        "SELECT 1;\n"
-        "```\n"
-        "prose\n"
-        "```sql\n"
-        "INSERT INTO t VALUES (1);\n"
-        "```\n"
-    )
+    md = "header\n```sql\nSELECT 1;\n```\nprose\n```sql\nINSERT INTO t VALUES (1);\n```\n"
     blocks = _extract_sql_blocks(md)
     assert len(blocks) == 2
     assert "SELECT 1" in blocks[0]
@@ -249,11 +269,7 @@ def test_extract_sql_blocks_returns_each_fence_in_order() -> None:
 
 
 def test_extract_sql_blocks_ignores_other_fence_languages() -> None:
-    md = (
-        "```python\nprint('hi')\n```\n"
-        "```sql\nSELECT 1;\n```\n"
-        "```\nplain fence\n```\n"
-    )
+    md = "```python\nprint('hi')\n```\n```sql\nSELECT 1;\n```\n```\nplain fence\n```\n"
     assert _extract_sql_blocks(md) == ["SELECT 1;\n"]
 
 

@@ -463,6 +463,11 @@ async def _exploit_one(
             "EVIDENCE_MCP_URL": evidence_mcp_url,
             "DEDUP_MCP_URL": dedup_mcp_url,
             "SANDBOX_MCP_URL": sandbox_mcp_url,
+            # Select the 02-02 docker sandbox substrate for the agent's stdio
+            # sandbox-mcp (it has no SANDBOX_DRIVER otherwise → refuses to run).
+            # BS_EGRESS_GATE_URL defaults host-side; compose uses the container host.
+            "SANDBOX_DRIVER": "docker",
+            "BS_EGRESS_GATE_URL": os.environ.get("BS_EGRESS_GATE_URL", "http://localhost:9090"),
         }
         if approval_token:
             env_extras["APPROVAL_TOKEN"] = approval_token
