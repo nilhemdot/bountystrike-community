@@ -115,13 +115,14 @@ function ArtifactCard({
   );
 }
 
-export default function EvidenceAuditTrail() {
+export default function EvidenceAuditTrail({ className }: { className?: string }) {
   const chainOk = EVIDENCE_CHAIN.every((a) => a.chain_valid);
 
   return (
     <Panel
       title="Evidence / Audit Chain"
       subtitle="SHA-256 hash-chained artifacts · content-addressable"
+      className={className}
       actions={
         <div className="flex items-center gap-2">
           <span

@@ -15,30 +15,30 @@ export default function DashboardPage() {
 
       {/* Main grid — fixed height, internal panels scroll independently */}
       <main className="flex-1 overflow-hidden p-3">
-        {/* Large screen: 4-col grid, 2 rows each ~50% height */}
+        {/* Large screen: 4-col × 2-row grid with explicit placement */}
         <div className="hidden xl:grid xl:grid-cols-4 xl:grid-rows-2 gap-3 h-full">
-          {/* Col 1: Findings Pipeline — full height */}
-          <div className="row-span-2 min-h-0">
+          {/* Col 1: Findings Pipeline — spans both rows */}
+          <div className="col-start-1 row-start-1 row-span-2 min-h-0">
             <FindingsPipeline className="h-full" />
           </div>
           {/* Col 2 row 1: Program Ranking */}
-          <div className="min-h-0">
+          <div className="col-start-2 row-start-1 min-h-0">
             <ProgramRanking className="h-full" />
           </div>
           {/* Col 2 row 2: Agent Activity Feed */}
-          <div className="min-h-0">
+          <div className="col-start-2 row-start-2 min-h-0">
             <AgentActivityFeed className="h-full" />
           </div>
           {/* Col 3 row 1: Approval Queue */}
-          <div className="min-h-0">
+          <div className="col-start-3 row-start-1 min-h-0">
             <ApprovalQueue className="h-full" />
           </div>
           {/* Col 3 row 2: Evidence Audit Trail */}
-          <div className="min-h-0">
+          <div className="col-start-3 row-start-2 min-h-0">
             <EvidenceAuditTrail className="h-full" />
           </div>
-          {/* Col 4: Kill Switch — full height */}
-          <div className="row-span-2 min-h-0">
+          {/* Col 4: Kill Switch — spans both rows */}
+          <div className="col-start-4 row-start-1 row-span-2 min-h-0">
             <KillSwitch className="h-full" />
           </div>
         </div>
