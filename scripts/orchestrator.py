@@ -767,7 +767,10 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                         }
                         for tok_var in (
                             "H1_API_TOKEN",
+                            "H1_API_USERNAME",
                             "BUGCROWD_API_TOKEN",
+                            "INTIGRITI_API_TOKEN",
+                            "YESWEHACK_API_TOKEN",
                             "IMMUNEFI_API_TOKEN",
                             "REPORTER_MODEL",
                         ):
