@@ -67,29 +67,20 @@ jobs:
 
       - name: Run control-plane unit tests
         working-directory: control-plane
-        run: uv run --frozen pytest -q --no-header
+        # pytest lives in control-plane's `dev` *extra* (optional-dependencies),
+        # which `uv run` does not enable by default — hence `--extra dev`.
+        run: uv run --frozen --extra dev pytest -q --no-header
 
   integration:
     name: tests/integration on Postgres + pgvector
     runs-on: ubuntu-latest
 
-    # Service container exposes 5432 on the runner host. Matches the
-    # pgvector/pgvector:pg17 image used by infra/docker/docker-compose.yml
-    # so test-side and prod-side stay on the same Postgres major.
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: bs
-          POSTGRES_PASSWORD: bspass
-          POSTGRES_DB: bountystrike_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U bs -d bountystrike_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 12
+    # NOTE: a bare `services:` container cannot be used here. The schema needs
+    # the `vectorscale` + `pg_search` extensions (infra/sql/00_extensions.sql),
+    # which no upstream image ships — the repo's own bs-postgres:pg17
+    # (infra/docker/Dockerfile.postgres-bs) bundles them. pg_search additionally
+    # requires `-c shared_preload_libraries=pg_search`, and `services:` offers no
+    # way to append server args. So we build the image and `docker run` it below.
 
     env:
       # Tests sniff this env var; mirror compose creds so a developer
@@ -110,6 +101,47 @@ jobs:
             pyproject.toml
             control-plane/pyproject.toml
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build bs-postgres:pg17 (vector + vectorscale + pg_search)
+        # The first build compiles pgvectorscale from Rust/pgrx source and is
+        # slow; the gha cache makes subsequent runs fast. Context is the docker
+        # dir only — the Dockerfile pulls all sources over the network, no repo
+        # COPY, so the build context stays tiny.
+        uses: docker/build-push-action@v6
+        with:
+          context: infra/docker
+          file: infra/docker/Dockerfile.postgres-bs
+          load: true
+          tags: bs-postgres:pg17
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start Postgres (bs-postgres:pg17)
+        # `-c shared_preload_libraries=pg_search` is mandatory for pg_search
+        # (documented on the image via LABEL bountystrike.postgres.requires).
+        run: |
+          docker run -d --name bs-pg -p 5432:5432 \
+            -e POSTGRES_USER=bs \
+            -e POSTGRES_PASSWORD=bspass \
+            -e POSTGRES_DB=bountystrike_test \
+            bs-postgres:pg17 \
+            -c shared_preload_libraries=pg_search
+
+      - name: Wait for Postgres to accept connections
+        run: |
+          for i in $(seq 1 30); do
+            if docker exec bs-pg pg_isready -U bs -d bountystrike_test; then
+              echo "postgres ready after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "postgres did not become ready in time" >&2
+          docker logs bs-pg >&2 || true
+          exit 1
+
       - name: Install psql client
         run: |
           sudo apt-get update -qq
@@ -127,7 +159,9 @@ jobs:
           done
 
       - name: Run schema-Pydantic contract test
-        run: uv run --frozen pytest tests/integration/test_schema_pydantic_contract.py -q --no-header
+        # --all-packages installs the workspace members (control_plane et al.)
+        # the integration tests import; the root project depends on none of them.
+        run: uv run --frozen --all-packages pytest tests/integration/test_schema_pydantic_contract.py -q --no-header
 
       - name: Run integration suite
-        run: uv run --frozen pytest tests/integration -q --no-header
+        run: uv run --frozen --all-packages pytest tests/integration -q --no-header

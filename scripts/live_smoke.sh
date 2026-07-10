@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # live_smoke.sh — local deploy-gate smoke runner for BountyStrike v5 (plan 01-09).
 #
 # Proves the LIVE paths prior plans (01-04..07) could only stub, against the
