@@ -1,0 +1,349 @@
+# Instincts generated from https://github.com/nilhemdot/bountystrike-community
+# Generated: 2026-07-10T06:38:51.541Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: bountystrike-community-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Commit Length
+
+## Action
+
+Write moderate-length commit messages (~68 characters)
+
+## Evidence
+
+- Average commit message length: 68 chars
+- Based on 2 commits
+
+---
+id: bountystrike-community-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: bountystrike-community-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: bountystrike-community-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: bountystrike-community-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: bountystrike-community-workflow-environment-variable-reconciliation-and-passthrough-fix
+trigger: "when doing environment variable reconciliation and passthrough fix"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Workflow Environment Variable Reconciliation And Passthrough Fix
+
+## Action
+
+Follow the environment-variable-reconciliation-and-passthrough-fix workflow:
+1. Identify new or changed environment variables in code/scripts.
+2. Update .env.example to document all required variables, splitting sections if needed.
+3. Update scripts (e.g., orchestrator.py) to ensure correct passthrough of required variables.
+4. Test that all services/scripts receive the correct environment variables.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: .env.example, scripts/orchestrator.py
+
+---
+id: bountystrike-community-workflow-ci-infrastructure-fix-and-credential-least-privilege-hardening
+trigger: "when doing ci infrastructure fix and credential least privilege hardening"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Workflow Ci Infrastructure Fix And Credential Least Privilege Hardening
+
+## Action
+
+Follow the ci-infrastructure-fix-and-credential-least-privilege-hardening workflow:
+1. Diagnose CI workflow failures by reviewing logs and error messages.
+2. Update CI workflow YAML files to fix dependency installation, service images, or configuration issues.
+3. Update scripts (e.g., orchestrator.py) to scope credentials to only the necessary targets.
+4. Test CI workflows to confirm fixes and improved security.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: .github/workflows/integration-pg.yml, .github/workflows/license-and-imports.yml, scripts/orchestrator.py
+
+---
+id: bountystrike-community-instinct-file-naming
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct File Naming
+
+## Action
+
+Name the file using camelCase convention
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+
+---
+id: bountystrike-community-instinct-function-naming
+trigger: "When defining a new function"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Function Naming
+
+## Action
+
+Name the function using camelCase convention
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: bountystrike-community-instinct-class-naming
+trigger: "When defining a new class"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase convention
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: bountystrike-community-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE convention
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: bountystrike-community-instinct-import-style
+trigger: "When importing modules in Python files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: bountystrike-community-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: bountystrike-community-instinct-test-location
+trigger: "When adding new tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.testLocation: separate
+
+---
+id: bountystrike-community-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Commit Format
+
+## Action
+
+Write a concise, freeform commit message without a prefix, averaging around 68 characters
+
+## Evidence
+
+- Pattern in commits.type: freeform
+- Pattern in commits.averageLength: 68
+
+---
+id: bountystrike-community-instinct-env-var-reconciliation
+trigger: "When environment variables are added or changed in code/scripts"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Env Var Reconciliation
+
+## Action
+
+Update .env.example and scripts to document and correctly pass through all required environment variables
+
+## Evidence
+
+- Workflow: environment-variable-reconciliation-and-passthrough-fix
+- Commits: Reconcile .env.example with code and fix reporter token passthrough
+
+---
+id: bountystrike-community-instinct-ci-fix-and-credential-hardening
+trigger: "When CI workflows fail due to configuration drift or security reviews identify overbroad credential exposure"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: nilhemdot/bountystrike-community
+---
+
+# Bountystrike Community Instinct Ci Fix And Credential Hardening
+
+## Action
+
+Update CI workflow YAML files and scripts to fix failures and scope credentials to only necessary targets
+
+## Evidence
+
+- Workflow: ci-infrastructure-fix-and-credential-least-privilege-hardening
+- Commits: Fix pre-existing CI infra failures + scope reporter creds by platform
+
