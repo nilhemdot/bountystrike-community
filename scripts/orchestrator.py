@@ -770,12 +770,18 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                             "FINDING_ID": finding_id,
                             "EVIDENCE_MCP_URL": evidence_mcp_url,
                         }
-                        for tok_var in (
-                            "H1_API_TOKEN",
-                            "BUGCROWD_API_TOKEN",
-                            "IMMUNEFI_API_TOKEN",
-                            "REPORTER_MODEL",
-                        ):
+                        # Inject ONLY the target platform's submission credentials
+                        # (least privilege — a HackerOne reporter must not receive
+                        # Bugcrowd/Intigriti/etc. secrets). REPORTER_MODEL is
+                        # platform-independent and passed through separately.
+                        platform_creds: dict[str, tuple[str, ...]] = {
+                            "hackerone": ("H1_API_TOKEN", "H1_API_USERNAME"),
+                            "bugcrowd": ("BUGCROWD_API_TOKEN",),
+                            "intigriti": ("INTIGRITI_API_TOKEN",),
+                            "yeswehack": ("YESWEHACK_API_TOKEN",),
+                            "immunefi": ("IMMUNEFI_API_TOKEN",),
+                        }
+                        for tok_var in (*platform_creds.get(platform, ()), "REPORTER_MODEL"):
                             if tok_var in os.environ:
                                 reporter_env[tok_var] = os.environ[tok_var]
                         rc = await _run_agent(

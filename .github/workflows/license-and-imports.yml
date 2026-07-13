@@ -41,7 +41,11 @@ jobs:
           version: "0.7.x"
 
       - name: Install dev dependencies (import-linter~=2.3)
-        run: uv sync --group dev
+        # --all-packages installs every workspace member (incl. control-plane)
+        # so the non-vacuous guard below and lint-imports can import it. The
+        # virtual root project has no dependency on the members, so a plain
+        # `uv sync` would leave control_plane uninstalled.
+        run: uv sync --all-packages --group dev
 
       - name: Assert control_plane resolves (non-vacuous guard)
         run: uv run python -c "import control_plane; print('OK:', control_plane.__file__)"
