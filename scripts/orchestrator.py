@@ -536,7 +536,11 @@ _wait_t2_token = _wait_token
 
 async def main() -> None:  # noqa: PLR0912, PLR0915
     program_handle = _get_required("PROGRAM_HANDLE")
-    platform = os.environ.get("PLATFORM", "hackerone")
+    # Normalize casing at the source so PLATFORM=HackerOne resolves consistently
+    # everywhere it is used (scan_jobs.platform, agent env vars, credential
+    # lookup). An unknown platform still yields () at the credential allowlist,
+    # which fails loud rather than mis-routing.
+    platform = os.environ.get("PLATFORM", "hackerone").lower()
     scope_jwt = _get_required("SCOPE_JWT")
     database_url = _get_required("DATABASE_URL")
 
@@ -781,11 +785,11 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                             "yeswehack": ("YESWEHACK_API_TOKEN",),
                             "immunefi": ("IMMUNEFI_API_TOKEN",),
                         }
-                        # Normalize casing so PLATFORM=HackerOne still resolves;
-                        # an unknown platform yields () — the reporter then gets no
+                        # platform is normalized to lowercase at the source; an
+                        # unknown platform yields () — the reporter then gets no
                         # submission creds, which fails loud rather than mis-routing.
                         for tok_var in (
-                            *platform_creds.get(platform.lower(), ()),
+                            *platform_creds.get(platform, ()),
                             "REPORTER_MODEL",
                         ):
                             if tok_var in os.environ:
