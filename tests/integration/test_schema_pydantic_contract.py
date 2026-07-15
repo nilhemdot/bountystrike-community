@@ -112,10 +112,10 @@ async def test_migration_tables_exist() -> None:
     try:
         migration_tables = [
             "dedup_fingerprints",  # 02
-            "approval_queue",      # 04
-            "recon_assets",        # 06
-            "operators",           # 07
-            "hunt_outcomes",       # 07
+            "approval_queue",  # 04
+            "recon_assets",  # 06
+            "operators",  # 07
+            "hunt_outcomes",  # 07
         ]
         for table_name in migration_tables:
             exists = await _table_exists(conn, table_name)
@@ -200,11 +200,13 @@ async def test_approval_queue_structure() -> None:
     try:
         columns = await _get_table_columns(conn, "approval_queue")
 
-        assert "id" in columns
+        # Migration 04 keys the table on finding_id (PRIMARY KEY); there is no
+        # separate id column, and the queue timestamp is requested_at.
         assert "finding_id" in columns
         assert "tier" in columns
         assert "status" in columns
-        assert "queued_at" in columns
+        assert "requested_at" in columns
+        assert "expires_at" in columns
     finally:
         await conn.close()
 
@@ -217,13 +219,14 @@ async def test_recon_assets_structure() -> None:
     try:
         columns = await _get_table_columns(conn, "recon_assets")
 
+        # Migration 06 stores assets keyed on job_id (→ scan_jobs); columns are
+        # id/job_id/host/url/tech/status_code/raw/created_at.
         assert "id" in columns
-        assert "program_handle" in columns
-        assert "asset_type" in columns
-        assert "discovered_asset" in columns
-        assert "discovered_at" in columns
-        assert "in_scope_assets" in columns
-        assert columns["in_scope_assets"] == "_text", "_text is array type"
+        assert "job_id" in columns
+        assert "host" in columns
+        assert "url" in columns
+        assert "tech" in columns
+        assert "created_at" in columns
     finally:
         await conn.close()
 
@@ -236,9 +239,11 @@ async def test_operators_table_structure() -> None:
     try:
         columns = await _get_table_columns(conn, "operators")
 
-        assert "operator_id" in columns
-        assert "name" in columns
-        assert "active" in columns
+        # Migration 07: operators is keyed on id (TEXT PK) with display_name +
+        # skill_vector; there is no operator_id/name/active.
+        assert "id" in columns
+        assert "display_name" in columns
+        assert "skill_vector" in columns
         assert "created_at" in columns
     finally:
         await conn.close()
@@ -252,12 +257,14 @@ async def test_hunt_outcomes_structure() -> None:
     try:
         columns = await _get_table_columns(conn, "hunt_outcomes")
 
+        # Migration 07: per-(program, operator, scan_job) calibration summary —
+        # ev_rank / submitted_count / confirmed_count, not cwe/outcome/hunted_at.
         assert "id" in columns
         assert "operator_id" in columns
         assert "program_handle" in columns
-        assert "cwe" in columns
-        assert "outcome" in columns
-        assert "hunted_at" in columns
+        assert "ev_rank" in columns
+        assert "confirmed_count" in columns
+        assert "created_at" in columns
     finally:
         await conn.close()
 

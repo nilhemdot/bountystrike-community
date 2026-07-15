@@ -65,6 +65,17 @@ jobs:
             uv.lock
             control-plane/pyproject.toml
 
+      - name: Generate scope-JWT test keys
+        # test_scope_jwt.py reads keys/scope_jwt_{private,public}.pem (RS256).
+        # They are secrets, never committed, so mint an ephemeral RSA-2048 pair
+        # for the test run. Matches scripts/gen_scope_jwt.py's key type.
+        run: |
+          mkdir -p keys
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+            -out keys/scope_jwt_private.pem
+          openssl rsa -in keys/scope_jwt_private.pem -pubout \
+            -out keys/scope_jwt_public.pem
+
       - name: Run control-plane unit tests
         working-directory: control-plane
         # pytest lives in control-plane's `dev` *extra* (optional-dependencies),

@@ -781,7 +781,13 @@ async def main() -> None:  # noqa: PLR0912, PLR0915
                             "yeswehack": ("YESWEHACK_API_TOKEN",),
                             "immunefi": ("IMMUNEFI_API_TOKEN",),
                         }
-                        for tok_var in (*platform_creds.get(platform, ()), "REPORTER_MODEL"):
+                        # Normalize casing so PLATFORM=HackerOne still resolves;
+                        # an unknown platform yields () — the reporter then gets no
+                        # submission creds, which fails loud rather than mis-routing.
+                        for tok_var in (
+                            *platform_creds.get(platform.lower(), ()),
+                            "REPORTER_MODEL",
+                        ):
                             if tok_var in os.environ:
                                 reporter_env[tok_var] = os.environ[tok_var]
                         rc = await _run_agent(
