@@ -281,6 +281,7 @@ class SubagentSimulator:
         agent_type: str,
         env_extras: dict[str, str],
         claude_cmd: str,
+        model_id: str | None = None,
     ) -> int:
         self.calls.append((agent_type, dict(env_extras)))
         job_id = env_extras.get("SCAN_JOB_ID", "")
@@ -605,11 +606,11 @@ async def test_recon_failed_aborts(monkeypatch, fake_db, orchestrator_module):
     """If recon ends with recon_failed, the orchestrator aborts via sys.exit."""
     sim = SubagentSimulator(fake_db, exploit_outcome="success")
 
-    async def failing_recon(agent_type, env_extras, claude_cmd):
+    async def failing_recon(agent_type, env_extras, claude_cmd, model_id=None):
         if agent_type == "recon":
             fake_db.scan_jobs[env_extras["SCAN_JOB_ID"]]["status"] = "recon_failed"
             return 1
-        return await sim(agent_type, env_extras, claude_cmd)
+        return await sim(agent_type, env_extras, claude_cmd, model_id=model_id)
 
     monkeypatch.setattr(orchestrator_module, "_run_agent", failing_recon)
     monkeypatch.setenv("SKIP_SCANNER", "1")

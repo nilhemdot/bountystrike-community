@@ -73,6 +73,43 @@ async def _table_exists(conn: asyncpg.Connection, table_name: str) -> bool:
     return count > 0
 
 
+async def _get_primary_key_columns(conn: asyncpg.Connection, table_name: str) -> list[str]:
+    """Return the ordered list of column names in the table's PRIMARY KEY."""
+    rows = await conn.fetch(
+        """
+        SELECT kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_schema = kcu.table_schema
+        WHERE tc.table_schema = 'public'
+          AND tc.table_name = $1
+          AND tc.constraint_type = 'PRIMARY KEY'
+        ORDER BY kcu.ordinal_position
+        """,
+        table_name,
+    )
+    return [row["column_name"] for row in rows]
+
+
+async def _get_foreign_key_columns(conn: asyncpg.Connection, table_name: str) -> set[str]:
+    """Return the set of local column names covered by any FOREIGN KEY."""
+    rows = await conn.fetch(
+        """
+        SELECT kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_schema = kcu.table_schema
+        WHERE tc.table_schema = 'public'
+          AND tc.table_name = $1
+          AND tc.constraint_type = 'FOREIGN KEY'
+        """,
+        table_name,
+    )
+    return {row["column_name"] for row in rows}
+
+
 # ---------------------------------------------------------------------------
 # Core table existence tests
 # ---------------------------------------------------------------------------
@@ -199,6 +236,7 @@ async def test_approval_queue_structure() -> None:
     conn = await asyncpg.connect(_DSN)
     try:
         columns = await _get_table_columns(conn, "approval_queue")
+        pk = await _get_primary_key_columns(conn, "approval_queue")
 
         # Migration 04 keys the table on finding_id (PRIMARY KEY); there is no
         # separate id column, and the queue timestamp is requested_at.
@@ -207,6 +245,10 @@ async def test_approval_queue_structure() -> None:
         assert "status" in columns
         assert "requested_at" in columns
         assert "expires_at" in columns
+        assert pk == ["finding_id"], f"expected finding_id PK, got {pk}"
+        # Reject legacy columns that never existed in the migration.
+        assert "id" not in columns
+        assert "queued_at" not in columns
     finally:
         await conn.close()
 
@@ -218,8 +260,11 @@ async def test_recon_assets_structure() -> None:
     conn = await asyncpg.connect(_DSN)
     try:
         columns = await _get_table_columns(conn, "recon_assets")
+        pk = await _get_primary_key_columns(conn, "recon_assets")
+        fks = await _get_foreign_key_columns(conn, "recon_assets")
 
-        # Migration 06 stores assets keyed on job_id (→ scan_jobs); columns are
+        # Migration 06 stores assets keyed on id (PRIMARY KEY) with a job_id
+        # FOREIGN KEY → scan_jobs; columns are
         # id/job_id/host/url/tech/status_code/raw/created_at.
         assert "id" in columns
         assert "job_id" in columns
@@ -227,6 +272,14 @@ async def test_recon_assets_structure() -> None:
         assert "url" in columns
         assert "tech" in columns
         assert "created_at" in columns
+        assert pk == ["id"], f"expected id PK, got {pk}"
+        assert "job_id" in fks, f"expected job_id FK, got {fks}"
+        # Reject legacy columns that never existed in the migration.
+        assert "program_handle" not in columns
+        assert "asset_type" not in columns
+        assert "discovered_asset" not in columns
+        assert "discovered_at" not in columns
+        assert "in_scope_assets" not in columns
     finally:
         await conn.close()
 
@@ -238,6 +291,7 @@ async def test_operators_table_structure() -> None:
     conn = await asyncpg.connect(_DSN)
     try:
         columns = await _get_table_columns(conn, "operators")
+        pk = await _get_primary_key_columns(conn, "operators")
 
         # Migration 07: operators is keyed on id (TEXT PK) with display_name +
         # skill_vector; there is no operator_id/name/active.
@@ -245,6 +299,11 @@ async def test_operators_table_structure() -> None:
         assert "display_name" in columns
         assert "skill_vector" in columns
         assert "created_at" in columns
+        assert pk == ["id"], f"expected id PK, got {pk}"
+        # Reject legacy columns that never existed in the migration.
+        assert "operator_id" not in columns
+        assert "name" not in columns
+        assert "active" not in columns
     finally:
         await conn.close()
 
@@ -256,15 +315,25 @@ async def test_hunt_outcomes_structure() -> None:
     conn = await asyncpg.connect(_DSN)
     try:
         columns = await _get_table_columns(conn, "hunt_outcomes")
+        pk = await _get_primary_key_columns(conn, "hunt_outcomes")
+        fks = await _get_foreign_key_columns(conn, "hunt_outcomes")
 
         # Migration 07: per-(program, operator, scan_job) calibration summary —
         # ev_rank / submitted_count / confirmed_count, not cwe/outcome/hunted_at.
+        # Keyed on a BIGSERIAL id PK; operator_id is a FOREIGN KEY → operators.
         assert "id" in columns
         assert "operator_id" in columns
         assert "program_handle" in columns
         assert "ev_rank" in columns
+        assert "submitted_count" in columns
         assert "confirmed_count" in columns
         assert "created_at" in columns
+        assert pk == ["id"], f"expected id PK, got {pk}"
+        assert "operator_id" in fks, f"expected operator_id FK, got {fks}"
+        # Reject legacy columns that never existed in the migration.
+        assert "cwe" not in columns
+        assert "outcome" not in columns
+        assert "hunted_at" not in columns
     finally:
         await conn.close()
 
